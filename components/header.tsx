@@ -15,7 +15,7 @@ export default function Header() {
   const [open, setOpen] = useState(false)
 
   return (
-    <header className="relative z-10 flex items-center justify-between px-4 sm:px-8 py-6 rajko rajkan">
+    <header className="relative z-10 flex items-center justify-between px-4 sm:px-8 py-6 obrad">
       <div className="flex items-center gap-2">
         <Link href="/" className="flex items-center gap-2">
           <div className="w-10 h-10 rounded-lg bg-blue-400/20 border border-blue-400/50 flex items-center justify-center">
