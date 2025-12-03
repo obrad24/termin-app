@@ -40,6 +40,7 @@ import {
 export default function AdminPage() {
   const [password, setPassword] = useState('')
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [checkingAuth, setCheckingAuth] = useState(true)
   const [loading, setLoading] = useState(false)
   const [results, setResults] = useState<Result[]>([])
   const [loadingResults, setLoadingResults] = useState(true)
@@ -81,22 +82,74 @@ export default function AdminPage() {
   })
   const { toast } = useToast()
 
-  const handleLogin = () => {
-    if (password === process.env.NEXT_PUBLIC_ADMIN_PASSWORD || password === 'admin123') {
-      setIsAuthenticated(true)
-      fetchResults()
-      fetchPlayers()
-      fetchTeams()
-      toast({
-        title: 'Uspešno prijavljivanje',
-        description: 'Dobrodošli u admin dashboard',
+  const checkAuth = async () => {
+    try {
+      const response = await fetch('/api/admin/check')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.authenticated) {
+          setIsAuthenticated(true)
+          fetchResults()
+          fetchPlayers()
+          fetchTeams()
+        }
+      }
+    } catch (error) {
+      console.error('Error checking auth:', error)
+    } finally {
+      setCheckingAuth(false)
+    }
+  }
+
+  const handleLogin = async () => {
+    setLoading(true)
+    try {
+      const response = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password }),
       })
-    } else {
+
+      if (response.ok) {
+        setIsAuthenticated(true)
+        setPassword('')
+        fetchResults()
+        fetchPlayers()
+        fetchTeams()
+        toast({
+          title: 'Uspešno prijavljivanje',
+          description: 'Dobrodošli u admin dashboard',
+        })
+      } else {
+        toast({
+          title: 'Pogrešna lozinka',
+          description: 'Pokušajte ponovo',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
       toast({
-        title: 'Pogrešna lozinka',
-        description: 'Pokušajte ponovo',
+        title: 'Greška',
+        description: 'Nešto je pošlo po zlu',
         variant: 'destructive',
       })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/admin/logout', { method: 'POST' })
+      setIsAuthenticated(false)
+      toast({
+        title: 'Uspešno odjavljivanje',
+        description: 'Uspešno ste se odjavili',
+      })
+    } catch (error) {
+      console.error('Error logging out:', error)
     }
   }
 
@@ -155,10 +208,7 @@ export default function AdminPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          password: process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123',
-          ...formData,
-        }),
+        body: JSON.stringify(formData),
       })
 
       if (!response.ok) {
@@ -202,9 +252,7 @@ export default function AdminPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          password: process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123',
-        }),
+        body: JSON.stringify({}),
       })
 
       if (!response.ok) {
@@ -236,7 +284,6 @@ export default function AdminPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          password: process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123',
           home_team: updatedResult.home_team,
           away_team: updatedResult.away_team,
           home_score: updatedResult.home_score,
@@ -284,7 +331,6 @@ export default function AdminPage() {
       if (editPlayerImageFile) {
         const uploadFormData = new FormData()
         uploadFormData.append('file', editPlayerImageFile)
-        uploadFormData.append('password', process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123')
 
         const uploadResponse = await fetch('/api/players/upload', {
           method: 'POST',
@@ -306,7 +352,6 @@ export default function AdminPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          password: process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123',
           first_name: updatedPlayer.first_name,
           last_name: updatedPlayer.last_name,
           birth_year: updatedPlayer.birth_year,
@@ -348,7 +393,6 @@ export default function AdminPage() {
       if (editTeamLogoFile) {
         const uploadFormData = new FormData()
         uploadFormData.append('file', editTeamLogoFile)
-        uploadFormData.append('password', process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123')
 
         const uploadResponse = await fetch('/api/teams/upload', {
           method: 'POST',
@@ -370,7 +414,6 @@ export default function AdminPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          password: process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123',
           name: updatedTeam.name,
           short_name: updatedTeam.short_name || '',
           logo_url: logoUrl,
@@ -402,12 +445,20 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchResults()
-      fetchPlayers()
-      fetchTeams()
-    }
-  }, [isAuthenticated])
+    checkAuth()
+  }, [])
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-slate-800 to-purple-900 flex items-center justify-center px-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
+            <div className="text-center text-white">Provera autentifikacije...</div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   if (!isAuthenticated) {
     return (
@@ -426,12 +477,13 @@ export default function AdminPage() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                  onKeyPress={(e) => e.key === 'Enter' && !loading && handleLogin()}
                   placeholder="Unesite lozinku"
+                  disabled={loading}
                 />
               </div>
-              <Button onClick={handleLogin} className="w-full">
-                Prijavi se
+              <Button onClick={handleLogin} className="w-full" disabled={loading}>
+                {loading ? 'Prijavljivanje...' : 'Prijavi se'}
               </Button>
             </div>
           </CardContent>
@@ -467,7 +519,7 @@ export default function AdminPage() {
             </Link>
             <Button
               variant="outline"
-              onClick={() => setIsAuthenticated(false)}
+              onClick={handleLogout}
               className="gap-2"
             >
               <LogOut className="w-4 h-4" />
@@ -750,7 +802,6 @@ export default function AdminPage() {
                     if (playerImageFile) {
                       const uploadFormData = new FormData()
                       uploadFormData.append('file', playerImageFile)
-                      uploadFormData.append('password', process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123')
 
                       const uploadResponse = await fetch('/api/players/upload', {
                         method: 'POST',
@@ -772,7 +823,6 @@ export default function AdminPage() {
                         'Content-Type': 'application/json',
                       },
                       body: JSON.stringify({
-                        password: process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123',
                         ...playerForm,
                         image_url: imageUrl || playerForm.image_url || null,
                       }),
@@ -959,9 +1009,7 @@ export default function AdminPage() {
                                 headers: {
                                   'Content-Type': 'application/json',
                                 },
-                                body: JSON.stringify({
-                                  password: process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123',
-                                }),
+                                body: JSON.stringify({}),
                               })
 
                               if (!response.ok) {
@@ -1019,7 +1067,6 @@ export default function AdminPage() {
                       // Upload slike preko API rute
                       const uploadFormData = new FormData()
                       uploadFormData.append('file', teamLogoFile)
-                      uploadFormData.append('password', process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123')
 
                       const uploadResponse = await fetch('/api/teams/upload', {
                         method: 'POST',
@@ -1041,7 +1088,6 @@ export default function AdminPage() {
                         'Content-Type': 'application/json',
                       },
                       body: JSON.stringify({
-                        password: process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123',
                         name: teamForm.name,
                         short_name: teamForm.short_name,
                         logo_url: logoUrl,
@@ -1198,9 +1244,7 @@ export default function AdminPage() {
                                 headers: {
                                   'Content-Type': 'application/json',
                                 },
-                                body: JSON.stringify({
-                                  password: process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123',
-                                }),
+                                body: JSON.stringify({}),
                               })
 
                               if (!response.ok) {

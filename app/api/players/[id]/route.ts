@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
+import { requireAuth } from '@/lib/auth'
 
 // DELETE - brisanje igrača
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -14,14 +15,14 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       )
     }
 
+    // Provera autentifikacije
+    const authCheck = await requireAuth()
+    if (authCheck.error) {
+      return authCheck.response
+    }
+
     const { id: idParam } = await params
     const body = await request.json()
-    const { password } = body
-
-    const adminPassword = process.env.ADMIN_PASSWORD || process.env.NEXT_PUBLIC_ADMIN_PASSWORD
-    if (password !== adminPassword) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
 
     const id = parseInt(idParam, 10)
     if (isNaN(id)) {
@@ -58,14 +59,15 @@ export async function PUT(
       )
     }
 
+    // Provera autentifikacije
+    const authCheck = await requireAuth()
+    if (authCheck.error) {
+      return authCheck.response
+    }
+
     const { id: idParam } = await params
     const body = await request.json()
-    const { password, first_name, last_name, birth_year, team, image_url } = body
-
-    const adminPassword = process.env.ADMIN_PASSWORD || process.env.NEXT_PUBLIC_ADMIN_PASSWORD
-    if (password !== adminPassword) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const { first_name, last_name, birth_year, team, image_url } = body
 
     const id = parseInt(idParam, 10)
     if (isNaN(id)) {

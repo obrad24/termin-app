@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
+import { requireAuth } from '@/lib/auth'
 
 // POST - Upload slike za igrača
 export async function POST(request: NextRequest) {
@@ -14,15 +15,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Provera autentifikacije
+    const authCheck = await requireAuth()
+    if (authCheck.error) {
+      return authCheck.response
+    }
+
     const formData = await request.formData()
     const file = formData.get('file') as File
-    const password = formData.get('password') as string
-
-    // Provera admin password-a
-    const adminPassword = process.env.ADMIN_PASSWORD || process.env.NEXT_PUBLIC_ADMIN_PASSWORD
-    if (password !== adminPassword) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })

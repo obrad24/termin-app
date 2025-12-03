@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
+import { requireAuth } from '@/lib/auth'
 
 // GET - Prikaz svih rezultata
 export async function GET() {
@@ -52,17 +53,14 @@ export async function POST(request: Request) {
       )
     }
 
-    const body = await request.json()
-    const { password, home_team, away_team, home_score, away_score, date } = body
-
-    // Provera admin password-a
-    const adminPassword = process.env.ADMIN_PASSWORD || process.env.NEXT_PUBLIC_ADMIN_PASSWORD
-    if (password !== adminPassword) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+    // Provera autentifikacije
+    const authCheck = await requireAuth()
+    if (authCheck.error) {
+      return authCheck.response
     }
+
+    const body = await request.json()
+    const { home_team, away_team, home_score, away_score, date } = body
 
     // Validacija podataka
     if (!home_team || !away_team || home_score === undefined || away_score === undefined || !date) {

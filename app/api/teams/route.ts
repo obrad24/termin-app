@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
+import { requireAuth } from '@/lib/auth'
 
 // GET - svi timovi
 export async function GET() {
@@ -44,13 +45,14 @@ export async function POST(request: Request) {
       )
     }
 
-    const body = await request.json()
-    const { password, name, short_name, logo_url } = body
-
-    const adminPassword = process.env.ADMIN_PASSWORD || process.env.NEXT_PUBLIC_ADMIN_PASSWORD
-    if (password !== adminPassword) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Provera autentifikacije
+    const authCheck = await requireAuth()
+    if (authCheck.error) {
+      return authCheck.response
     }
+
+    const body = await request.json()
+    const { name, short_name, logo_url } = body
 
     if (!name) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
