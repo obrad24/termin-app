@@ -54,38 +54,38 @@ export default function TeamsSection() {
 
   if (loading) {
     return (
-      <section className="relative px-8 py-12 max-w-7xl mx-auto">
-        <div className="text-white text-center">Učitavanje timova...</div>
+      <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto">
+        <div className="text-white text-center text-sm sm:text-base">Učitavanje timova...</div>
       </section>
     )
   }
 
   if (teams.length === 0) {
     return (
-      <section className="relative px-8 py-12 max-w-7xl mx-auto">
+      <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto">
         <div className="text-white text-center">
-          <h2 className="text-3xl font-bold mb-4">Timovi</h2>
-          <p className="text-blue-300/60">Nema timova za prikaz</p>
+          <h2 className="text-2xl sm:text-3xl font-bold mb-4">Timovi</h2>
+          <p className="text-blue-300/60 text-sm sm:text-base">Nema timova za prikaz</p>
         </div>
       </section>
     )
   }
 
   return (
-    <section className="relative px-8 py-12 max-w-7xl mx-auto">
-      <div className="space-y-8">
+    <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-4">
+      <div className="space-y-6 sm:space-y-8">
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-white mb-2">Timovi</h2>
-          <p className="text-blue-300/60">Svi registrovani timovi</p>
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">Timovi</h2>
+          <p className="text-blue-300/60 text-sm sm:text-base">Svi registrovani timovi</p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6">
           {teams.map((team) => (
             <div
               key={team.id}
-              className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-400/30 rounded-2xl p-6 backdrop-blur-md hover:border-blue-400/60 transition-all hover:scale-105 flex flex-col items-center justify-center text-center"
+              className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-400/30 rounded-xl sm:rounded-2xl p-4 sm:p-6 backdrop-blur-md hover:border-blue-400/60 transition-all hover:scale-105 flex flex-col items-center justify-center text-center"
             >
-              <div className="w-20 h-20 rounded-full overflow-hidden bg-slate-700/50 flex items-center justify-center mb-4 border-2 border-blue-400/30">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden bg-slate-700/50 flex items-center justify-center mb-3 sm:mb-4 border-2 border-blue-400/30">
                 {team.logo_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -94,14 +94,14 @@ export default function TeamsSection() {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <span className="text-white font-bold text-2xl">
+                  <span className="text-white font-bold text-lg sm:text-2xl">
                     {team.short_name || team.name.substring(0, 2).toUpperCase()}
                   </span>
                 )}
               </div>
-              <h3 className="text-white font-semibold text-lg mb-1">{team.name}</h3>
+              <h3 className="text-white font-semibold text-sm sm:text-base lg:text-lg mb-1 line-clamp-2">{team.name}</h3>
               {team.short_name && (
-                <p className="text-blue-300/60 text-sm">{team.short_name}</p>
+                <p className="text-blue-300/60 text-xs sm:text-sm">{team.short_name}</p>
               )}
             </div>
           ))}

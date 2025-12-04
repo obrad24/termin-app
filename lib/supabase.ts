@@ -49,4 +49,29 @@ export interface Team {
   created_at?: string
 }
 
+// Tipovi za strijelce
+export interface MatchGoal {
+  id: number
+  result_id: number
+  player_id: number
+  team_type: 'home' | 'away'
+  goal_minute?: number | null
+  created_at?: string
+}
+
+// Tipovi za igrače koji su igrali
+export interface MatchPlayer {
+  id: number
+  result_id: number
+  player_id: number
+  team_type: 'home' | 'away'
+  created_at?: string
+}
+
+// Prošireni tip za rezultat sa strijelcima i igračima
+export interface ResultWithDetails extends Result {
+  goals?: MatchGoal[]
+  players?: MatchPlayer[]
+}
+
 

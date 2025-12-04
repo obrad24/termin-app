@@ -48,13 +48,6 @@ export default function AdminPage() {
   const [loadingPlayers, setLoadingPlayers] = useState(true)
   const [teams, setTeams] = useState<Team[]>([])
   const [loadingTeams, setLoadingTeams] = useState(true)
-  const [formData, setFormData] = useState({
-    home_team: '',
-    away_team: '',
-    home_score: '',
-    away_score: '',
-    date: new Date().toISOString().split('T')[0],
-  })
   const [playerForm, setPlayerForm] = useState({
     first_name: '',
     last_name: '',
@@ -80,6 +73,7 @@ export default function AdminPage() {
     away_score: '',
     date: '',
   })
+  const [editPlayerTeam, setEditPlayerTeam] = useState<string>('')
   const { toast } = useToast()
 
   const checkAuth = async () => {
@@ -195,49 +189,6 @@ export default function AdminPage() {
       console.error('Error fetching teams:', error)
     } finally {
       setLoadingTeams(false)
-    }
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-
-    try {
-      const response = await fetch('/api/results', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Greška pri dodavanju rezultata')
-      }
-
-      toast({
-        title: 'Uspešno!',
-        description: 'Rezultat je dodat',
-      })
-
-      // Reset forme i osveži listu
-      setFormData({
-        home_team: '',
-        away_team: '',
-        home_score: '',
-        away_score: '',
-        date: new Date().toISOString().split('T')[0],
-      })
-      fetchResults()
-    } catch (error: any) {
-      toast({
-        title: 'Greška',
-        description: error.message || 'Nešto je pošlo po zlu',
-        variant: 'destructive',
-      })
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -502,25 +453,26 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-slate-800 to-purple-900 py-8 px-4">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-slate-800 to-purple-900 py-4 sm:py-8 px-4 sm:px-6">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
-            <p className="text-blue-300/60 mt-1">Upravljaj rezultatima utakmica</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">Admin Dashboard</h1>
+            <p className="text-blue-300/60 mt-1 text-sm sm:text-base">Upravljaj rezultatima utakmica</p>
           </div>
-          <div className="flex gap-3">
-            <Link href="/">
-              <Button variant="outline" className="gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+            <Link href="/" className="w-full sm:w-auto">
+              <Button variant="outline" className="gap-2 w-full sm:w-auto">
                 <Home className="w-4 h-4" />
-                Glavni sajt
+                <span className="hidden sm:inline">Glavni sajt</span>
+                <span className="sm:hidden">Početna</span>
               </Button>
             </Link>
             <Button
               variant="outline"
               onClick={handleLogout}
-              className="gap-2"
+              className="gap-2 w-full sm:w-auto"
             >
               <LogOut className="w-4 h-4" />
               Odjavi se
@@ -529,7 +481,7 @@ export default function AdminPage() {
         </div>
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Ukupno rezultata</CardTitle>
@@ -593,120 +545,29 @@ export default function AdminPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Add Result Form */}
+          {/* Add Result Card */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
                 <Plus className="w-5 h-5" />
-                Dodaj novi rezultat
+                Dodaj novu utakmicu
               </CardTitle>
-              <CardDescription>Unesite novi rezultat utakmice</CardDescription>
+              <CardDescription className="text-sm">
+                Dodajte novu utakmicu sa rezultatom, strijelcima i igračima
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="home_team">Domaći tim</Label>
-                    {teams.length === 0 ? (
-                      <div className="text-sm text-muted-foreground py-2">
-                        Nema timova. Dodajte timove prvo.
-                      </div>
-                    ) : (
-                      <Select
-                        value={formData.home_team}
-                        onValueChange={(value) =>
-                          setFormData({ ...formData, home_team: value })
-                        }
-                        required
-                      >
-                        <SelectTrigger id="home_team" className="w-full">
-                          <SelectValue placeholder="Izaberi tim" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {teams.map((team) => (
-                            <SelectItem key={team.id} value={team.name}>
-                              {team.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                  <div>
-                    <Label htmlFor="away_team">Gostujući tim</Label>
-                    {teams.length === 0 ? (
-                      <div className="text-sm text-muted-foreground py-2">
-                        Nema timova. Dodajte timove prvo.
-                      </div>
-                    ) : (
-                      <Select
-                        value={formData.away_team}
-                        onValueChange={(value) =>
-                          setFormData({ ...formData, away_team: value })
-                        }
-                        required
-                      >
-                        <SelectTrigger id="away_team" className="w-full">
-                          <SelectValue placeholder="Izaberi tim" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {teams.map((team) => (
-                            <SelectItem key={team.id} value={team.name}>
-                              {team.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="home_score">Golovi domaćeg tima</Label>
-                    <Input
-                      id="home_score"
-                      type="number"
-                      min="0"
-                      value={formData.home_score}
-                      onChange={(e) =>
-                        setFormData({ ...formData, home_score: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="away_score">Golovi gostujućeg tima</Label>
-                    <Input
-                      id="away_score"
-                      type="number"
-                      min="0"
-                      value={formData.away_score}
-                      onChange={(e) =>
-                        setFormData({ ...formData, away_score: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="date">Datum</Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    value={formData.date}
-                    onChange={(e) =>
-                      setFormData({ ...formData, date: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Dodavanje...' : 'Dodaj rezultat'}
+              <Link href="/admin/match/new">
+                <Button className="w-full" size="lg">
+                  <Plus className="w-4 h-4 mr-2" />
+                  <span className="hidden sm:inline">Dodaj novu utakmicu</span>
+                  <span className="sm:hidden">Dodaj utakmicu</span>
                 </Button>
-              </form>
+              </Link>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-4">
+                Na novoj stranici možete uneti rezultat, dodati strijelce sa minutom gola i
+                izabrati sve igrače koji su igrali u utakmici.
+              </p>
             </CardContent>
           </Card>
 
@@ -732,17 +593,19 @@ export default function AdminPage() {
                   {results.map((result) => (
                     <div
                       key={result.id}
-                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition"
+                      className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 border rounded-lg hover:bg-muted/50 transition gap-3"
                     >
-                      <div className="flex-1">
-                        <div className="font-semibold">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-sm sm:text-base truncate">
                           {result.home_team} vs {result.away_team}
                         </div>
-                        <div className="text-sm text-muted-foreground">
-                          {result.home_score} - {result.away_score} • {format(new Date(result.date), 'dd MMM yyyy')}
+                        <div className="text-xs sm:text-sm text-muted-foreground mt-1">
+                          <span className="font-medium">{result.home_score} - {result.away_score}</span>
+                          <span className="mx-2">•</span>
+                          {format(new Date(result.date), 'dd MMM yyyy')}
                         </div>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 w-full sm:w-auto">
                         <Button
                           variant="ghost"
                           size="icon"
@@ -756,7 +619,7 @@ export default function AdminPage() {
                               date: result.date,
                             })
                           }}
-                          className="text-blue-500 hover:text-blue-600"
+                          className="text-blue-500 hover:text-blue-600 flex-shrink-0"
                         >
                           <Pencil className="w-4 h-4" />
                         </Button>
@@ -764,7 +627,7 @@ export default function AdminPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleDelete(result.id)}
-                          className="text-destructive hover:text-destructive"
+                          className="text-destructive hover:text-destructive flex-shrink-0"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -859,7 +722,7 @@ export default function AdminPage() {
                 }}
                 className="space-y-4"
               >
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="first_name">Ime</Label>
                     <Input
@@ -882,15 +745,33 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="team">Tim</Label>
-                    <Input
-                      id="team"
-                      value={playerForm.team}
-                      onChange={(e) => setPlayerForm({ ...playerForm, team: e.target.value })}
-                      placeholder="npr. Real Madrid"
-                    />
+                    {teams.length === 0 ? (
+                      <div className="text-sm text-muted-foreground py-2">
+                        Nema timova. Dodajte timove prvo.
+                      </div>
+                    ) : (
+                      <Select
+                        value={playerForm.team || 'none'}
+                        onValueChange={(value) =>
+                          setPlayerForm({ ...playerForm, team: value === 'none' ? '' : value })
+                        }
+                      >
+                        <SelectTrigger id="team" className="w-full">
+                          <SelectValue placeholder="Izaberi tim (opciono)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Bez tima</SelectItem>
+                          {teams.map((team) => (
+                            <SelectItem key={team.id} value={team.name}>
+                              {team.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
                   <div>
                     <Label htmlFor="player_image">Slika igrača</Label>
@@ -955,10 +836,10 @@ export default function AdminPage() {
                   {players.map((player) => (
                     <div
                       key={player.id}
-                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition"
+                      className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 border rounded-lg hover:bg-muted/50 transition gap-3"
                     >
-                      <div className="flex items-center gap-3 flex-1">
-                        <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-700 flex items-center justify-center text-xs text-white">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 rounded-full overflow-hidden bg-slate-700 flex items-center justify-center text-xs text-white">
                           {player.image_url ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
@@ -973,8 +854,8 @@ export default function AdminPage() {
                             </span>
                           )}
                         </div>
-                        <div>
-                          <div className="font-semibold">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-semibold text-sm sm:text-base truncate">
                             {player.first_name} {player.last_name}
                             {player.team && (
                               <span className="text-xs text-muted-foreground ml-2">
@@ -982,17 +863,20 @@ export default function AdminPage() {
                               </span>
                             )}
                           </div>
-                          <div className="text-sm text-muted-foreground">
+                          <div className="text-xs sm:text-sm text-muted-foreground">
                             Godina rođenja: {player.birth_year}
                           </div>
                         </div>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 w-full sm:w-auto">
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => setEditingPlayer(player)}
-                          className="text-blue-500 hover:text-blue-600"
+                          onClick={() => {
+                            setEditingPlayer(player)
+                            setEditPlayerTeam(player.team || 'none')
+                          }}
+                          className="text-blue-500 hover:text-blue-600 flex-shrink-0"
                         >
                           <Pencil className="w-4 h-4" />
                         </Button>
@@ -1122,7 +1006,7 @@ export default function AdminPage() {
                 }}
                 className="space-y-4"
               >
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="team_name">Naziv tima</Label>
                     <Input
@@ -1187,10 +1071,10 @@ export default function AdminPage() {
                   {teams.map((team) => (
                     <div
                       key={team.id}
-                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition"
+                      className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 border rounded-lg hover:bg-muted/50 transition gap-3"
                     >
-                      <div className="flex items-center gap-3 flex-1">
-                        <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-700 flex items-center justify-center text-xs text-white">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 rounded-full overflow-hidden bg-slate-700 flex items-center justify-center text-xs text-white">
                           {team.logo_url ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
@@ -1211,8 +1095,8 @@ export default function AdminPage() {
                             </span>
                           )}
                         </div>
-                        <div>
-                          <div className="font-semibold">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-semibold text-sm sm:text-base truncate">
                             {team.name}
                             {team.short_name && (
                               <span className="text-xs text-muted-foreground ml-2">
@@ -1222,12 +1106,12 @@ export default function AdminPage() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 w-full sm:w-auto">
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => setEditingTeam(team)}
-                          className="text-blue-500 hover:text-blue-600"
+                          className="text-blue-500 hover:text-blue-600 flex-shrink-0"
                         >
                           <Pencil className="w-4 h-4" />
                         </Button>
@@ -1265,7 +1149,7 @@ export default function AdminPage() {
                               })
                             }
                           }}
-                          className="text-destructive hover:text-destructive"
+                          className="text-destructive hover:text-destructive flex-shrink-0"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -1302,7 +1186,7 @@ export default function AdminPage() {
                 }}
                 className="space-y-4"
               >
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="edit_home_team">Domaći tim</Label>
                     {teams.length === 0 ? (
@@ -1358,7 +1242,7 @@ export default function AdminPage() {
                     )}
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="edit_home_score">Golovi domaćeg tima</Label>
                     <Input
@@ -1427,6 +1311,7 @@ export default function AdminPage() {
           if (!open) {
             setEditingPlayer(null)
             setEditPlayerImageFile(null)
+            setEditPlayerTeam('none')
           }
         }}>
           <DialogContent>
@@ -1444,14 +1329,14 @@ export default function AdminPage() {
                     first_name: formData.get('first_name') as string,
                     last_name: formData.get('last_name') as string,
                     birth_year: parseInt(formData.get('birth_year') as string),
-                    team: formData.get('team') as string,
+                    team: editPlayerTeam === 'none' ? '' : editPlayerTeam,
                     image_url: editingPlayer.image_url || '',
                   }
                   await handleEditPlayer(updatedPlayer)
                 }}
                 className="space-y-4"
               >
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="edit_first_name">Ime</Label>
                     <Input
@@ -1471,14 +1356,31 @@ export default function AdminPage() {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="edit_team">Tim</Label>
-                    <Input
-                      id="edit_team"
-                      name="team"
-                      defaultValue={editingPlayer.team || ''}
-                    />
+                    {teams.length === 0 ? (
+                      <div className="text-sm text-muted-foreground py-2">
+                        Nema timova. Dodajte timove prvo.
+                      </div>
+                    ) : (
+                      <Select
+                        value={editPlayerTeam}
+                        onValueChange={(value) => setEditPlayerTeam(value)}
+                      >
+                        <SelectTrigger id="edit_team" className="w-full">
+                          <SelectValue placeholder="Izaberi tim (opciono)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Bez tima</SelectItem>
+                          {teams.map((team) => (
+                            <SelectItem key={team.id} value={team.name}>
+                              {team.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
                   <div>
                     <Label htmlFor="edit_player_image">Nova slika (opciono)</Label>
@@ -1554,7 +1456,7 @@ export default function AdminPage() {
                 }}
                 className="space-y-4"
               >
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="edit_team_name">Naziv tima</Label>
                     <Input

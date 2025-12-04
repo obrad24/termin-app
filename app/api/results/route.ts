@@ -60,7 +60,15 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { home_team, away_team, home_score, away_score, date } = body
+    const { 
+      home_team, 
+      away_team, 
+      home_score, 
+      away_score, 
+      date,
+      goals = [],
+      players = []
+    } = body
 
     // Validacija podataka
     if (!home_team || !away_team || home_score === undefined || away_score === undefined || !date) {
@@ -70,7 +78,8 @@ export async function POST(request: Request) {
       )
     }
 
-    const { data, error } = await supabase
+    // Kreiranje rezultata
+    const { data: resultData, error: resultError } = await supabase
       .from('results')
       .insert([
         {
@@ -84,15 +93,54 @@ export async function POST(request: Request) {
       .select()
       .single()
 
-    if (error) {
-      console.error('Error creating result:', error)
+    if (resultError) {
+      console.error('Error creating result:', resultError)
       return NextResponse.json(
-        { error: 'Failed to create result' },
+        { error: 'Failed to create result', details: resultError.message },
         { status: 500 }
       )
     }
 
-    return NextResponse.json(data, { status: 201 })
+    const resultId = resultData.id
+
+    // Dodavanje strijelaca ako postoje
+    if (goals && goals.length > 0) {
+      const goalsToInsert = goals.map((goal: any) => ({
+        result_id: resultId,
+        player_id: parseInt(goal.player_id),
+        team_type: goal.team_type,
+        goal_minute: goal.goal_minute ? parseInt(goal.goal_minute) : null,
+      }))
+
+      const { error: goalsError } = await supabase
+        .from('match_goals')
+        .insert(goalsToInsert)
+
+      if (goalsError) {
+        console.error('Error creating goals:', goalsError)
+        // Ne vraćamo grešku, samo logujemo jer rezultat je već kreiran
+      }
+    }
+
+    // Dodavanje igrača koji su igrali ako postoje
+    if (players && players.length > 0) {
+      const playersToInsert = players.map((player: any) => ({
+        result_id: resultId,
+        player_id: parseInt(player.player_id),
+        team_type: player.team_type,
+      }))
+
+      const { error: playersError } = await supabase
+        .from('match_players')
+        .insert(playersToInsert)
+
+      if (playersError) {
+        console.error('Error creating match players:', playersError)
+        // Ne vraćamo grešku, samo logujemo jer rezultat je već kreiran
+      }
+    }
+
+    return NextResponse.json(resultData, { status: 201 })
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json(
