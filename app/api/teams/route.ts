@@ -9,7 +9,7 @@ export async function GET() {
       return NextResponse.json(
         {
           error: 'Supabase not configured',
-          message: 'Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local',
+          message: 'Please set SUPABASE_URL and SUPABASE_ANON_KEY environment variables',
         },
         { status: 503 },
       )
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error: 'Supabase not configured',
-          message: 'Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local',
+          message: 'Please set SUPABASE_URL and SUPABASE_ANON_KEY environment variables',
         },
         { status: 503 },
       )
