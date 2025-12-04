@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Result } from '@/lib/supabase'
 import { format } from 'date-fns'
+import Link from 'next/link'
 
 export default function LatestResult() {
   const [latestResult, setLatestResult] = useState<Result | null>(null)
@@ -85,7 +86,8 @@ export default function LatestResult() {
       {/* Main match display */}
       <div className="relative z-10 w-full max-w-6xl mx-auto">
         {/* Match result */}
-        <div className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-blue-400/30 rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-12 backdrop-blur-md shadow-2xl">
+        <Link href={`/matches/${latestResult.id}`} className="block">
+          <div className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-blue-400/30 rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-12 backdrop-blur-md shadow-2xl hover:border-blue-400/60 transition-all hover:shadow-2xl hover:scale-[1.02] cursor-pointer">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 items-center">
             {/* Home team */}
             <div className="text-center md:text-right space-y-3 sm:space-y-4 order-2 md:order-1">
@@ -136,6 +138,7 @@ export default function LatestResult() {
             </div>
           </div>
         </div>
+        </Link>
       </div>
     </section>
   )

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Result } from '@/lib/supabase'
 import { format } from 'date-fns'
+import Link from 'next/link'
 
 export default function ResultsSection() {
   const [results, setResults] = useState<Result[]>([])
@@ -97,10 +98,14 @@ export default function ResultsSection() {
 
             <div className="space-y-3 sm:space-y-4">
               {dateResults.map((result) => (
-                <div
+                <Link
                   key={result.id}
-                  className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-400/30 rounded-xl sm:rounded-2xl p-4 sm:p-6 backdrop-blur-md hover:border-blue-400/60 transition-all hover:shadow-lg"
+                  href={`/matches/${result.id}`}
+                  className="block"
                 >
+                  <div
+                    className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-400/30 rounded-xl sm:rounded-2xl p-4 sm:p-6 backdrop-blur-md hover:border-blue-400/60 transition-all hover:shadow-lg hover:scale-[1.02] cursor-pointer"
+                  >
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-3 sm:mb-4">
                     <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 w-full sm:w-auto">
                       <div className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 rounded-lg bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center">
@@ -139,7 +144,8 @@ export default function ResultsSection() {
                     <span>FULL TIME</span>
                     <span>{format(new Date(result.date), 'HH:mm')}</span>
                   </div>
-                </div>
+                  </div>
+                </Link>
               ))}
             </div>
           </div>
