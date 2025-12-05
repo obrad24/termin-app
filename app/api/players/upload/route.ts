@@ -42,9 +42,9 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
-    // Upload u Supabase Storage
+    // Upload u Supabase Storage (koristimo team-logos bucket sa players folderom)
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('player-images')
+      .from('team-logos')
       .upload(filePath, buffer, {
         contentType: file.type,
         upsert: false,
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Dobij public URL
-    const { data: urlData } = supabase.storage.from('player-images').getPublicUrl(filePath)
+    const { data: urlData } = supabase.storage.from('team-logos').getPublicUrl(filePath)
 
     return NextResponse.json(
       { 

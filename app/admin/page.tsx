@@ -676,18 +676,35 @@ export default function AdminPage() {
                       const uploadFormData = new FormData()
                       uploadFormData.append('file', playerImageFile)
 
-                      const uploadResponse = await fetch('/api/players/upload', {
-                        method: 'POST',
-                        body: uploadFormData,
-                      })
+                      try {
+                        const uploadResponse = await fetch('/api/players/upload', {
+                          method: 'POST',
+                          body: uploadFormData,
+                        })
 
-                      if (!uploadResponse.ok) {
-                        const error = await uploadResponse.json()
-                        throw new Error(error.error || 'Greška pri uploadu slike')
+                        if (!uploadResponse.ok) {
+                          let errorMessage = 'Greška pri uploadu slike'
+                          try {
+                            const error = await uploadResponse.json()
+                            errorMessage = error.error || error.message || errorMessage
+                            console.error('Upload error:', error)
+                          } catch (parseError) {
+                            const text = await uploadResponse.text()
+                            console.error('Upload error (text):', text)
+                            errorMessage = text || errorMessage
+                          }
+                          throw new Error(errorMessage)
+                        }
+
+                        const uploadData = await uploadResponse.json()
+                        if (!uploadData.url) {
+                          throw new Error('URL slike nije dobijen sa servera')
+                        }
+                        imageUrl = uploadData.url
+                      } catch (uploadError: any) {
+                        console.error('Upload error details:', uploadError)
+                        throw new Error(uploadError.message || 'Greška pri uploadu slike')
                       }
-
-                      const uploadData = await uploadResponse.json()
-                      imageUrl = uploadData.url
                     }
 
                     const response = await fetch('/api/players', {
@@ -719,6 +736,11 @@ export default function AdminPage() {
                       image_url: '',
                     })
                     setPlayerImageFile(null)
+                    // Reset file input
+                    const fileInput = document.getElementById('player_image') as HTMLInputElement
+                    if (fileInput) {
+                      fileInput.value = ''
+                    }
                     fetchPlayers()
                   } catch (error: any) {
                     toast({
@@ -959,18 +981,35 @@ export default function AdminPage() {
                       const uploadFormData = new FormData()
                       uploadFormData.append('file', teamLogoFile)
 
-                      const uploadResponse = await fetch('/api/teams/upload', {
-                        method: 'POST',
-                        body: uploadFormData,
-                      })
+                      try {
+                        const uploadResponse = await fetch('/api/teams/upload', {
+                          method: 'POST',
+                          body: uploadFormData,
+                        })
 
-                      if (!uploadResponse.ok) {
-                        const error = await uploadResponse.json()
-                        throw new Error(error.error || 'Greška pri uploadu slike')
+                        if (!uploadResponse.ok) {
+                          let errorMessage = 'Greška pri uploadu logoa'
+                          try {
+                            const error = await uploadResponse.json()
+                            errorMessage = error.error || error.message || errorMessage
+                            console.error('Upload error:', error)
+                          } catch (parseError) {
+                            const text = await uploadResponse.text()
+                            console.error('Upload error (text):', text)
+                            errorMessage = text || errorMessage
+                          }
+                          throw new Error(errorMessage)
+                        }
+
+                        const uploadData = await uploadResponse.json()
+                        if (!uploadData.url) {
+                          throw new Error('URL logoa nije dobijen sa servera')
+                        }
+                        logoUrl = uploadData.url
+                      } catch (uploadError: any) {
+                        console.error('Upload error details:', uploadError)
+                        throw new Error(uploadError.message || 'Greška pri uploadu logoa')
                       }
-
-                      const uploadData = await uploadResponse.json()
-                      logoUrl = uploadData.url
                     }
 
                     const response = await fetch('/api/teams', {
@@ -1000,8 +1039,14 @@ export default function AdminPage() {
                       short_name: '',
                     })
                     setTeamLogoFile(null)
+                    // Reset file input
+                    const fileInput = document.getElementById('team_logo') as HTMLInputElement
+                    if (fileInput) {
+                      fileInput.value = ''
+                    }
                     fetchTeams()
                   } catch (error: any) {
+                    console.error('Error adding team:', error)
                     toast({
                       title: 'Greška',
                       description: error.message || 'Nešto je pošlo po zlu',
@@ -1049,6 +1094,11 @@ export default function AdminPage() {
                   <p className="text-xs text-muted-foreground mt-1">
                     Preporuka: kvadratna slika (npr. 512x512), PNG ili JPG
                   </p>
+                  {teamLogoFile && (
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                      Izabran logo: {teamLogoFile.name}
+                    </p>
+                  )}
                 </div>
 
                 <Button type="submit" className="w-full" disabled={loading}>
