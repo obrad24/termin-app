@@ -68,7 +68,7 @@ export default function TeamProfilePage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-900">
+      <main className="min-h-screen bg-[#a80710]">
         <Header />
         <div className="flex items-center justify-center min-h-[60vh] px-4">
           <div className="text-white text-center">Učitavanje...</div>
@@ -79,7 +79,7 @@ export default function TeamProfilePage() {
 
   if (!teamData) {
     return (
-      <main className="min-h-screen bg-slate-900">
+      <main className="min-h-screen bg-[#a80710]">
         <Header />
         <div className="flex items-center justify-center min-h-[60vh] px-4">
           <div className="text-white text-center">
@@ -96,7 +96,7 @@ export default function TeamProfilePage() {
   const { team, players, topScorers, matchesCount } = teamData
 
   return (
-    <main className="min-h-screen bg-slate-900">
+    <main className="min-h-screen bg-[#a80710]">
       <Header />
       <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-24 sm:pt-28">
         <div className="space-y-6 sm:space-y-8">

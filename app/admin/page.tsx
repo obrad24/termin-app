@@ -401,7 +401,7 @@ export default function AdminPage() {
 
   if (checkingAuth) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-[#a80710] flex items-center justify-center px-4">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <div className="text-center text-white">Provera autentifikacije...</div>
@@ -413,7 +413,7 @@ export default function AdminPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-[#a80710] flex items-center justify-center px-4">
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>Admin Login</CardTitle>
@@ -453,7 +453,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 py-4 sm:py-8 px-4 sm:px-6">
+    <div className="min-h-screen bg-[#a80710] py-4 sm:py-8 px-4 sm:px-6">
       <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

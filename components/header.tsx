@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Menu, Home, Calendar, Users, Settings, ChevronRight, X } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 import Link from 'next/link'
 import {
   Sheet,
@@ -42,14 +42,14 @@ export default function Header() {
       <div className="md:hidden">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
-            <button className="w-10 h-10 rounded-lg bg-transparent border border-white/20 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition backdrop-blur-sm">
+            <button className="w-10 h-10 rounded-lg bg-transparent border-none border-white/20 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition backdrop-blur-sm">
               <Menu className="w-5 h-5" />
               <span className="sr-only">Open menu</span>
             </button>
           </SheetTrigger>
           <SheetContent 
             side="right" 
-            className="!w-full sm:!w-[380px] bg-slate-900 backdrop-blur-xl border-l border-blue-500/20 p-0 [&>button]:hidden"
+            className="!w-full sm:!w-[380px] bg-[#a80710] backdrop-blur-xl border-l border-blue-500/20 p-0 [&>button]:hidden"
           >
             <div className="flex flex-col h-full">
               {/* Close Button */}
@@ -70,11 +70,7 @@ export default function Header() {
                   onClick={() => setOpen(false)}
                   className="group flex items-center gap-4 px-4 py-4 rounded-xl text-white/90 hover:text-white transition-all duration-200 hover:bg-blue-500/20 border border-transparent hover:border-blue-400/30"
                 >
-                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-500/20 group-hover:bg-blue-500/30 transition-colors">
-                    <Home className="w-5 h-5 text-blue-400" />
-                  </div>
                   <span className="flex-1 font-medium">Početna</span>
-                  <ChevronRight className="w-4 h-4 text-white/40 group-hover:text-white/60 group-hover:translate-x-1 transition-all" />
                 </Link>
 
                 <Link
@@ -82,11 +78,7 @@ export default function Header() {
                   onClick={() => setOpen(false)}
                   className="group flex items-center gap-4 px-4 py-4 rounded-xl text-white/90 hover:text-white transition-all duration-200 hover:bg-purple-500/20 border border-transparent hover:border-purple-400/30"
                 >
-                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-purple-500/20 group-hover:bg-purple-500/30 transition-colors">
-                    <Calendar className="w-5 h-5 text-purple-400" />
-                  </div>
                   <span className="flex-1 font-medium">Utakmice</span>
-                  <ChevronRight className="w-4 h-4 text-white/40 group-hover:text-white/60 group-hover:translate-x-1 transition-all" />
                 </Link>
 
                 <Link
@@ -94,11 +86,7 @@ export default function Header() {
                   onClick={() => setOpen(false)}
                   className="group flex items-center gap-4 px-4 py-4 rounded-xl text-white/90 hover:text-white transition-all duration-200 hover:bg-cyan-500/20 border border-transparent hover:border-cyan-400/30"
                 >
-                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-cyan-500/20 group-hover:bg-cyan-500/30 transition-colors">
-                    <Users className="w-5 h-5 text-cyan-400" />
-                  </div>
                   <span className="flex-1 font-medium">Igrači</span>
-                  <ChevronRight className="w-4 h-4 text-white/40 group-hover:text-white/60 group-hover:translate-x-1 transition-all" />
                 </Link>
 
                 <Link
@@ -106,18 +94,14 @@ export default function Header() {
                   onClick={() => setOpen(false)}
                   className="group flex items-center gap-4 px-4 py-4 rounded-xl text-white/90 hover:text-white transition-all duration-200 hover:bg-amber-500/20 border border-transparent hover:border-amber-400/30"
                 >
-                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-amber-500/20 group-hover:bg-amber-500/30 transition-colors">
-                    <Settings className="w-5 h-5 text-amber-400" />
-                  </div>
                   <span className="flex-1 font-medium">Admin</span>
-                  <ChevronRight className="w-4 h-4 text-white/40 group-hover:text-white/60 group-hover:translate-x-1 transition-all" />
                 </Link>
               </nav>
 
               {/* Footer Section */}
               <div className="px-6 py-4 border-t border-white/10">
                 <p className="text-white/40 text-xs text-center">
-                  © 2024 TERMIN
+                  © OBRAD DESIGN
                 </p>
               </div>
             </div>

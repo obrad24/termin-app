@@ -59,7 +59,7 @@ export default function LatestResult() {
   if (loading) {
     return (
       <section className="relative min-h-[70vh] sm:min-h-[80vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
-        <div className="absolute inset-0 bg-slate-900" />
+        <div className="absolute inset-0 bg-[#a80710]" />
         <div className="relative z-10 text-white text-sm sm:text-base">Učitavanje...</div>
       </section>
     )
@@ -68,7 +68,7 @@ export default function LatestResult() {
   if (!latestResult) {
     return (
       <section className="relative min-h-[70vh] sm:min-h-[80vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
-        <div className="absolute inset-0 bg-slate-900" />
+        <div className="absolute inset-0 bg-[#a80710]" />
         <div className="relative z-10 text-white text-center px-4">
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4">Nema rezultata</h2>
           <p className="text-blue-300/60 text-sm sm:text-base">Dodajte rezultate u admin panelu</p>
@@ -80,7 +80,7 @@ export default function LatestResult() {
   return (
     <section className="relative min-h-[70vh] sm:min-h-[80vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 pt-24 sm:pt-28 pb-12 sm:pb-16 lg:pb-20">
       {/* Background gradient effects */}
-      <div className="absolute inset-0 bg-slate-900" />
+      <div className="absolute inset-0 bg-[#a80710]" />
       
       {/* Main match display */}
       <div className="relative z-10 w-full max-w-6xl mx-auto">

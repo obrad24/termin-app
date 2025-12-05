@@ -1,57 +1,136 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { Team, Result } from '@/lib/supabase'
+
+interface HeadToHeadStats {
+  team1Wins: number
+  team2Wins: number
+  draws: number
+  totalMatches: number
+}
+
 export default function HeroSection() {
+  const [team1, setTeam1] = useState<Team | null>(null)
+  const [team2, setTeam2] = useState<Team | null>(null)
+  const [stats, setStats] = useState<HeadToHeadStats>({
+    team1Wins: 0,
+    team2Wins: 0,
+    draws: 0,
+    totalMatches: 0,
+  })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchHeadToHead()
+  }, [])
+
+  const fetchHeadToHead = async () => {
+    try {
+      // Uzmi sve timove
+      const teamsResponse = await fetch('/api/teams')
+      if (!teamsResponse.ok) return
+
+      const teams: Team[] = await teamsResponse.json()
+      if (teams.length < 2) {
+        setLoading(false)
+        return
+      }
+
+      // Sortiraj po ID-ju i uzmi prva dva
+      const sortedTeams = [...teams].sort((a, b) => a.id - b.id)
+      const firstTeam = sortedTeams[0]
+      const secondTeam = sortedTeams[1]
+
+      setTeam1(firstTeam)
+      setTeam2(secondTeam)
+
+      // Uzmi sve rezultate
+      const resultsResponse = await fetch('/api/results')
+      if (!resultsResponse.ok) return
+
+      const results: Result[] = await resultsResponse.json()
+
+      // Pronađi međusobne utakmice
+      const headToHeadMatches = results.filter(
+        (result) =>
+          (result.home_team === firstTeam.name && result.away_team === secondTeam.name) ||
+          (result.home_team === secondTeam.name && result.away_team === firstTeam.name)
+      )
+
+      // Izračunaj statistiku
+      let team1Wins = 0
+      let team2Wins = 0
+      let draws = 0
+
+      headToHeadMatches.forEach((match) => {
+        const isTeam1Home = match.home_team === firstTeam.name
+        const team1Score = isTeam1Home ? match.home_score : match.away_score
+        const team2Score = isTeam1Home ? match.away_score : match.home_score
+
+        if (team1Score > team2Score) {
+          team1Wins++
+        } else if (team2Score > team1Score) {
+          team2Wins++
+        } else {
+          draws++
+        }
+      })
+
+      setStats({
+        team1Wins,
+        team2Wins,
+        draws,
+        totalMatches: headToHeadMatches.length,
+      })
+    } catch (error) {
+      console.error('Error fetching head to head:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <section className="relative min-h-screen flex items-center justify-center px-4 py-8">
+        <div className="text-white text-center">Učitavanje...</div>
+      </section>
+    )
+  }
+
+  if (!team1 || !team2) {
+    return (
+      <section className="relative min-h-screen flex items-center justify-center px-4 py-8">
+        <div className="text-white text-center">
+          <p className="text-lg">Nedovoljno timova za prikaz međusobnog skora</p>
+        </div>
+      </section>
+    )
+  }
+
   return (
-    <section className="relative min-h-screen flex items-center justify-center px-4 py-8">
-      {/* Background gradient effects */}
-      <div className="absolute inset-0 bg-slate-900" />
+    <section className="relative min-h-screen flex items-center justify-center px-4 py-8 overflow-hidden">
+      {/* Background Image */}
+      <div className="absolute inset-0 z-0">
+        <img
+          src="/placeholder.jpg"
+          alt="Hero background"
+          className="w-full h-full object-cover opacity-30"
+        />
+        <div className="absolute inset-0 bg-[#a80710]/80"></div>
+      </div>
       
-      {/* Main match display */}
+      {/* Content */}
       <div className="relative z-10 w-full max-w-6xl mx-auto">
-        {/* Match result */}
-        <div className="bg-slate-800/50 border border-blue-400/30 rounded-3xl p-12 backdrop-blur-md shadow-2xl">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
-            {/* Home team */}
-            <div className="text-center md:text-right space-y-4">
-              <div className="flex flex-col md:flex-row items-center md:justify-end gap-4">
-                <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-red-600 flex items-center justify-center shadow-lg">
-                  <span className="text-white font-bold text-2xl md:text-3xl">RM</span>
-                </div>
-                <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white">
-                  Real Madrid
-                </h2>
-              </div>
-            </div>
-
-            {/* Score */}
-            <div className="text-center space-y-4">
-              <div className="flex items-center justify-center gap-6">
-                <span className="text-6xl md:text-7xl lg:text-8xl font-bold text-white">
-                  3
-                </span>
-                <span className="text-3xl md:text-4xl text-blue-300/60 font-light">-</span>
-                <span className="text-6xl md:text-7xl lg:text-8xl font-bold text-white">
-                  2
-                </span>
-              </div>
-              <div className="flex items-center justify-center gap-4 text-sm text-blue-200/60">
-                <span>FOX TV+</span>
-                <span>•</span>
-                <span>FULL TIME</span>
-                <span>•</span>
-                <span>12:00AM</span>
-              </div>
-            </div>
-
-            {/* Away team */}
-            <div className="text-center md:text-left space-y-4">
-              <div className="flex flex-col md:flex-row items-center md:justify-start gap-4">
-                <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white">
-                  Manchester City
-                </h2>
-                <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg">
-                  <span className="text-white font-bold text-2xl md:text-3xl">MC</span>
-                </div>
-              </div>
-            </div>
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-4 sm:gap-6">
+            <span className="text-8xl sm:text-7xl md:text-8xl lg:text-9xl font-bold text-white drop-shadow-lg">
+              {stats.team1Wins}
+            </span>
+            <span className="text-4xl sm:text-5xl md:text-6xl text-white/80 font-light">-</span>
+            <span className="text-8xl sm:text-7xl md:text-8xl lg:text-9xl font-bold text-white drop-shadow-lg">
+              {stats.team2Wins}
+            </span>
           </div>
         </div>
       </div>
