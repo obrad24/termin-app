@@ -94,19 +94,16 @@ export default function PlayersPage() {
                     >
                       <div className="flex flex-col items-center text-center space-y-3 sm:space-y-4">
                         <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden bg-slate-700/50 flex items-center justify-center border-2 border-blue-400/30">
-                          {player.image_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={player.image_url}
-                              alt={`${player.first_name} ${player.last_name}`}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <span className="text-white font-bold text-lg sm:text-2xl">
-                              {player.first_name.charAt(0)}
-                              {player.last_name.charAt(0)}
-                            </span>
-                          )}
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={player.image_url || '/no-image-player.png'}
+                            alt={`${player.first_name} ${player.last_name}`}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement
+                              target.src = '/no-image-player.png'
+                            }}
+                          />
                         </div>
                         <div>
                           <h3 className="text-white font-semibold text-base sm:text-lg mb-1">

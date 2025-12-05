@@ -86,18 +86,16 @@ export default function TeamsSection() {
               className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-400/30 rounded-xl sm:rounded-2xl p-4 sm:p-6 backdrop-blur-md hover:border-blue-400/60 transition-all hover:scale-105 flex flex-col items-center justify-center text-center"
             >
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden bg-slate-700/50 flex items-center justify-center mb-3 sm:mb-4 border-2 border-blue-400/30">
-                {team.logo_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={team.logo_url}
-                    alt={team.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-white font-bold text-lg sm:text-2xl">
-                    {team.short_name || team.name.substring(0, 2).toUpperCase()}
-                  </span>
-                )}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={team.logo_url || '/placeholder-logo.svg'}
+                  alt={team.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement
+                    target.src = '/placeholder-logo.svg'
+                  }}
+                />
               </div>
               <h3 className="text-white font-semibold text-sm sm:text-base lg:text-lg mb-1 line-clamp-2">{team.name}</h3>
               {team.short_name && (

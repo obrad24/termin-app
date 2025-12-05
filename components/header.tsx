@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Menu, X } from 'lucide-react'
+import { Menu, Home, Calendar, Users, Settings, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import {
   Sheet,
@@ -47,40 +47,77 @@ export default function Header() {
               <span className="sr-only">Open menu</span>
             </button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-[300px] sm:w-[400px] bg-gradient-to-br from-blue-900 via-slate-800 to-purple-900 border-blue-400/20">
-            <SheetHeader>
-              <SheetTitle className="text-white text-left">Meni</SheetTitle>
-            </SheetHeader>
-            <nav className="flex flex-col gap-4 mt-8">
-              <Link
-                href="/"
-                onClick={() => setOpen(false)}
-                className="text-white/80 hover:text-white transition py-3 px-4 rounded-lg hover:bg-blue-500/10 border border-transparent hover:border-blue-400/20"
-              >
-                Početna
-              </Link>
-              <Link
-                href="/matches"
-                onClick={() => setOpen(false)}
-                className="text-white/80 hover:text-white transition py-3 px-4 rounded-lg hover:bg-blue-500/10 border border-transparent hover:border-blue-400/20"
-              >
-                Utakmice
-              </Link>
-              <Link
-                href="/players"
-                onClick={() => setOpen(false)}
-                className="text-white/80 hover:text-white transition py-3 px-4 rounded-lg hover:bg-blue-500/10 border border-transparent hover:border-blue-400/20"
-              >
-                Igrači
-              </Link>
-              <Link
-                href="/admin"
-                onClick={() => setOpen(false)}
-                className="text-white/80 hover:text-white transition py-3 px-4 rounded-lg hover:bg-blue-500/10 border border-transparent hover:border-blue-400/20"
-              >
-                Admin
-              </Link>
-            </nav>
+          <SheetContent 
+            side="right" 
+            className="w-[320px] sm:w-[380px] bg-gradient-to-br from-blue-950 via-slate-900 to-purple-950 backdrop-blur-xl border-l border-blue-500/20 p-0"
+          >
+            <div className="flex flex-col h-full">
+              {/* Header Section */}
+              <SheetHeader className="px-6 pt-8 pb-6 border-b border-white/10">
+                <SheetTitle className="text-white text-2xl font-bold tracking-tight">
+                  TERMIN
+                </SheetTitle>
+                <p className="text-white/60 text-sm mt-1">Navigacija</p>
+              </SheetHeader>
+
+              {/* Navigation Menu */}
+              <nav className="flex flex-col gap-2 p-4 flex-1">
+                <Link
+                  href="/"
+                  onClick={() => setOpen(false)}
+                  className="group flex items-center gap-4 px-4 py-4 rounded-xl text-white/90 hover:text-white transition-all duration-200 hover:bg-blue-500/20 border border-transparent hover:border-blue-400/30"
+                >
+                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-500/20 group-hover:bg-blue-500/30 transition-colors">
+                    <Home className="w-5 h-5 text-blue-400" />
+                  </div>
+                  <span className="flex-1 font-medium">Početna</span>
+                  <ChevronRight className="w-4 h-4 text-white/40 group-hover:text-white/60 group-hover:translate-x-1 transition-all" />
+                </Link>
+
+                <Link
+                  href="/matches"
+                  onClick={() => setOpen(false)}
+                  className="group flex items-center gap-4 px-4 py-4 rounded-xl text-white/90 hover:text-white transition-all duration-200 hover:bg-purple-500/20 border border-transparent hover:border-purple-400/30"
+                >
+                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-purple-500/20 group-hover:bg-purple-500/30 transition-colors">
+                    <Calendar className="w-5 h-5 text-purple-400" />
+                  </div>
+                  <span className="flex-1 font-medium">Utakmice</span>
+                  <ChevronRight className="w-4 h-4 text-white/40 group-hover:text-white/60 group-hover:translate-x-1 transition-all" />
+                </Link>
+
+                <Link
+                  href="/players"
+                  onClick={() => setOpen(false)}
+                  className="group flex items-center gap-4 px-4 py-4 rounded-xl text-white/90 hover:text-white transition-all duration-200 hover:bg-cyan-500/20 border border-transparent hover:border-cyan-400/30"
+                >
+                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-cyan-500/20 group-hover:bg-cyan-500/30 transition-colors">
+                    <Users className="w-5 h-5 text-cyan-400" />
+                  </div>
+                  <span className="flex-1 font-medium">Igrači</span>
+                  <ChevronRight className="w-4 h-4 text-white/40 group-hover:text-white/60 group-hover:translate-x-1 transition-all" />
+                </Link>
+
+                <Link
+                  href="/admin"
+                  onClick={() => setOpen(false)}
+                  className="group flex items-center gap-4 px-4 py-4 rounded-xl text-white/90 hover:text-white transition-all duration-200 hover:bg-amber-500/20 border border-transparent hover:border-amber-400/30"
+                >
+                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-amber-500/20 group-hover:bg-amber-500/30 transition-colors">
+                    <Settings className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <span className="flex-1 font-medium">Admin</span>
+                  <ChevronRight className="w-4 h-4 text-white/40 group-hover:text-white/60 group-hover:translate-x-1 transition-all" />
+                </Link>
+              </nav>
+
+              {/* Footer Section */}
+              <div className="px-6 py-4 border-t border-white/10">
+                <p className="text-white/40 text-xs text-center">
+                  © 2024 TERMIN
+                </p>
+              </div>
+            </div>
           </SheetContent>
         </Sheet>
       </div>

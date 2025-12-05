@@ -459,7 +459,6 @@ export default function AdminPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-white">Admin Dashboard</h1>
-            <p className="text-blue-300/60 mt-1 text-sm sm:text-base">Upravljaj rezultatima utakmica</p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
             <Link href="/" className="w-full sm:w-auto">
@@ -481,67 +480,88 @@ export default function AdminPage() {
         </div>
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Ukupno rezultata</CardTitle>
-              <Trophy className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalResults}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Broj timova</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{teams.length}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Broj igrača</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{players.length}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Današnji rezultati</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.todayResults}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Najnoviji rezultat</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              {stats.latestResult ? (
-                <div className="text-sm">
-                  <div className="font-semibold">
-                    {stats.latestResult.home_team} vs {stats.latestResult.away_team}
-                  </div>
-                  <div className="text-muted-foreground">
-                    {stats.latestResult.home_score} - {stats.latestResult.away_score}
-                  </div>
+        <div className="flex flex-col gap-4">
+          <div className='grid grid-cols-2 sm:grid-cols-4 gap-4'>
+            <Card className='p-4 sm:p-6'>
+              <CardHeader className="flex flex-col items-center justify-center space-y-0 pb-4 px-0">
+                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 mb-3">
+                  <Trophy className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
-              ) : (
-                <div className="text-sm text-muted-foreground">Nema rezultata</div>
-              )}
-            </CardContent>
-          </Card>
+                <CardTitle className="text-sm font-medium text-center text-muted-foreground">
+                  Ukupno rezultata
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-0 pb-0">
+                <div className="text-3xl font-bold text-center">{stats.totalResults}</div>
+              </CardContent>
+            </Card>
+
+            <Card className='p-4 sm:p-6'>
+              <CardHeader className="flex flex-col items-center justify-center space-y-0 pb-4 px-0">
+                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/30 mb-3">
+                  <Users className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                </div>
+                <CardTitle className="text-sm font-medium text-center text-muted-foreground">
+                  Broj timova
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-0 pb-0">
+                <div className="text-3xl font-bold text-center">{teams.length}</div>
+              </CardContent>
+            </Card>
+
+            <Card className='p-4 sm:p-6'>
+              <CardHeader className="flex flex-col items-center justify-center space-y-0 pb-4 px-0">
+                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 mb-3">
+                  <Users className="h-6 w-6 text-green-600 dark:text-green-400" />
+                </div>
+                <CardTitle className="text-sm font-medium text-center text-muted-foreground">
+                  Broj igrača
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-0 pb-0">
+                <div className="text-3xl font-bold text-center">{players.length}</div>
+              </CardContent>
+            </Card>
+
+            <Card className='p-4 sm:p-6'>
+              <CardHeader className="flex flex-col items-center justify-center space-y-0 pb-4 px-0">
+                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-900/30 mb-3">
+                  <Calendar className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+                </div>
+                <CardTitle className="text-sm font-medium text-center text-muted-foreground">
+                  Današnji rezultati
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-0 pb-0">
+                <div className="text-3xl font-bold text-center">{stats.todayResults}</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div>
+            <Card className='p-4 sm:p-6'>
+              <CardHeader className="flex flex-col items-center justify-center space-y-0 pb-4 px-0">
+                <CardTitle className="text-sm font-medium text-center text-muted-foreground">
+                  Najnoviji rezultat
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-0 pb-0">
+                {stats.latestResult ? (
+                  <div className="text-center space-y-2">
+                    <div className="text-lg font-semibold">
+                      {stats.latestResult.home_team} vs {stats.latestResult.away_team}
+                    </div>
+                    <div className="text-2xl font-bold text-muted-foreground">
+                      {stats.latestResult.home_score} - {stats.latestResult.away_score}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground text-center">Nema rezultata</div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -552,9 +572,6 @@ export default function AdminPage() {
                 <Plus className="w-5 h-5" />
                 Dodaj novu utakmicu
               </CardTitle>
-              <CardDescription className="text-sm">
-                Dodajte novu utakmicu sa rezultatom, strijelcima i igračima
-              </CardDescription>
             </CardHeader>
             <CardContent>
               <Link href="/admin/match/new">
@@ -564,10 +581,6 @@ export default function AdminPage() {
                   <span className="sm:hidden">Dodaj utakmicu</span>
                 </Button>
               </Link>
-              <p className="text-xs sm:text-sm text-muted-foreground mt-4">
-                Na novoj stranici možete uneti rezultat, dodati strijelce sa minutom gola i
-                izabrati sve igrače koji su igrali u utakmici.
-              </p>
             </CardContent>
           </Card>
 
@@ -579,7 +592,7 @@ export default function AdminPage() {
                 {loadingResults ? 'Učitavanje...' : `${results.length} rezultata`}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className='px-2 sm:px-6'>
               {loadingResults ? (
                 <div className="text-center py-8 text-muted-foreground">
                   Učitavanje rezultata...
@@ -595,17 +608,17 @@ export default function AdminPage() {
                       key={result.id}
                       className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 border rounded-lg hover:bg-muted/50 transition gap-3"
                     >
-                      <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-sm sm:text-base truncate">
+                      <div className="flex-1 min-w-0 w-full sm:w-auto">
+                        <div className="font-semibold text-sm sm:text-base truncate text-center sm:text-left">
                           {result.home_team} vs {result.away_team}
                         </div>
-                        <div className="text-xs sm:text-sm text-muted-foreground mt-1">
-                          <span className="font-medium">{result.home_score} - {result.away_score}</span>
+                        <div className="text-xs sm:text-sm text-muted-foreground mt-1 justify-center flex flex-col items-center">
+                          <span className="font-bold text-xl">{result.home_score} - {result.away_score}</span>
                           <span className="mx-2">•</span>
                           {format(new Date(result.date), 'dd MMM yyyy')}
                         </div>
                       </div>
-                      <div className="flex gap-2 w-full sm:w-auto">
+                      <div className="flex gap-2 w-full sm:w-auto justify-center sm:justify-end">
                         <Button
                           variant="ghost"
                           size="icon"
@@ -649,9 +662,6 @@ export default function AdminPage() {
                 <UserPlus className="w-5 h-5" />
                 Dodaj igrača
               </CardTitle>
-              <CardDescription>
-                Unesite novog igrača (ime, prezime, godina rođenja, tim i slika)
-              </CardDescription>
             </CardHeader>
             <CardContent>
               <form
@@ -824,7 +834,7 @@ export default function AdminPage() {
                 {loadingPlayers ? 'Učitavanje...' : `${players.length} igrača`}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className='px-2 sm:px-6'>
               {loadingPlayers ? (
                 <div className="text-center py-8 text-muted-foreground">Učitavanje igrača...</div>
               ) : players.length === 0 ? (
@@ -838,23 +848,20 @@ export default function AdminPage() {
                       key={player.id}
                       className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 border rounded-lg hover:bg-muted/50 transition gap-3"
                     >
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 rounded-full overflow-hidden bg-slate-700 flex items-center justify-center text-xs text-white">
-                          {player.image_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={player.image_url}
-                              alt={`${player.first_name} ${player.last_name}`}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <span>
-                              {player.first_name.charAt(0)}
-                              {player.last_name.charAt(0)}
-                            </span>
-                          )}
+                      <div className="flex items-center gap-3 flex-1 min-w-0 w-full sm:w-auto justify-center sm:justify-start">
+                        <div className="w-20 h-[100px] rounded-b-2xl overflow-hidden flex">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={player.image_url || '/no-image-player.png'}
+                            alt={`${player.first_name} ${player.last_name}`}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement
+                              target.src = '/no-image-player.png'
+                            }}
+                          />
                         </div>
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 text-center sm:text-left">
                           <div className="font-semibold text-sm sm:text-base truncate">
                             {player.first_name} {player.last_name}
                             {player.team && (
@@ -868,7 +875,7 @@ export default function AdminPage() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex gap-2 w-full sm:w-auto">
+                      <div className="flex gap-2 w-full sm:w-auto justify-center sm:justify-end">
                         <Button
                           variant="ghost"
                           size="icon"
@@ -914,7 +921,7 @@ export default function AdminPage() {
                               })
                             }
                           }}
-                          className="text-destructive hover:text-destructive"
+                          className="text-destructive hover:text-destructive flex-shrink-0"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -1059,7 +1066,7 @@ export default function AdminPage() {
                 {loadingTeams ? 'Učitavanje...' : `${teams.length} timova`}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className='px-2 sm:px-6'>
               {loadingTeams ? (
                 <div className="text-center py-8 text-muted-foreground">Učitavanje timova...</div>
               ) : teams.length === 0 ? (
@@ -1073,29 +1080,20 @@ export default function AdminPage() {
                       key={team.id}
                       className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 border rounded-lg hover:bg-muted/50 transition gap-3"
                     >
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 rounded-full overflow-hidden bg-slate-700 flex items-center justify-center text-xs text-white">
-                          {team.logo_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={team.logo_url}
-                              alt={team.name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <span>
-                              {team.short_name
-                                ? team.short_name.slice(0, 2).toUpperCase()
-                                : team.name
-                                    .split(' ')
-                                    .map((p) => p[0])
-                                    .join('')
-                                    .slice(0, 2)
-                                    .toUpperCase()}
-                            </span>
-                          )}
+                      <div className="flex items-center gap-3 flex-1 min-w-0 w-full sm:w-auto justify-center sm:justify-start">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={team.logo_url || '/placeholder-logo.svg'}
+                            alt={team.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement
+                              target.src = '/placeholder-logo.svg'
+                            }}
+                          />
                         </div>
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 text-center sm:text-left">
                           <div className="font-semibold text-sm sm:text-base truncate">
                             {team.name}
                             {team.short_name && (
@@ -1106,7 +1104,7 @@ export default function AdminPage() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex gap-2 w-full sm:w-auto">
+                      <div className="flex gap-2 w-full sm:w-auto justify-center sm:justify-end">
                         <Button
                           variant="ghost"
                           size="icon"
