@@ -85,7 +85,7 @@ export default function TeamsSection() {
             <Link
               key={team.id}
               href={`/teams/${team.id}`}
-              className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-400/30 rounded-xl sm:rounded-2xl p-4 sm:p-6 backdrop-blur-md hover:border-blue-400/60 transition-all hover:scale-105 flex flex-col items-center justify-center text-center cursor-pointer"
+              className="bg-slate-800/50 border border-blue-400/30 rounded-xl sm:rounded-2xl p-4 sm:p-6 backdrop-blur-md hover:border-blue-400/60 transition-all hover:scale-105 flex flex-col items-center justify-center text-center cursor-pointer"
             >
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden bg-slate-700/50 flex items-center justify-center mb-3 sm:mb-4 border-2 border-blue-400/30">
                 {/* eslint-disable-next-line @next/next/no-img-element */}

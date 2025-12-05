@@ -6,7 +6,7 @@ import TeamsSection from "@/components/teams-section"
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-900 via-slate-800 to-purple-900">
+    <main className="min-h-screen bg-slate-900">
       <Header />
       <LatestResult />
       <ResultsSection />

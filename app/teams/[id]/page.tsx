@@ -68,7 +68,7 @@ export default function TeamProfilePage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gradient-to-br from-blue-900 via-slate-800 to-purple-900">
+      <main className="min-h-screen bg-slate-900">
         <Header />
         <div className="flex items-center justify-center min-h-[60vh] px-4">
           <div className="text-white text-center">Učitavanje...</div>
@@ -79,7 +79,7 @@ export default function TeamProfilePage() {
 
   if (!teamData) {
     return (
-      <main className="min-h-screen bg-gradient-to-br from-blue-900 via-slate-800 to-purple-900">
+      <main className="min-h-screen bg-slate-900">
         <Header />
         <div className="flex items-center justify-center min-h-[60vh] px-4">
           <div className="text-white text-center">
@@ -96,7 +96,7 @@ export default function TeamProfilePage() {
   const { team, players, topScorers, matchesCount } = teamData
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-900 via-slate-800 to-purple-900">
+    <main className="min-h-screen bg-slate-900">
       <Header />
       <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-24 sm:pt-28">
         <div className="space-y-6 sm:space-y-8">
@@ -212,7 +212,7 @@ export default function TeamProfilePage() {
                         key={scorer.player_id}
                         className="flex items-center gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors"
                       >
-                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 text-white font-bold text-lg flex-shrink-0">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-orange-500 text-white font-bold text-lg flex-shrink-0">
                           {index + 1}
                         </div>
                         <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-700 flex items-center justify-center flex-shrink-0">

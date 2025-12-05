@@ -104,11 +104,11 @@ export default function ResultsSection() {
                   className="block"
                 >
                   <div
-                    className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-400/30 rounded-xl sm:rounded-2xl p-4 sm:p-6 backdrop-blur-md hover:border-blue-400/60 transition-all hover:shadow-lg hover:scale-[1.02] cursor-pointer"
+                    className="bg-slate-800/50 border border-blue-400/30 rounded-xl sm:rounded-2xl p-4 sm:p-6 backdrop-blur-md hover:border-blue-400/60 transition-all hover:shadow-lg hover:scale-[1.02] cursor-pointer"
                   >
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-3 sm:mb-4">
                     <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 w-full sm:w-auto">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 rounded-lg bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 rounded-lg bg-red-600 flex items-center justify-center">
                         <span className="text-white font-bold text-xs sm:text-sm">
                           {result.home_team.substring(0, 2).toUpperCase()}
                         </span>
@@ -132,7 +132,7 @@ export default function ResultsSection() {
                       <span className="text-white font-semibold text-sm sm:text-base lg:text-lg truncate text-right">
                         {result.away_team}
                       </span>
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 rounded-lg bg-blue-600 flex items-center justify-center">
                         <span className="text-white font-bold text-xs sm:text-sm">
                           {result.away_team.substring(0, 2).toUpperCase()}
                         </span>

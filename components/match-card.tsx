@@ -9,10 +9,10 @@ export default function MatchCard() {
 
         <div className="space-y-4">
           {/* Match Card */}
-          <div className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-400/30 rounded-2xl p-6 backdrop-blur-md hover:border-blue-400/60 transition">
+          <div className="bg-slate-800/50 border border-blue-400/30 rounded-2xl p-6 backdrop-blur-md hover:border-blue-400/60 transition">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center">
                   <span className="text-white font-bold text-xs">RM</span>
                 </div>
                 <span className="text-white font-semibold">Real Madrid</span>
@@ -22,7 +22,7 @@ export default function MatchCard() {
               <span className="text-2xl font-bold text-white">2</span>
               <div className="flex items-center gap-3">
                 <span className="text-white font-semibold">Manchester City</span>
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
                   <span className="text-white font-bold text-xs">MC</span>
                 </div>
               </div>

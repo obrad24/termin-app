@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Menu, Home, Calendar, Users, Settings, ChevronRight } from 'lucide-react'
+import { Menu, Home, Calendar, Users, Settings, ChevronRight, X } from 'lucide-react'
 import Link from 'next/link'
 import {
   Sheet,
@@ -15,8 +15,8 @@ export default function Header() {
   const [open, setOpen] = useState(false)
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 sm:px-6 lg:px-8 py-2 sm:py-6 bg-gradient-to-br from-blue-900/80 via-slate-800/80 to-purple-900/80 backdrop-blur-md border-b border-blue-400/20">
-      <div className="flex items-center gap-2 justify-center">
+    <header className="fixed top-0 left-0 right-0 z-50 flex items-center border-none justify-end sm:justify-between px-4 sm:px-6 lg:px-8 py-2 sm:py-6  border-b sm:border-blue-400/20">
+      <div className="hidden md:flex items-center gap-2 justify-center">
         <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">
           TERMIN
         </p>
@@ -49,19 +49,22 @@ export default function Header() {
           </SheetTrigger>
           <SheetContent 
             side="right" 
-            className="w-[320px] sm:w-[380px] bg-gradient-to-br from-blue-950 via-slate-900 to-purple-950 backdrop-blur-xl border-l border-blue-500/20 p-0"
+            className="!w-full sm:!w-[380px] bg-slate-900 backdrop-blur-xl border-l border-blue-500/20 p-0 [&>button]:hidden"
           >
             <div className="flex flex-col h-full">
-              {/* Header Section */}
-              <SheetHeader className="px-6 pt-8 pb-6 border-b border-white/10">
-                <SheetTitle className="text-white text-2xl font-bold tracking-tight">
-                  TERMIN
-                </SheetTitle>
-                <p className="text-white/60 text-sm mt-1">Navigacija</p>
-              </SheetHeader>
+              {/* Close Button */}
+              <div className="flex justify-end p-4 pb-2">
+                <button
+                  onClick={() => setOpen(false)}
+                  className="w-10 h-10 rounded-lg bg-transparent flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition backdrop-blur-sm"
+                >
+                  <X className="w-5 h-5" />
+                  <span className="sr-only">Close menu</span>
+                </button>
+              </div>
 
               {/* Navigation Menu */}
-              <nav className="flex flex-col gap-2 p-4 flex-1">
+              <nav className="flex flex-col gap-2 px-4 pb-4 flex-1">
                 <Link
                   href="/"
                   onClick={() => setOpen(false)}

@@ -51,7 +51,7 @@ export default function MatchDetailPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gradient-to-br from-blue-900 via-slate-800 to-purple-900">
+      <main className="min-h-screen bg-slate-900">
         <Header />
         <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-24 sm:pt-28">
           <div className="text-white text-center py-12">Učitavanje...</div>
@@ -62,7 +62,7 @@ export default function MatchDetailPage() {
 
   if (!match) {
     return (
-      <main className="min-h-screen bg-gradient-to-br from-blue-900 via-slate-800 to-purple-900">
+      <main className="min-h-screen bg-slate-900">
         <Header />
         <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-24 sm:pt-28">
           <div className="text-white text-center py-12">
@@ -82,7 +82,7 @@ export default function MatchDetailPage() {
   const awayPlayers = match.players?.filter(p => p.team_type === 'away') || []
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-900 via-slate-800 to-purple-900">
+    <main className="min-h-screen bg-slate-900">
       <Header />
       <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto">
         <div className="space-y-6 sm:space-y-8">
@@ -96,12 +96,12 @@ export default function MatchDetailPage() {
           </Link>
 
           {/* Match header */}
-          <div className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-400/30 rounded-xl sm:rounded-2xl p-6 sm:p-8 backdrop-blur-md">
+          <div className="bg-slate-800/50 border border-blue-400/30 rounded-xl sm:rounded-2xl p-6 sm:p-8 backdrop-blur-md">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 items-center">
               {/* Home team */}
               <div className="text-center md:text-right space-y-3 sm:space-y-4">
                 <div className="flex flex-col md:flex-row items-center md:justify-end gap-3 sm:gap-4">
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-xl sm:rounded-2xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-xl sm:rounded-2xl bg-red-600 flex items-center justify-center shadow-lg">
                     <span className="text-white font-bold text-xl sm:text-2xl md:text-3xl">
                       {match.home_team.substring(0, 2).toUpperCase()}
                     </span>
@@ -138,7 +138,7 @@ export default function MatchDetailPage() {
                   <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white break-words">
                     {match.away_team}
                   </h1>
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-xl sm:rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg">
                     <span className="text-white font-bold text-xl sm:text-2xl md:text-3xl">
                       {match.away_team.substring(0, 2).toUpperCase()}
                     </span>
@@ -150,7 +150,7 @@ export default function MatchDetailPage() {
 
           {/* Goals */}
           {(homeGoals.length > 0 || awayGoals.length > 0) && (
-            <div className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-400/30 rounded-xl sm:rounded-2xl p-6 sm:p-8 backdrop-blur-md">
+            <div className="bg-slate-800/50 border border-blue-400/30 rounded-xl sm:rounded-2xl p-6 sm:p-8 backdrop-blur-md">
               <h2 className="text-xl sm:text-2xl font-bold text-white mb-6">Strijelci</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
                 {/* Home goals */}
@@ -200,7 +200,7 @@ export default function MatchDetailPage() {
 
           {/* Players */}
           {(homePlayers.length > 0 || awayPlayers.length > 0) && (
-            <div className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-400/30 rounded-xl sm:rounded-2xl p-6 sm:p-8 backdrop-blur-md">
+            <div className="bg-slate-800/50 border border-blue-400/30 rounded-xl sm:rounded-2xl p-6 sm:p-8 backdrop-blur-md">
               <h2 className="text-xl sm:text-2xl font-bold text-white mb-6">Igrači</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
                 {/* Home players */}

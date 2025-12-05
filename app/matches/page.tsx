@@ -39,7 +39,7 @@ export default function MatchesPage() {
   }, {} as Record<string, Result[]>)
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-900 via-slate-800 to-purple-900">
+    <main className="min-h-screen bg-slate-900">
       <Header />
       <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-24 sm:pt-28">
         <div className="space-y-6 sm:space-y-8">
@@ -71,10 +71,10 @@ export default function MatchesPage() {
                       href={`/matches/${result.id}`}
                       className="block"
                     >
-                      <div className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-400/30 rounded-xl sm:rounded-2xl p-4 sm:p-6 backdrop-blur-md hover:border-blue-400/60 transition-all hover:shadow-lg hover:scale-[1.02] cursor-pointer">
+                      <div className="bg-slate-800/50 border border-blue-400/30 rounded-xl sm:rounded-2xl p-4 sm:p-6 backdrop-blur-md hover:border-blue-400/60 transition-all hover:shadow-lg hover:scale-[1.02] cursor-pointer">
                         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-3 sm:mb-4">
                           <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 w-full sm:w-auto">
-                            <div className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 rounded-lg bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center">
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 rounded-lg bg-red-600 flex items-center justify-center">
                               <span className="text-white font-bold text-xs sm:text-sm">
                                 {result.home_team.substring(0, 2).toUpperCase()}
                               </span>
@@ -98,7 +98,7 @@ export default function MatchesPage() {
                             <span className="text-white font-semibold text-sm sm:text-base lg:text-lg truncate text-right">
                               {result.away_team}
                             </span>
-                            <div className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 rounded-lg bg-blue-600 flex items-center justify-center">
                               <span className="text-white font-bold text-xs sm:text-sm">
                                 {result.away_team.substring(0, 2).toUpperCase()}
                               </span>
