@@ -19,7 +19,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from('results')
       .select('*')
-      .order('date', { ascending: false })
+      .order('id', { ascending: false })
 
     if (error) {
       console.error('Error fetching results:', error)

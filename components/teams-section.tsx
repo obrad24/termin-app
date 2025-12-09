@@ -74,7 +74,7 @@ export default function TeamsSection() {
   }
 
   return (
-    <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-4">
+    <section className="relative px-2 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-4">
       <div className="space-y-6 sm:space-y-8">
         <div className="text-center">
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">Timovi</h2>

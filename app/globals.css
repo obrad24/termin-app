@@ -140,3 +140,9 @@
     font-family: 'Sprintura', sans-serif;
   }
 }
+
+body {
+  background-image: url('/pozadina-crvena.jpg');
+  background-size: contain;
+  background-position: center;
+}
