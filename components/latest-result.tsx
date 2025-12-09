@@ -80,8 +80,7 @@ export default function LatestResult() {
   return (
     <section className="relative min-h-[70vh] sm:min-h-[80vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 pt-24 sm:pt-28 pb-12 sm:pb-16 lg:pb-20">
       {/* Background gradient effects */}
-      <div className="absolute inset-0 bg-[#a80710]" />
-      
+      <div className="absolute inset-0 w-full h-full bg-gradient-to-b from-[#a80710] via-[#a80710]/50 to-transparent z-[15]"></div>
       {/* Main match display */}
       <div className="relative z-10 w-full max-w-6xl mx-auto">
         {/* Match result */}

@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Team, Result } from '@/lib/supabase'
+import Image from 'next/image'
 
 interface HeadToHeadStats {
   team1Wins: number
@@ -20,9 +21,24 @@ export default function HeroSection() {
     totalMatches: 0,
   })
   const [loading, setLoading] = useState(true)
+  const [isScrolled, setIsScrolled] = useState(false)
+  const heroRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     fetchHeadToHead()
+  }, [])
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY
+      setIsScrolled(scrollPosition > 0)
+    }
+
+    // Proveri na početku da li je već skrolovano
+    handleScroll()
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
   const fetchHeadToHead = async () => {
@@ -109,31 +125,51 @@ export default function HeroSection() {
   }
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center px-4 py-8 overflow-hidden">
-      {/* Background Image */}
-      <div className="absolute inset-0 z-0">
-        <img
-          src="/placeholder.jpg"
-          alt="Hero background"
-          className="w-full h-full object-cover opacity-30"
-        />
-        <div className="absolute inset-0 bg-[#a80710]/80"></div>
-      </div>
-      
-      {/* Content */}
-      <div className="relative z-10 w-full max-w-6xl mx-auto">
-        <div className="text-center">
-          <div className="flex items-center justify-center gap-4 sm:gap-6">
-            <span className="text-8xl sm:text-7xl md:text-8xl lg:text-9xl font-bold text-white drop-shadow-lg">
-              {stats.team1Wins}
-            </span>
-            <span className="text-4xl sm:text-5xl md:text-6xl text-white/80 font-light">-</span>
-            <span className="text-8xl sm:text-7xl md:text-8xl lg:text-9xl font-bold text-white drop-shadow-lg">
-              {stats.team2Wins}
-            </span>
-          </div>
+    <section ref={heroRef} className="relative min-h-screen flex items-center justify-center px-0 py-8 overflow-hidden">
+      <div className="relative w-full max-w-7xl mx-auto flex items-center justify-between gap-4 sm:gap-8 min-h-[60vh]">
+        {/* Background Image - murinjo.png */}
+        {/* <div className="absolute inset-0 w-full h-full z-0">
+          <Image
+            src="/murinjo.png"
+            alt="Hero background"
+            fill
+            className="object-contain"
+            priority
+          />
+        </div> */}
+
+        {/* Foreground Image - lalat.png (preko murinja) */}
+        {/* <div className="absolute inset-0 w-full h-full z-10">
+          <Image
+            src="/lalat.png"
+            alt="Hero foreground"
+            fill
+            className="object-contain"
+            priority
+          />
+        </div> */}
+
+        {/* Red Gradient Overlay - odozdo */}
+        
+
+        {/* Content */}
+        <div
+          className={`flex items-center justify-center gap-4 sm:gap-6 transition-all duration-300 ${
+            isScrolled
+              ? 'fixed left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 z-0 opacity-50'
+              : 'absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 z-50 opacity-100'
+          }`}
+        >
+          <span className="text-[160px] sm:text-7xl md:text-[160px] lg:text-9xl font-bold text-white drop-shadow-lg">
+            {stats.team1Wins}
+          </span>
+          <span className="text-[100px] sm:text-5xl md:text-6xl text-white/80 font-light">-</span>
+          <span className="text-[160px] sm:text-7xl md:text-[160px] lg:text-9xl font-bold text-white drop-shadow-lg">
+            {stats.team2Wins}
+          </span>
         </div>
       </div>
+      <div className="absolute inset-0 w-full h-full bg-gradient-to-t from-[#a80710] via-[#a80710]/50 to-transparent z-[15]"></div>
     </section>
   )
 }

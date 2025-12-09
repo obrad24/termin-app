@@ -7,6 +7,7 @@ import Header from '@/components/header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft, Trophy, Users, Target } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import Image from 'next/image'
 
 interface Team {
   id: number
@@ -110,12 +111,12 @@ export default function TeamProfilePage() {
 
           {/* Team Header */}
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-8">
-            <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full overflow-hidden bg-slate-700/50 flex items-center justify-center border-4 border-blue-400/30 shadow-lg">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+            <div className="relative w-32 h-32 sm:w-40 sm:h-40 rounded-full overflow-hidden bg-slate-700/50 flex items-center justify-center border-4 border-blue-400/30 shadow-lg">
+              <Image
                 src={team.logo_url || '/placeholder-logo.svg'}
                 alt={team.name}
-                className="w-full h-full object-cover"
+                fill
+                className="object-cover"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement
                   target.src = '/placeholder-logo.svg'
@@ -165,12 +166,12 @@ export default function TeamProfilePage() {
                         key={player.id}
                         className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
                       >
-                        <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-700 flex items-center justify-center flex-shrink-0">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
+                        <div className="relative w-12 h-12 rounded-full overflow-hidden bg-slate-700 flex items-center justify-center flex-shrink-0">
+                          <Image
                             src={player.image_url || '/no-image-player.png'}
                             alt={`${player.first_name} ${player.last_name}`}
-                            className="w-full h-full object-cover"
+                            fill
+                            className="object-cover"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement
                               target.src = '/no-image-player.png'
@@ -215,13 +216,13 @@ export default function TeamProfilePage() {
                         <div className="flex items-center justify-center w-10 h-10 rounded-full bg-orange-500 text-white font-bold text-lg flex-shrink-0">
                           {index + 1}
                         </div>
-                        <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-700 flex items-center justify-center flex-shrink-0">
+                        <div className="relative w-12 h-12 rounded-full overflow-hidden bg-slate-700 flex items-center justify-center flex-shrink-0">
                           {scorer.player ? (
-                            /* eslint-disable-next-line @next/next/no-img-element */
-                            <img
+                            <Image
                               src={scorer.player.image_url || '/no-image-player.png'}
                               alt={`${scorer.player.first_name} ${scorer.player.last_name}`}
-                              className="w-full h-full object-cover"
+                              fill
+                              className="object-cover"
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement
                                 target.src = '/no-image-player.png'

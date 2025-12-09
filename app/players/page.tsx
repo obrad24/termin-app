@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Player } from '@/lib/supabase'
 import Link from 'next/link'
 import Header from '@/components/header'
+import Image from 'next/image'
 
 export default function PlayersPage() {
   const [players, setPlayers] = useState<Player[]>([])
@@ -93,12 +94,12 @@ export default function PlayersPage() {
                       className="bg-slate-800/50 border border-blue-400/30 rounded-xl sm:rounded-2xl p-4 sm:p-6 backdrop-blur-md hover:border-blue-400/60 transition-all hover:shadow-lg hover:scale-[1.02]"
                     >
                       <div className="flex flex-col items-center text-center space-y-3 sm:space-y-4">
-                        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden bg-slate-700/50 flex items-center justify-center border-2 border-blue-400/30">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
+                        <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden bg-slate-700/50 flex items-center justify-center border-2 border-blue-400/30">
+                          <Image
                             src={player.image_url || '/no-image-player.png'}
                             alt={`${player.first_name} ${player.last_name}`}
-                            className="w-full h-full object-cover"
+                            fill
+                            className="object-cover"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement
                               target.src = '/no-image-player.png'

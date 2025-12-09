@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Team } from '@/lib/supabase'
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function TeamsSection() {
   const [teams, setTeams] = useState<Team[]>([])
@@ -87,12 +88,12 @@ export default function TeamsSection() {
               href={`/teams/${team.id}`}
               className="bg-slate-800/50 border border-blue-400/30 rounded-xl sm:rounded-2xl p-4 sm:p-6 backdrop-blur-md hover:border-blue-400/60 transition-all hover:scale-105 flex flex-col items-center justify-center text-center cursor-pointer"
             >
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden bg-slate-700/50 flex items-center justify-center mb-3 sm:mb-4 border-2 border-blue-400/30">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+              <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden bg-slate-700/50 flex items-center justify-center mb-3 sm:mb-4 border-2 border-blue-400/30">
+                <Image
                   src={team.logo_url || '/placeholder-logo.svg'}
                   alt={team.name}
-                  className="w-full h-full object-cover"
+                  fill
+                  className="object-cover"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement
                     target.src = '/placeholder-logo.svg'

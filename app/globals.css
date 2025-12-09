@@ -4,6 +4,16 @@
 @custom-variant dark (&:is(.dark *));
 @custom-variant mobile (@media (max-width: 768px));
 
+@font-face {
+  font-family: 'Sprintura';
+  src: url('/fonts/Sprintura.woff2') format('woff2'),
+       url('/fonts/Sprintura.woff') format('woff'),
+       url('/fonts/Sprintura.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -77,8 +87,8 @@
 
 @theme inline {
   --breakpoint-mobile: 768px;
-  --font-sans: "Geist", "Geist Fallback";
-  --font-mono: "Geist Mono", "Geist Mono Fallback";
+  --font-sans: "Sprintura", sans-serif;
+  --font-mono: "Sprintura", sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -120,8 +130,13 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    font-family: 'Sprintura', sans-serif;
+  }
+  html {
+    font-family: 'Sprintura', sans-serif;
   }
   body {
     @apply bg-background text-foreground;
+    font-family: 'Sprintura', sans-serif;
   }
 }

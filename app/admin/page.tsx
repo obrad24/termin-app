@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast'
 import { Result, Player, Team } from '@/lib/supabase'
 import { format } from 'date-fns'
 import Link from 'next/link'
+import Image from 'next/image'
 import {
   Home,
   LogOut,
@@ -871,12 +872,12 @@ export default function AdminPage() {
                       className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 border rounded-lg hover:bg-muted/50 transition gap-3"
                     >
                       <div className="flex items-center gap-3 flex-1 min-w-0 w-full sm:w-auto justify-center sm:justify-start">
-                        <div className="w-20 h-[100px] rounded-b-2xl overflow-hidden flex">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
+                        <div className="relative w-20 h-[100px] rounded-b-2xl overflow-hidden flex">
+                          <Image
                             src={player.image_url || '/no-image-player.png'}
                             alt={`${player.first_name} ${player.last_name}`}
-                            className="w-full h-full object-cover"
+                            fill
+                            className="object-cover"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement
                               target.src = '/no-image-player.png'
@@ -1131,12 +1132,12 @@ export default function AdminPage() {
                       className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 border rounded-lg hover:bg-muted/50 transition gap-3"
                     >
                       <div className="flex items-center gap-3 flex-1 min-w-0 w-full sm:w-auto justify-center sm:justify-start">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
+                        <div className="relative w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center">
+                          <Image
                             src={team.logo_url || '/placeholder-logo.svg'}
                             alt={team.name}
-                            className="w-full h-full object-cover"
+                            fill
+                            className="object-cover"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement
                               target.src = '/placeholder-logo.svg'
