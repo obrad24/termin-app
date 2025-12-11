@@ -15,10 +15,12 @@ export async function GET() {
       )
     }
 
+    // Vrati samo timove Murinjo i Lalat
     const { data, error } = await supabase
       .from('teams')
       .select('*')
-      .order('created_at', { ascending: false })
+      .in('name', ['Murinjo', 'Lalat'])
+      .order('name', { ascending: true })
 
     if (error) {
       console.error('Error fetching teams:', error)
@@ -56,6 +58,42 @@ export async function POST(request: Request) {
 
     if (!name) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+
+    // Dozvoli samo dva tima: Murinjo i Lalat
+    const allowedTeams = ['Murinjo', 'Lalat']
+    if (!allowedTeams.includes(name)) {
+      return NextResponse.json(
+        { error: `Dozvoljeni su samo timovi: ${allowedTeams.join(', ')}` },
+        { status: 400 }
+      )
+    }
+
+    // Proveri da li tim već postoji
+    const { data: existingTeam } = await supabase
+      .from('teams')
+      .select('id')
+      .eq('name', name)
+      .single()
+
+    if (existingTeam) {
+      // Ažuriraj postojeći tim umesto da kreira novi
+      const { data, error } = await supabase
+        .from('teams')
+        .update({
+          short_name: short_name || null,
+          logo_url: logo_url || null,
+        })
+        .eq('name', name)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error updating team:', error)
+        return NextResponse.json({ error: 'Failed to update team', details: error.message }, { status: 500 })
+      }
+
+      return NextResponse.json(data, { status: 200 })
     }
 
     const { data, error } = await supabase

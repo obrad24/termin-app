@@ -959,14 +959,14 @@ export default function AdminPage() {
 
         {/* Teams Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Add Team Form */}
+          {/* Add/Edit Team Form - Only Murinjo and Lalat */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Plus className="w-5 h-5" />
-                Dodaj tim
+                Dodaj/Uredi tim
               </CardTitle>
-              <CardDescription>Unesite novi tim i uploadujte logo</CardDescription>
+              <CardDescription>Dostupni su samo timovi: Murinjo i Lalat</CardDescription>
             </CardHeader>
             <CardContent>
               <form
@@ -1027,12 +1027,12 @@ export default function AdminPage() {
 
                     if (!response.ok) {
                       const error = await response.json()
-                      throw new Error(error.error || 'Greška pri dodavanju tima')
+                      throw new Error(error.error || 'Greška pri dodavanju/ažuriranju tima')
                     }
 
                     toast({
                       title: 'Uspešno!',
-                      description: 'Tim je dodat',
+                      description: 'Tim je dodat/ažuriran',
                     })
 
                     setTeamForm({
@@ -1062,13 +1062,19 @@ export default function AdminPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="team_name">Naziv tima</Label>
-                    <Input
-                      id="team_name"
+                    <Select
                       value={teamForm.name}
-                      onChange={(e) => setTeamForm({ ...teamForm, name: e.target.value })}
-                      placeholder="npr. Real Madrid"
+                      onValueChange={(value) => setTeamForm({ ...teamForm, name: value })}
                       required
-                    />
+                    >
+                      <SelectTrigger id="team_name">
+                        <SelectValue placeholder="Izaberi tim" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Murinjo">Murinjo</SelectItem>
+                        <SelectItem value="Lalat">Lalat</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <Label htmlFor="short_name">Skraćenica</Label>
@@ -1076,7 +1082,7 @@ export default function AdminPage() {
                       id="short_name"
                       value={teamForm.short_name}
                       onChange={(e) => setTeamForm({ ...teamForm, short_name: e.target.value })}
-                      placeholder="npr. RM"
+                      placeholder={teamForm.name === 'Murinjo' ? 'MUR' : teamForm.name === 'Lalat' ? 'LAL' : 'npr. RM'}
                     />
                   </div>
                 </div>
