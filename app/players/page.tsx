@@ -10,12 +10,11 @@ interface PlayerWithStats extends Player {
   matches_played: number
 }
 
-type FilterType = 'goals' | 'matches'
-
 export default function PlayersPage() {
   const [players, setPlayers] = useState<PlayerWithStats[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeFilter, setActiveFilter] = useState<FilterType>('goals')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedPlayers, setSelectedPlayers] = useState<number[]>([])
 
   useEffect(() => {
     fetchPlayers()
@@ -62,87 +61,99 @@ export default function PlayersPage() {
     }
   }
 
-  // Sortiraj i filtriraj igrače
-  const sortedPlayers = [...players].sort((a, b) => {
-    if (activeFilter === 'goals') {
-      // Sortiraj po golovima (opadajuće), pa po imenu ako su isti
-      if (b.goals !== a.goals) {
-        return b.goals - a.goals
-      }
-      return `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`)
-    } else {
-      // Sortiraj po odigranim mečevima (opadajuće), pa po imenu ako su isti
-      if (b.matches_played !== a.matches_played) {
-        return b.matches_played - a.matches_played
-      }
-      return `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`)
-    }
+  // Filtriraj igrače po search termu
+  const filteredPlayers = players.filter(player => {
+    const search = searchTerm.toLowerCase()
+    const fullName = `${player.first_name} ${player.last_name}`.toLowerCase()
+    const team = (player.team || '').toLowerCase()
+    return fullName.includes(search) || team.includes(search)
   })
+
+  const togglePlayerSelection = (playerId: number) => {
+    setSelectedPlayers(prev => 
+      prev.includes(playerId) 
+        ? prev.filter(id => id !== playerId)
+        : [...prev, playerId]
+    )
+  }
 
   return (
     <main className="min-h-screen bg-[#a80710]">
       <Header />
-      <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-24 sm:pt-28">
-        <div className="space-y-6 sm:space-y-8">
-          <div className="text-center">
+      <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-4 sm:pt-28">
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="text-center mb-6">
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">Igrači</h1>
-            <p className="text-white/60 text-sm sm:text-base">Statistike igrača</p>
           </div>
 
-          {/* Tabs za filtriranje */}
-          <div className="flex justify-center gap-4 mb-6">
-            <button
-              onClick={() => setActiveFilter('goals')}
-              className={`px-6 py-3 rounded-lg font-semibold transition-all ${
-                activeFilter === 'goals'
-                  ? 'bg-[#a80710] text-white shadow-lg border border-[#a80710]/60'
-                  : 'bg-slate-800/50 text-white/60 hover:bg-slate-700/50 hover:text-white border border-slate-700/50'
-              }`}
-            >
-              Najbolji strelac
-            </button>
-            <button
-              onClick={() => setActiveFilter('matches')}
-              className={`px-6 py-3 rounded-lg font-semibold transition-all ${
-                activeFilter === 'matches'
-                  ? 'bg-[#a80710] text-white shadow-lg border border-[#a80710]/60'
-                  : 'bg-slate-800/50 text-white/60 hover:bg-slate-700/50 hover:text-white border border-slate-700/50'
-              }`}
-            >
-              Najviše odigranih mečeva
-            </button>
+          {/* Search Bar */}
+          <div className="relative mb-6">
+            <div className="relative">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10">
+                <svg className="w-5 h-5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <input
+                type="text"
+                placeholder="Pretraži igrače..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-12 pr-12 py-4 rounded-2xl bg-slate-800/50 border border-[#a80710]/30 text-white placeholder-white/40 focus:outline-none focus:border-[#a80710]/60 focus:ring-2 focus:ring-[#a80710]/20 transition-all"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                >
+                  <svg className="w-4 h-4 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
 
           {loading ? (
             <div className="text-white text-center py-12 text-sm sm:text-base">Učitavanje igrača...</div>
-          ) : sortedPlayers.length === 0 ? (
+          ) : filteredPlayers.length === 0 ? (
             <div className="text-white text-center py-12">
-              <p className="text-lg sm:text-xl mb-2">Nema igrača</p>
-              <p className="text-white/60 text-sm sm:text-base">Dodajte igrače u admin panelu</p>
+              <p className="text-lg sm:text-xl mb-2">
+                {searchTerm ? 'Nema rezultata pretrage' : 'Nema igrača'}
+              </p>
+              <p className="text-white/60 text-sm sm:text-base">
+                {searchTerm ? 'Pokušajte sa drugim terminom' : 'Dodajte igrače u admin panelu'}
+              </p>
             </div>
           ) : (
-            <div className="bg-slate-800/50 border border-[#a80710]/30 rounded-2xl sm:rounded-3xl backdrop-blur-md shadow-2xl overflow-hidden">
-              <div className="max-h-[600px] overflow-y-auto">
-                <div className="divide-y divide-slate-700/50">
-                  {sortedPlayers.map((player, index) => (
+            <div className="bg-slate-800/50 backdrop-blur-xl rounded-3xl border border-[#a80710]/30 p-4 sm:p-6">
+              {/* Players Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {filteredPlayers.map((player) => {
+                  const isSelected = selectedPlayers.includes(player.id)
+                  return (
                     <div
                       key={player.id}
-                      className="flex items-center gap-4 p-4 sm:p-6 hover:bg-slate-700/30 transition-colors"
+                      onClick={() => togglePlayerSelection(player.id)}
+                      className="relative bg-slate-800/50 rounded-2xl border border-[#a80710]/30 hover:border-[#a80710]/60 transition-all cursor-pointer overflow-hidden group"
                     >
-                      {/* Rank */}
-                      <div className="shrink-0 w-12 text-center">
-                        <span className="text-lg font-bold text-white">
-                          {index + 1}.
-                        </span>
-                      </div>
+                      {/* Selection Checkmark */}
+                      {isSelected && (
+                        <div className="absolute top-2 right-2 z-10 w-6 h-6 bg-[#a80710] rounded-full flex items-center justify-center shadow-lg">
+                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                      )}
 
-                      {/* Avatar */}
-                      <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full overflow-hidden bg-slate-700/50 shrink-0 border-2 border-[#a80710]/30">
+                      {/* Player Image */}
+                      <div className="relative w-full aspect-square bg-slate-700/50 rounded-t-2xl overflow-hidden">
                         <Image
                           src={player.image_url || '/no-image-player.png'}
                           alt={`${player.first_name} ${player.last_name}`}
                           fill
-                          className="object-cover"
+                          className="object-contain group-hover:scale-110 transition-transform duration-300"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement
                             target.src = '/no-image-player.png'
@@ -150,25 +161,20 @@ export default function PlayersPage() {
                         />
                       </div>
 
-                      {/* Name and Team */}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-white text-base sm:text-lg truncate">
+                      {/* Player Name */}
+                      <div className="p-3 text-center">
+                        <h3 className="font-bold text-white text-sm sm:text-base truncate uppercase">
                           {player.first_name} {player.last_name}
                         </h3>
-                        <p className="text-sm text-white/60 truncate">
-                          {player.team || 'Bez tima'}
-                        </p>
-                      </div>
-
-                      {/* Statistic */}
-                      <div className="shrink-0">
-                        <span className="text-2xl sm:text-3xl font-bold text-white">
-                          {activeFilter === 'goals' ? player.goals : player.matches_played}
-                        </span>
+                        {player.team && (
+                          <p className="text-xs text-white/60 truncate mt-1">
+                            {player.team}
+                          </p>
+                        )}
                       </div>
                     </div>
-                  ))}
-                </div>
+                  )
+                })}
               </div>
             </div>
           )}
