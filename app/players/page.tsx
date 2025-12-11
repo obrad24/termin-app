@@ -80,7 +80,7 @@ export default function PlayersPage() {
   return (
     <main className="min-h-screen bg-[#a80710]">
       <Header />
-      <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-4 sm:pt-28">
+      <section className="relative px-2 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-4 sm:pt-28">
         <div className="space-y-6">
           {/* Header */}
           <div className="text-center mb-6">
@@ -127,7 +127,7 @@ export default function PlayersPage() {
               </p>
             </div>
           ) : (
-            <div className="bg-slate-800/50 backdrop-blur-xl rounded-3xl border border-[#a80710]/30 p-4 sm:p-6">
+            <div className=" backdrop-blur-xl rounded-3xl border border-[#a80710]/30 sm:p-6">
               {/* Players Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {filteredPlayers.map((player) => {
@@ -148,12 +148,12 @@ export default function PlayersPage() {
                       )}
 
                       {/* Player Image */}
-                      <div className="relative w-full aspect-square bg-slate-700/50 rounded-t-2xl overflow-hidden">
+                      <div className="relative w-full flex justify-center aspect-square  rounded-t-2xl overflow-hidden">
                         <Image
                           src={player.image_url || '/no-image-player.png'}
                           alt={`${player.first_name} ${player.last_name}`}
                           fill
-                          className="object-contain group-hover:scale-110 transition-transform duration-300"
+                          className="object-cover !w-[100px] group-hover:scale-110 transition-transform duration-300 !relative"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement
                             target.src = '/no-image-player.png'
@@ -162,7 +162,7 @@ export default function PlayersPage() {
                       </div>
 
                       {/* Player Name */}
-                      <div className="p-3 text-center">
+                      <div className="p-3 text-center bg-red-950">
                         <h3 className="font-bold text-white text-sm sm:text-base truncate uppercase">
                           {player.first_name} {player.last_name}
                         </h3>
