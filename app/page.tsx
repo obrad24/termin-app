@@ -6,12 +6,11 @@ import TeamsSection from "@/components/teams-section"
 
 export default function Home() {
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen bg-[#a80710]">
       <Header />
       <HeroSection />
       <LatestResult />
       <ResultsSection />
-      <TeamsSection />
     </main>
   )
 }

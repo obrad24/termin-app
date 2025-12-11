@@ -126,28 +126,28 @@ export default function HeroSection() {
 
   return (
     <section ref={heroRef} className="relative min-h-screen flex items-center justify-center px-0 py-8 overflow-hidden">
-      <div className="relative w-full max-w-7xl mx-auto flex items-center justify-between gap-4 sm:gap-8 min-h-[60vh]">
+      <div className="relative w-full h-screen max-w-7xl mx-auto flex items-center justify-between gap-4 sm:gap-8 min-h-[60vh]">
         {/* Background Image - murinjo.png */}
-        {/* <div className="absolute inset-0 w-full h-full z-0">
+        <div className=" z-0">
           <Image
-            src="/murinjo.png"
+            src="/murinjo-removebg-preview.png"
             alt="Hero background"
             fill
-            className="object-contain"
+            className="object-cover !h-[75vh] !top-10"
             priority
           />
-        </div> */}
+        </div>
 
         {/* Foreground Image - lalat.png (preko murinja) */}
-        {/* <div className="absolute inset-0 w-full h-full z-10">
+        <div className=" z-10">
           <Image
-            src="/lalat.png"
+            src="/lalat1.png"
             alt="Hero foreground"
             fill
-            className="object-contain"
+            className="object-cover !h-[75vh] !top-10"
             priority
           />
-        </div> */}
+        </div>
 
         {/* Red Gradient Overlay - odozdo */}
         
@@ -169,7 +169,7 @@ export default function HeroSection() {
           </span>
         </div>
       </div>
-      <div className="absolute inset-0 w-full h-full bg-gradient-to-t from-[#a80710] via-[#a80710]/50 to-transparent z-[15]"></div>
+      <div className="absolute inset-0 w-full h-full z-[15]" style={{ background: 'linear-gradient(to top, #a80710 0%, #a80710 33%, rgba(168, 7, 16, 0.5) 66%, transparent 100%)' }}></div>
     </section>
   )
 }
