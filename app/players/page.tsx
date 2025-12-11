@@ -153,7 +153,7 @@ export default function PlayersPage() {
                           src={player.image_url || '/no-image-player.png'}
                           alt={`${player.first_name} ${player.last_name}`}
                           fill
-                          className="object-cover !w-[100px] group-hover:scale-110 transition-transform duration-300 !relative"
+                          className="object-cover !w-[120px] group-hover:scale-110 transition-transform duration-300 !relative"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement
                             target.src = '/no-image-player.png'

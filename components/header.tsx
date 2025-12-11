@@ -51,6 +51,9 @@ export default function Header() {
             side="right" 
             className="!w-full sm:!w-[380px] bg-[#a80710] backdrop-blur-xl border-l border-blue-500/20 p-0 [&>button]:hidden"
           >
+            <SheetHeader className="sr-only">
+              <SheetTitle>Navigation Menu</SheetTitle>
+            </SheetHeader>
             <div className="flex flex-col h-full">
               {/* Close Button */}
               <div className="flex justify-end p-4 pb-2">
