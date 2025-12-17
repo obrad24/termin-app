@@ -18,6 +18,15 @@ import {
 import { ArrowLeft, Plus, Trash2, X, ChevronRight, ChevronLeft } from 'lucide-react'
 import Link from 'next/link'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 
 interface Goal {
   id: string
@@ -49,7 +58,16 @@ export default function NewMatchPage() {
 
   const [goals, setGoals] = useState<Goal[]>([])
   const [matchPlayers, setMatchPlayers] = useState<MatchPlayer[]>([])
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set())
   const [currentStep, setCurrentStep] = useState('teams')
+  const [showAddPlayerDialog, setShowAddPlayerDialog] = useState(false)
+  const [newPlayerTeam, setNewPlayerTeam] = useState<'home' | 'away'>('home')
+  const [newPlayerForm, setNewPlayerForm] = useState({
+    first_name: '',
+    last_name: '',
+    birth_year: new Date().getFullYear().toString(),
+  })
+  const [addingPlayer, setAddingPlayer] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -84,51 +102,118 @@ export default function NewMatchPage() {
   }
 
   const addGoal = () => {
-    setGoals([
-      ...goals,
-      {
-        id: Date.now().toString(),
-        player_id: '',
-        team_type: 'home',
-      },
-    ])
+    // Ova funkcija se sada koristi samo za inicijalizaciju, pravi gol se dodaje direktno u onClick handleru
   }
 
   const removeGoal = (id: string) => {
     setGoals(goals.filter((g) => g.id !== id))
   }
 
-  const updateGoal = (id: string, field: keyof Goal, value: string) => {
-    setGoals(
-      goals.map((g) => (g.id === id ? { ...g, [field]: value } : g))
-    )
+  const togglePlayerSelection = (playerId: string, teamType: 'home' | 'away') => {
+    const key = `${playerId}-${teamType}`
+    setSelectedPlayerIds((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(key)) {
+        newSet.delete(key)
+      } else {
+        newSet.add(key)
+      }
+      return newSet
+    })
   }
 
-  const addMatchPlayer = (teamType: 'home' | 'away' = 'home') => {
-    setMatchPlayers([
-      ...matchPlayers,
-      {
-        id: Date.now().toString(),
-        player_id: '',
-        team_type: teamType,
-      },
-    ])
-  }
-
-  const removeMatchPlayer = (id: string) => {
-    setMatchPlayers(matchPlayers.filter((p) => p.id !== id))
-  }
-
-  const updateMatchPlayer = (id: string, field: keyof MatchPlayer, value: string) => {
-    setMatchPlayers(
-      matchPlayers.map((p) => (p.id === id ? { ...p, [field]: value } : p))
-    )
+  const isPlayerSelected = (playerId: string, teamType: 'home' | 'away') => {
+    return selectedPlayerIds.has(`${playerId}-${teamType}`)
   }
 
   const getPlayersByTeam = (teamName: string) => {
-    // Prikazujemo sve igrače jer igrač može igrati za bilo koji tim u utakmici
-    // bez obzira na to koji tim je u njegovom profilu
-    return players
+    if (!teamName) return []
+    return players.filter((player) => player.team === teamName)
+  }
+
+  const getSelectedPlayers = () => {
+    const selected: MatchPlayer[] = []
+    selectedPlayerIds.forEach((key) => {
+      const [playerId, teamType] = key.split('-')
+      selected.push({
+        id: key,
+        player_id: playerId,
+        team_type: teamType as 'home' | 'away',
+      })
+    })
+    return selected
+  }
+
+  const handleAddNewPlayer = (teamType: 'home' | 'away') => {
+    setNewPlayerTeam(teamType)
+    setNewPlayerForm({
+      first_name: '',
+      last_name: '',
+      birth_year: new Date().getFullYear().toString(),
+    })
+    setShowAddPlayerDialog(true)
+  }
+
+  const submitNewPlayer = async () => {
+    if (!newPlayerForm.first_name || !newPlayerForm.last_name || !newPlayerForm.birth_year) {
+      toast({
+        title: 'Greška',
+        description: 'Molimo popunite sva polja',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setAddingPlayer(true)
+    try {
+      const teamName = newPlayerTeam === 'home' ? formData.home_team : formData.away_team
+      
+      const response = await fetch('/api/players', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          first_name: newPlayerForm.first_name,
+          last_name: newPlayerForm.last_name,
+          birth_year: parseInt(newPlayerForm.birth_year),
+          team: teamName,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Greška pri dodavanju igrača')
+      }
+
+      const newPlayer = await response.json()
+
+      // Dodaj novog igrača u listu
+      setPlayers([...players, newPlayer])
+
+      // Automatski ga izaberi
+      togglePlayerSelection(newPlayer.id.toString(), newPlayerTeam)
+
+      toast({
+        title: 'Uspešno!',
+        description: 'Igrač je dodat i automatski izabran',
+      })
+
+      setShowAddPlayerDialog(false)
+      setNewPlayerForm({
+        first_name: '',
+        last_name: '',
+        birth_year: new Date().getFullYear().toString(),
+      })
+    } catch (error: any) {
+      toast({
+        title: 'Greška',
+        description: error.message || 'Nešto je pošlo po zlu',
+        variant: 'destructive',
+      })
+    } finally {
+      setAddingPlayer(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -150,8 +235,9 @@ export default function NewMatchPage() {
         (g) => g.player_id && g.team_type
       )
 
-      // Validacija igrača
-      const validMatchPlayers = matchPlayers.filter(
+      // Validacija igrača - koristimo izabrane igrače iz checkbox-ova
+      const selectedPlayers = getSelectedPlayers()
+      const validMatchPlayers = selectedPlayers.filter(
         (p) => p.player_id && p.team_type
       )
 
@@ -240,8 +326,10 @@ export default function NewMatchPage() {
     )
   }
 
-  // Prikazujemo sve igrače za oba tima jer igrač može igrati za bilo koji tim
-  const allPlayers = players
+  // Dobijamo igrače za izabrane timove
+  const homeTeamPlayers = getPlayersByTeam(formData.home_team)
+  const awayTeamPlayers = getPlayersByTeam(formData.away_team)
+  const selectedPlayers = getSelectedPlayers()
 
   return (
     <div className="min-h-screen bg-[#a80710] py-4 sm:py-8 px-4 sm:px-6">
@@ -249,7 +337,7 @@ export default function NewMatchPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
           <Link href="/admin">
-            <Button variant="outline" size="icon" className="flex-shrink-0">
+            <Button variant="outline" size="icon" className="shrink-0">
               <ArrowLeft className="w-4 h-4" />
             </Button>
           </Link>
@@ -299,9 +387,12 @@ export default function NewMatchPage() {
                       ) : (
                         <Select
                           value={formData.home_team}
-                          onValueChange={(value) =>
+                          onValueChange={(value) => {
                             setFormData({ ...formData, home_team: value })
-                          }
+                            // Očisti izabrane igrače kada se promeni tim
+                            setSelectedPlayerIds(new Set())
+                            setGoals([])
+                          }}
                           required
                         >
                           <SelectTrigger id="home_team" className="h-11">
@@ -326,9 +417,12 @@ export default function NewMatchPage() {
                       ) : (
                         <Select
                           value={formData.away_team}
-                          onValueChange={(value) =>
+                          onValueChange={(value) => {
                             setFormData({ ...formData, away_team: value })
-                          }
+                            // Očisti izabrane igrače kada se promeni tim
+                            setSelectedPlayerIds(new Set())
+                            setGoals([])
+                          }}
                           required
                         >
                           <SelectTrigger id="away_team" className="h-11">
@@ -397,138 +491,94 @@ export default function NewMatchPage() {
                 <CardContent className="space-y-6 sm:space-y-8">
                   {/* Home Team Players */}
                   <div className="space-y-3">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-center justify-between">
                       <h3 className="text-base sm:text-lg font-semibold">
                         {formData.home_team || 'Domaći tim'}
                       </h3>
                       <Button
                         type="button"
-                        onClick={() => addMatchPlayer('home')}
-                        size="sm"
                         variant="outline"
-                        className="w-full sm:w-auto"
+                        size="sm"
+                        onClick={() => handleAddNewPlayer('home')}
+                        className="text-xs sm:text-sm"
                       >
-                        <Plus className="w-4 h-4 mr-2" />
+                        <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                         Dodaj igrača
                       </Button>
                     </div>
-                    <div className="space-y-3">
-                      {matchPlayers.filter(p => p.team_type === 'home').length === 0 ? (
+                    <div className="space-y-2">
+                      {homeTeamPlayers.length === 0 ? (
                         <div className="text-sm text-muted-foreground text-center py-6 px-4 border rounded-lg bg-muted/30">
-                          Nema igrača. Kliknite "Dodaj igrača" da dodate.
+                          Nema igrača u ovom timu. Kliknite "Dodaj igrača" da dodate novog.
                         </div>
                       ) : (
-                        matchPlayers
-                          .filter(p => p.team_type === 'home')
-                          .map((matchPlayer) => (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {homeTeamPlayers.map((player) => (
                             <div
-                              key={matchPlayer.id}
-                              className="flex flex-col sm:flex-row gap-3 p-3 sm:p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                              key={player.id}
+                              className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
                             >
-                              <div className="flex-1 min-w-0">
-                                <Label className="text-sm mb-2 block">Igrač</Label>
-                                <Select
-                                  value={matchPlayer.player_id}
-                                  onValueChange={(value) =>
-                                    updateMatchPlayer(matchPlayer.id, 'player_id', value)
-                                  }
-                                >
-                                  <SelectTrigger className="h-11">
-                                    <SelectValue placeholder="Izaberi igrača" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {allPlayers.map((player) => (
-                                      <SelectItem
-                                        key={player.id}
-                                        value={player.id.toString()}
-                                      >
-                                        {player.first_name} {player.last_name}
-                                        {player.team && ` (${player.team})`}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => removeMatchPlayer(matchPlayer.id)}
-                                className="flex-shrink-0 self-end sm:self-center"
+                              <Checkbox
+                                checked={isPlayerSelected(player.id.toString(), 'home')}
+                                onCheckedChange={() => togglePlayerSelection(player.id.toString(), 'home')}
+                                id={`player-${player.id}-home`}
+                              />
+                              <Label 
+                                htmlFor={`player-${player.id}-home`}
+                                className="flex-1 cursor-pointer text-sm sm:text-base"
                               >
-                                <Trash2 className="w-4 h-4 text-destructive" />
-                              </Button>
+                                {player.first_name} {player.last_name}
+                              </Label>
                             </div>
-                          ))
+                          ))}
+                        </div>
                       )}
                     </div>
                   </div>
 
                   {/* Away Team Players */}
                   <div className="space-y-3">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-center justify-between">
                       <h3 className="text-base sm:text-lg font-semibold">
                         {formData.away_team || 'Gostujući tim'}
                       </h3>
                       <Button
                         type="button"
-                        onClick={() => addMatchPlayer('away')}
-                        size="sm"
                         variant="outline"
-                        className="w-full sm:w-auto"
+                        size="sm"
+                        onClick={() => handleAddNewPlayer('away')}
+                        className="text-xs sm:text-sm"
                       >
-                        <Plus className="w-4 h-4 mr-2" />
+                        <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                         Dodaj igrača
                       </Button>
                     </div>
-                    <div className="space-y-3">
-                      {matchPlayers.filter(p => p.team_type === 'away').length === 0 ? (
+                    <div className="space-y-2">
+                      {awayTeamPlayers.length === 0 ? (
                         <div className="text-sm text-muted-foreground text-center py-6 px-4 border rounded-lg bg-muted/30">
-                          Nema igrača. Kliknite "Dodaj igrača" da dodate.
+                          Nema igrača u ovom timu. Kliknite "Dodaj igrača" da dodate novog.
                         </div>
                       ) : (
-                        matchPlayers
-                          .filter(p => p.team_type === 'away')
-                          .map((matchPlayer) => (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {awayTeamPlayers.map((player) => (
                             <div
-                              key={matchPlayer.id}
-                              className="flex flex-col sm:flex-row gap-3 p-3 sm:p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                              key={player.id}
+                              className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
                             >
-                              <div className="flex-1 min-w-0">
-                                <Label className="text-sm mb-2 block">Igrač</Label>
-                                <Select
-                                  value={matchPlayer.player_id}
-                                  onValueChange={(value) =>
-                                    updateMatchPlayer(matchPlayer.id, 'player_id', value)
-                                  }
-                                >
-                                  <SelectTrigger className="h-11">
-                                    <SelectValue placeholder="Izaberi igrača" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {allPlayers.map((player) => (
-                                      <SelectItem
-                                        key={player.id}
-                                        value={player.id.toString()}
-                                      >
-                                        {player.first_name} {player.last_name}
-                                        {player.team && ` (${player.team})`}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => removeMatchPlayer(matchPlayer.id)}
-                                className="flex-shrink-0 self-end sm:self-center"
+                              <Checkbox
+                                checked={isPlayerSelected(player.id.toString(), 'away')}
+                                onCheckedChange={() => togglePlayerSelection(player.id.toString(), 'away')}
+                                id={`player-${player.id}-away`}
+                              />
+                              <Label 
+                                htmlFor={`player-${player.id}-away`}
+                                className="flex-1 cursor-pointer text-sm sm:text-base"
                               >
-                                <Trash2 className="w-4 h-4 text-destructive" />
-                              </Button>
+                                {player.first_name} {player.last_name}
+                              </Label>
                             </div>
-                          ))
+                          ))}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -598,86 +648,172 @@ export default function NewMatchPage() {
 
                   {/* Goals */}
                   <div className="space-y-4">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-base sm:text-lg font-semibold">Strijelci</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Dodajte strijelce sa utakmice
-                        </p>
-                      </div>
-                      <Button type="button" onClick={addGoal} size="sm" variant="outline" className="w-full sm:w-auto">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Dodaj strijelca
-                      </Button>
+                    <div>
+                      <h3 className="text-base sm:text-lg font-semibold mb-2">Strijelci</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Kliknite na igrača da označite gol. Kliknite ponovo da uklonite.
+                      </p>
                     </div>
 
-                    {goals.length === 0 ? (
+                    {selectedPlayers.length === 0 ? (
                       <div className="text-sm text-muted-foreground text-center py-6 px-4 border rounded-lg bg-muted/30">
-                        Nema strijelaca. Kliknite "Dodaj strijelca" da dodate.
+                        Prvo izaberite igrače u prethodnom koraku.
                       </div>
                     ) : (
-                      <div className="space-y-3">
-                        {goals.map((goal) => (
-                          <div
-                            key={goal.id}
-                            className="flex flex-col sm:flex-row gap-3 p-3 sm:p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                          >
-                            <div className="flex-1 min-w-0">
-                              <Label className="text-sm mb-2 block">Tim</Label>
-                              <Select
-                                value={goal.team_type}
-                                onValueChange={(value: 'home' | 'away') =>
-                                  updateGoal(goal.id, 'team_type', value)
-                                }
-                              >
-                                <SelectTrigger className="h-11">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="home">
-                                    {formData.home_team || 'Domaći'}
-                                  </SelectItem>
-                                  <SelectItem value="away">
-                                    {formData.away_team || 'Gostujući'}
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <Label className="text-sm mb-2 block">Igrač</Label>
-                              <Select
-                                value={goal.player_id}
-                                onValueChange={(value) =>
-                                  updateGoal(goal.id, 'player_id', value)
-                                }
-                              >
-                                <SelectTrigger className="h-11">
-                                  <SelectValue placeholder="Izaberi igrača" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {allPlayers.map((player) => (
-                                    <SelectItem
-                                      key={player.id}
-                                      value={player.id.toString()}
+                      <div className="space-y-6">
+                        {/* Home Team Goals */}
+                        <div className="space-y-3">
+                          <h4 className="text-sm font-medium text-muted-foreground">
+                            {formData.home_team || 'Domaći tim'}
+                          </h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {selectedPlayers
+                              .filter((p) => p.team_type === 'home')
+                              .map((matchPlayer) => {
+                                const player = players.find(
+                                  (pl) => pl.id.toString() === matchPlayer.player_id
+                                )
+                                if (!player) return null
+                                const goalCount = goals.filter(
+                                  (g) =>
+                                    g.player_id === matchPlayer.player_id &&
+                                    g.team_type === 'home'
+                                ).length
+                                return (
+                                  <div
+                                    key={matchPlayer.id}
+                                    className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${
+                                      goalCount > 0
+                                        ? 'bg-primary/10 border-primary'
+                                        : 'hover:bg-muted/50'
+                                    }`}
+                                  >
+                                    <span
+                                      className="flex-1 text-sm sm:text-base cursor-pointer"
+                                      onClick={() => {
+                                        // Dodaj gol
+                                        const newGoal = {
+                                          id: Date.now().toString(),
+                                          player_id: matchPlayer.player_id,
+                                          team_type: 'home' as const,
+                                        }
+                                        setGoals([...goals, newGoal])
+                                      }}
                                     >
                                       {player.first_name} {player.last_name}
-                                      {player.team && ` (${player.team})`}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => removeGoal(goal.id)}
-                              className="flex-shrink-0 self-end sm:self-center"
-                            >
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      {goalCount > 0 && (
+                                        <>
+                                          <span className="text-lg font-bold text-primary min-w-6 text-center">
+                                            {goalCount}
+                                          </span>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-6 w-6"
+                                            onClick={() => {
+                                              // Ukloni poslednji gol
+                                              const goalToRemove = goals
+                                                .filter(
+                                                  (g) =>
+                                                    g.player_id === matchPlayer.player_id &&
+                                                    g.team_type === 'home'
+                                                )
+                                                .pop()
+                                              if (goalToRemove) {
+                                                removeGoal(goalToRemove.id)
+                                              }
+                                            }}
+                                          >
+                                            <X className="h-3 w-3" />
+                                          </Button>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              })}
                           </div>
-                        ))}
+                        </div>
+
+                        {/* Away Team Goals */}
+                        <div className="space-y-3">
+                          <h4 className="text-sm font-medium text-muted-foreground">
+                            {formData.away_team || 'Gostujući tim'}
+                          </h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {selectedPlayers
+                              .filter((p) => p.team_type === 'away')
+                              .map((matchPlayer) => {
+                                const player = players.find(
+                                  (pl) => pl.id.toString() === matchPlayer.player_id
+                                )
+                                if (!player) return null
+                                const goalCount = goals.filter(
+                                  (g) =>
+                                    g.player_id === matchPlayer.player_id &&
+                                    g.team_type === 'away'
+                                ).length
+                                return (
+                                  <div
+                                    key={matchPlayer.id}
+                                    className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${
+                                      goalCount > 0
+                                        ? 'bg-primary/10 border-primary'
+                                        : 'hover:bg-muted/50'
+                                    }`}
+                                  >
+                                    <span
+                                      className="flex-1 text-sm sm:text-base cursor-pointer"
+                                      onClick={() => {
+                                        // Dodaj gol
+                                        const newGoal = {
+                                          id: Date.now().toString(),
+                                          player_id: matchPlayer.player_id,
+                                          team_type: 'away' as const,
+                                        }
+                                        setGoals([...goals, newGoal])
+                                      }}
+                                    >
+                                      {player.first_name} {player.last_name}
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      {goalCount > 0 && (
+                                        <>
+                                          <span className="text-lg font-bold text-primary min-w-6 text-center">
+                                            {goalCount}
+                                          </span>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-6 w-6"
+                                            onClick={() => {
+                                              // Ukloni poslednji gol
+                                              const goalToRemove = goals
+                                                .filter(
+                                                  (g) =>
+                                                    g.player_id === matchPlayer.player_id &&
+                                                    g.team_type === 'away'
+                                                )
+                                                .pop()
+                                              if (goalToRemove) {
+                                                removeGoal(goalToRemove.id)
+                                              }
+                                            }}
+                                          >
+                                            <X className="h-3 w-3" />
+                                          </Button>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -708,6 +844,76 @@ export default function NewMatchPage() {
             </TabsContent>
           </Tabs>
         </form>
+
+        {/* Dialog za dodavanje novog igrača */}
+        <Dialog open={showAddPlayerDialog} onOpenChange={setShowAddPlayerDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Dodaj novog igrača</DialogTitle>
+              <DialogDescription>
+                Dodajte novog igrača za tim: {newPlayerTeam === 'home' ? formData.home_team : formData.away_team}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="new_player_first_name">Ime</Label>
+                <Input
+                  id="new_player_first_name"
+                  value={newPlayerForm.first_name}
+                  onChange={(e) =>
+                    setNewPlayerForm({ ...newPlayerForm, first_name: e.target.value })
+                  }
+                  placeholder="Unesite ime"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new_player_last_name">Prezime</Label>
+                <Input
+                  id="new_player_last_name"
+                  value={newPlayerForm.last_name}
+                  onChange={(e) =>
+                    setNewPlayerForm({ ...newPlayerForm, last_name: e.target.value })
+                  }
+                  placeholder="Unesite prezime"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new_player_birth_year">Godina rođenja</Label>
+                <Input
+                  id="new_player_birth_year"
+                  type="number"
+                  value={newPlayerForm.birth_year}
+                  onChange={(e) =>
+                    setNewPlayerForm({ ...newPlayerForm, birth_year: e.target.value })
+                  }
+                  placeholder="Unesite godinu rođenja"
+                  min="1950"
+                  max={new Date().getFullYear()}
+                  required
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowAddPlayerDialog(false)}
+                disabled={addingPlayer}
+              >
+                Otkaži
+              </Button>
+              <Button
+                type="button"
+                onClick={submitNewPlayer}
+                disabled={addingPlayer || !newPlayerForm.first_name || !newPlayerForm.last_name || !newPlayerForm.birth_year}
+              >
+                {addingPlayer ? 'Dodavanje...' : 'Dodaj igrača'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )
