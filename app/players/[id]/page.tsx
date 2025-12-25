@@ -5,8 +5,9 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Header from '@/components/header'
 import Image from 'next/image'
-import { ArrowLeft, Trophy, Target, Calendar } from 'lucide-react'
+import { ArrowLeft, Trophy, Target, Calendar, Menu } from 'lucide-react'
 import { format } from 'date-fns'
+import { Result, Team } from '@/lib/supabase'
 
 interface PlayerWithStats {
   id: number
@@ -33,17 +34,109 @@ interface PlayerWithStats {
   }>
 }
 
+interface PlayerMatch {
+  matchId: number
+  opponent: string
+  opponentLogo: string
+  playerGoals: number
+  date: string
+  home_team: string
+  away_team: string
+  home_score: number
+  away_score: number
+}
+
 export default function PlayerProfilePage() {
   const params = useParams()
   const router = useRouter()
   const [player, setPlayer] = useState<PlayerWithStats | null>(null)
+  const [teams, setTeams] = useState<Team[]>([])
+  const [previousMatches, setPreviousMatches] = useState<PlayerMatch[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (params.id) {
       fetchPlayerData()
+      fetchTeams()
     }
   }, [params.id])
+
+  useEffect(() => {
+    if (player && teams.length > 0) {
+      fetchPreviousMatches()
+    }
+  }, [player, teams])
+
+  const fetchTeams = async () => {
+    try {
+      const response = await fetch('/api/teams')
+      if (response.ok) {
+        const data = await response.json()
+        setTeams(data || [])
+      }
+    } catch (error) {
+      console.error('Error fetching teams:', error)
+    }
+  }
+
+  const fetchPreviousMatches = async () => {
+    if (!player || !player.goals_details) return
+    
+    try {
+      // Kreiraj mapu golova po meču i skup mečeva
+      const goalsByMatch: Record<number, number> = {}
+      const matchesMap: Record<number, any> = {}
+      
+      player.goals_details.forEach((goal) => {
+        if (goal.results) {
+          const matchId = goal.results.id
+          goalsByMatch[matchId] = (goalsByMatch[matchId] || 0) + 1
+          matchesMap[matchId] = goal.results
+        }
+      })
+
+      // Kreiraj listu mečeva sa protivničkim timom
+      const playerMatches: PlayerMatch[] = []
+      
+      Object.entries(matchesMap).forEach(([matchId, match]) => {
+        // Odredi protivnički tim na osnovu team_type gola
+        const goal = player.goals_details.find(g => g.results?.id === parseInt(matchId))
+        if (!goal) return
+
+        const isHome = goal.team_type === 'home'
+        const opponent = isHome ? match.away_team : match.home_team
+        const opponentLogo = getTeamLogo(opponent)
+
+        playerMatches.push({
+          matchId: parseInt(matchId),
+          opponent,
+          opponentLogo,
+          playerGoals: goalsByMatch[parseInt(matchId)] || 0,
+          date: match.date,
+          home_team: match.home_team,
+          away_team: match.away_team,
+          home_score: match.home_score,
+          away_score: match.away_score,
+        })
+      })
+
+      // Sortiraj po datumu (najnoviji prvi)
+      playerMatches.sort((a, b) => {
+        const dateA = new Date(a.date).getTime()
+        const dateB = new Date(b.date).getTime()
+        return dateB - dateA
+      })
+
+      setPreviousMatches(playerMatches.slice(0, 10)) // Uzmi poslednjih 10 mečeva
+    } catch (error) {
+      console.error('Error fetching previous matches:', error)
+    }
+  }
+
+  const getTeamLogo = (teamName: string) => {
+    const team = teams.find(t => t.name === teamName)
+    return team?.logo_url || '/placeholder-logo.svg'
+  }
 
   const fetchPlayerData = async () => {
     try {
@@ -79,7 +172,7 @@ export default function PlayerProfilePage() {
         <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-4 sm:pt-28">
           <div className="text-white text-center py-12">
             <p className="text-lg sm:text-xl mb-4">Igrač nije pronađen</p>
-            <Link href="/players" className="text-white/80 hover:text-white underline">
+            <Link href="/players" className="text-white/80 hover:text-white underline z-50 relative">
               Nazad na igrače
             </Link>
           </div>
@@ -89,68 +182,151 @@ export default function PlayerProfilePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#a80710] pt-16">
+    <main className="min-h-screen bg-[#a80710] relative overflow-hidden">
       <Header />
-      <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-4 sm:pt-28">
-        <div className="space-y-6">
-          {/* Back Button */}
-          <Link
-            href="/statistics"
-            className="inline-flex items-center gap-2 text-white/80 hover:text-white transition text-sm sm:text-base"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Nazad na statistiku
-          </Link>
+      
+      {/* Hero Section with Player Image */}
+      <div className="relative w-full min-h-[60vh] sm:min-h-[70vh] md:min-h-[80vh] flex items-center justify-center overflow-hidden bg-[#a80710]">
+        {/* Player Background Image */}
+        <div className="absolute inset-0 z-0 flex items-center justify-center">
+          <div className="relative w-full h-full max-w-4xl mx-auto">
+            <Image
+              src={player.image_url || '/no-image-player.png'}
+              alt={`${player.first_name} ${player.last_name}`}
+              fill
+              className="object-contain object-center"
+              priority
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1200px"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement
+                target.src = '/no-image-player.png'
+              }}
+            />
+            
+          </div>
+          {/* Dark gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#a80710]/30 to-[#a80710]/80" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#a80710] via-transparent to-transparent" />
+        </div>
 
-          {/* Player Header */}
-          <div className="bg-slate-800/50 border border-[#a80710]/30 rounded-2xl sm:rounded-3xl p-6 sm:p-8 backdrop-blur-md shadow-2xl">
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-              {/* Player Image */}
-              <div className="relative w-32 h-32 sm:w-40 sm:h-40 rounded-full overflow-hidden border-4 border-yellow-400/50 bg-slate-700/50 shadow-lg shrink-0">
-                <Image
-                  src={player.image_url || '/no-image-player.png'}
-                  alt={`${player.first_name} ${player.last_name}`}
-                  fill
-                  className="object-cover"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement
-                    target.src = '/no-image-player.png'
-                  }}
-                />
-              </div>
+        {/* Top Section - Name */}
+        <div className="absolute top-0 left-0 right-0 z-10 px-4 sm:px-6 pt-[50px] sm:pt-24">
+          <h1 className="flex flex-col text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white uppercase tracking-wide drop-shadow-lg">
+            <span className='text-sm'>{player.first_name}</span>
+            <span className='text-3xl'>{player.last_name}</span> 
+          </h1>
+        </div>
 
-              {/* Player Info */}
-              <div className="flex-1 text-center sm:text-left">
-                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-2">
-                  {player.first_name} {player.last_name}
-                </h1>
-                {player.team && (
-                  <p className="text-white/60 text-lg sm:text-xl mb-4">
-                    {player.team}
-                  </p>
-                )}
-                <div className="flex flex-wrap gap-4 justify-center sm:justify-start">
-                  <div className="flex items-center gap-2 text-white/80">
-                    <Trophy className="w-5 h-5" />
-                    <span>{player.goals} {player.goals === 1 ? 'gol' : player.goals < 5 ? 'gola' : 'golova'}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-white/80">
-                    <Calendar className="w-5 h-5" />
-                    <span>{player.matches_played} {player.matches_played === 1 ? 'utakmica' : 'utakmica'}</span>
-                  </div>
-                  {player.birth_year && (
-                    <div className="flex items-center gap-2 text-white/60">
-                      <span>Rođen: {player.birth_year}</span>
+        {/* Player Name Overlay at Bottom */}
+        {/* <div className="absolute bottom-0 left-0 right-0 z-10 px-4 sm:px-6 pb-6 sm:pb-8">
+          <div className="bg-gradient-to-t from-[#a80710] via-[#a80710]/90 to-transparent pt-8 pb-4">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white uppercase tracking-wide drop-shadow-2xl text-center sm:text-left">
+              {player.first_name} {player.last_name}
+            </h1>
+          </div>
+        </div> */}
+      </div>
+
+      {/* Content Section */}
+      <section className="relative px-4 sm:px-6 lg:px-8 py-6 sm:py-8 -mt-20 sm:-mt-32 z-20">
+        <div className="max-w-7xl mx-auto space-y-6">
+          {/* Previous Matches Slider */}
+          {previousMatches.length > 0 && (
+            <div className="relative">
+              <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory scroll-smooth">
+                {previousMatches.map((match) => (
+                  <Link
+                    key={match.matchId}
+                    href={`/matches/${match.matchId}`}
+                    className="min-w-[280px] sm:min-w-[320px] bg-slate-800/90 backdrop-blur-md rounded-2xl p-4 border border-white/20 hover:border-white/40 transition-all snap-start"
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-white text-sm font-medium">Prethodni meč</span>
+                      <div className="w-6 h-6 rounded-full bg-slate-700/50 flex items-center justify-center">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
                     </div>
-                  )}
-                </div>
+                    <div className="flex items-center justify-center gap-4 mb-3">
+                    <div className="text-center">
+                      <div className="text-6xl font-bold text-white mb-1">
+                        {match.playerGoals}
+                      </div>
+                    </div>
+                      <span className="text-white/60 text-sm font-medium">VS</span>
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="relative w-16 h-16 rounded-full overflow-hidden bg-slate-700/50 border-2 border-white/20">
+                          <Image
+                            src={match.opponentLogo}
+                            alt={match.opponent}
+                            fill
+                            className="object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement
+                              target.src = '/placeholder-logo.svg'
+                            }}
+                          />
+                        </div>
+                        <span className="text-white text-sm font-medium text-center truncate w-full max-w-[120px]">
+                          {match.opponent}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-white/10 text-center">
+                      <span className="text-white/60 text-xs">
+                        {format(new Date(match.date), 'dd MMM yyyy')}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
               </div>
             </div>
+          )}
+
+          {/* Stats Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div className="bg-slate-800/90 backdrop-blur-md rounded-2xl p-4 border border-white/20">
+              <div className="flex items-center gap-2 mb-2">
+                <Trophy className="w-5 h-5 text-yellow-400" />
+                <span className="text-white/60 text-sm">Golovi</span>
+              </div>
+              <div className="text-3xl font-bold text-white">{player.goals}</div>
+            </div>
+            <div className="bg-slate-800/90 backdrop-blur-md rounded-2xl p-4 border border-white/20">
+              <div className="flex items-center gap-2 mb-2">
+                <Calendar className="w-5 h-5 text-blue-400" />
+                <span className="text-white/60 text-sm">Utakmice</span>
+              </div>
+              <div className="text-3xl font-bold text-white">{player.matches_played}</div>
+            </div>
+            {player.team && (
+              <div className="bg-slate-800/90 backdrop-blur-md rounded-2xl p-4 border border-white/20 col-span-2 sm:col-span-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-white/60 text-sm">Tim</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="relative w-8 h-8 rounded-full overflow-hidden bg-slate-700/50 shrink-0">
+                    <Image
+                      src={getTeamLogo(player.team)}
+                      alt={player.team}
+                      fill
+                      className="object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement
+                        target.src = '/placeholder-logo.svg'
+                      }}
+                    />
+                  </div>
+                  <div className="text-lg font-bold text-white truncate">{player.team}</div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Goals Details */}
           {player.goals_details && player.goals_details.length > 0 && (
-            <div className="bg-slate-800/50 border border-[#a80710]/30 rounded-2xl sm:rounded-3xl p-6 sm:p-8 backdrop-blur-md shadow-2xl">
+            <div className="bg-slate-800/90 backdrop-blur-md rounded-2xl p-6 sm:p-8 border border-white/20">
               <h2 className="text-xl sm:text-2xl font-bold text-white mb-6 flex items-center gap-2">
                 <Target className="w-6 h-6" />
                 Detalji golova
@@ -158,6 +334,8 @@ export default function PlayerProfilePage() {
               <div className="space-y-3">
                 {player.goals_details.map((goal) => {
                   const match = goal.results
+                  if (!match) return null
+                  
                   const isHome = goal.team_type === 'home'
                   const opponent = isHome ? match.away_team : match.home_team
                   const playerTeam = isHome ? match.home_team : match.away_team
@@ -168,7 +346,7 @@ export default function PlayerProfilePage() {
                     <Link
                       key={goal.id}
                       href={`/matches/${match.id}`}
-                      className="block p-4 bg-slate-700/30 rounded-xl border border-[#a80710]/30 hover:border-[#a80710]/60 transition-all"
+                      className="block p-4 bg-slate-700/50 rounded-xl border border-white/10 hover:border-white/30 transition-all"
                     >
                       <div className="flex items-center justify-between gap-4">
                         <div className="flex-1 min-w-0">

@@ -116,7 +116,7 @@ export default function StatisticsPage() {
                     />
                   </div>
                   <div className="flex items-center gap-0">
-                    <span className="text-yellow-400 font-bold text-sm sm:text-xl">Najbolji Strijelac</span>
+                    <span className="text-yellow-400 font-bold text-sm sm:text-xl">Najbolji strijelac</span>
                   </div>
                   <div className="text-center">
                     <h3 className="font-bold text-white text-3xl sm:text-2xl lg:text-3xl">

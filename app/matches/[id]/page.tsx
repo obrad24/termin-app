@@ -87,7 +87,7 @@ export default function MatchDetailPage() {
         <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-24 sm:pt-28">
           <div className="text-white text-center py-12">
             <p className="text-lg sm:text-xl mb-4">Utakmica nije pronađena</p>
-            <Link href="/matches" className="text-white/80 hover:text-white underline">
+            <Link href="/matches" className="text-white/80 hover:text-white underline z-50 relative">
               Nazad na utakmice
             </Link>
           </div>
@@ -109,7 +109,7 @@ export default function MatchDetailPage() {
           {/* Back button */}
           <Link
             href="/matches"
-            className="inline-flex items-center gap-2 text-white/80 hover:text-white transition text-sm sm:text-base"
+            className="inline-flex items-center gap-2 text-white/80 hover:text-white transition text-sm sm:text-base z-50 relative"
           >
             <ArrowLeft className="w-4 h-4" />
             Nazad na utakmice

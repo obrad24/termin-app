@@ -84,7 +84,7 @@ export default function PlayersPage() {
       <section className="relative px-2 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-4 sm:pt-28">
         <div className="space-y-6">
           {/* Header */}
-          <div className="text-center mb-6">
+          <div className="mb-6">
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">Igrači</h1>
           </div>
 
