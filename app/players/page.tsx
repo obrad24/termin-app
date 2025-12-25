@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Player } from '@/lib/supabase'
 import Header from '@/components/header'
 import Image from 'next/image'
+import Link from 'next/link'
 
 interface PlayerWithStats extends Player {
   goals: number
@@ -78,7 +79,7 @@ export default function PlayersPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#a80710]">
+    <main className="min-h-screen bg-[#a80710] pb-20 md:pb-0">
       <Header />
       <section className="relative px-2 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-4 sm:pt-28">
         <div className="space-y-6">
@@ -133,27 +134,20 @@ export default function PlayersPage() {
                 {filteredPlayers.map((player) => {
                   const isSelected = selectedPlayers.includes(player.id)
                   return (
-                    <div
+                    <Link
                       key={player.id}
-                      onClick={() => togglePlayerSelection(player.id)}
-                      className="relative bg-slate-800/50 rounded-2xl border border-[#a80710]/30 hover:border-[#a80710]/60 transition-all cursor-pointer overflow-hidden group"
+                      href={`/players/${player.id}`}
+                      className="relative bg-slate-800/50 rounded-2xl border border-[#a80710]/30 hover:border-[#a80710]/60 transition-all cursor-pointer overflow-hidden group block"
                     >
-                      {/* Selection Checkmark */}
-                      {isSelected && (
-                        <div className="absolute top-2 right-2 z-10 w-6 h-6 bg-[#a80710] rounded-full flex items-center justify-center shadow-lg">
-                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
-                        </div>
-                      )}
 
                       {/* Player Image */}
-                      <div className="relative w-full flex justify-center aspect-square  rounded-t-2xl overflow-hidden">
+                      <div className="relative w-full aspect-square rounded-t-2xl overflow-hidden bg-slate-700/50">
                         <Image
                           src={player.image_url || '/no-image-player.png'}
                           alt={`${player.first_name} ${player.last_name}`}
                           fill
-                          className="object-cover !w-[120px] group-hover:scale-110 transition-transform duration-300 !relative"
+                          className="object-cover group-hover:scale-110 transition-transform duration-300"
+                          sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement
                             target.src = '/no-image-player.png'
@@ -172,7 +166,7 @@ export default function PlayersPage() {
                           </p>
                         )}
                       </div>
-                    </div>
+                    </Link>
                   )
                 })}
               </div>

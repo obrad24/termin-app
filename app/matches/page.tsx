@@ -133,11 +133,11 @@ export default function MatchesPage() {
   }, {} as Record<string, Result[]>)
 
   return (
-    <main className="min-h-screen bg-[#a80710]">
+    <main className="min-h-screen bg-[#a80710] pb-20 md:pb-0">
       <Header />
-      <section className="relative px-2 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-24 sm:pt-28">
+      <section className="relative px-2 sm:px-6 lg:px-8 sm:py-12 max-w-7xl mx-auto sm:pt-28 pt-4">
         <div className="space-y-6 sm:space-y-8">
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-3 sm:mb-8 text-center">Utakmice</h2>
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-3 sm:mb-8">Utakmice</h2>
 
           {loading ? (
             <div className="text-white text-center text-sm sm:text-base">Učitavanje utakmica...</div>

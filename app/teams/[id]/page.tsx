@@ -69,7 +69,7 @@ export default function TeamProfilePage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#a80710]">
+      <main className="min-h-screen bg-[#a80710] pb-20 md:pb-0">
         <Header />
         <div className="flex items-center justify-center min-h-[60vh] px-4">
           <div className="text-white text-center">Učitavanje...</div>
@@ -80,7 +80,7 @@ export default function TeamProfilePage() {
 
   if (!teamData) {
     return (
-      <main className="min-h-screen bg-[#a80710]">
+      <main className="min-h-screen bg-[#a80710] pb-20 md:pb-0">
         <Header />
         <div className="flex items-center justify-center min-h-[60vh] px-4">
           <div className="text-white text-center">

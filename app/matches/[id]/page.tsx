@@ -71,7 +71,7 @@ export default function MatchDetailPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#a80710]">
+      <main className="min-h-screen bg-[#a80710] pb-20 md:pb-0">
         <Header />
         <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-24 sm:pt-28">
           <div className="text-white text-center py-12">Učitavanje...</div>
@@ -82,7 +82,7 @@ export default function MatchDetailPage() {
 
   if (!match) {
     return (
-      <main className="min-h-screen bg-[#a80710]">
+      <main className="min-h-screen bg-[#a80710] pb-20 md:pb-0">
         <Header />
         <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-24 sm:pt-28">
           <div className="text-white text-center py-12">
