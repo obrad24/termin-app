@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft, Trophy, Users, Target } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
+import { getPlayerImageUrl } from '@/lib/image-utils'
 
 interface Team {
   id: number
@@ -168,10 +169,11 @@ export default function TeamProfilePage() {
                       >
                         <div className="relative w-12 h-12 rounded-full overflow-hidden bg-slate-700 flex items-center justify-center flex-shrink-0">
                           <Image
-                            src={player.image_url || '/no-image-player.png'}
+                            src={getPlayerImageUrl(player.image_url)}
                             alt={`${player.first_name} ${player.last_name}`}
                             fill
                             className="object-cover"
+                            unoptimized
                             onError={(e) => {
                               const target = e.target as HTMLImageElement
                               target.src = '/no-image-player.png'
@@ -219,10 +221,11 @@ export default function TeamProfilePage() {
                         <div className="relative w-12 h-12 rounded-full overflow-hidden bg-slate-700 flex items-center justify-center flex-shrink-0">
                           {scorer.player ? (
                             <Image
-                              src={scorer.player.image_url || '/no-image-player.png'}
+                              src={getPlayerImageUrl(scorer.player?.image_url)}
                               alt={`${scorer.player.first_name} ${scorer.player.last_name}`}
                               fill
                               className="object-cover"
+                              unoptimized
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement
                                 target.src = '/no-image-player.png'

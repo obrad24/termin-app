@@ -10,6 +10,7 @@ import { Result, Player, Team } from '@/lib/supabase'
 import { format } from 'date-fns'
 import Link from 'next/link'
 import Image from 'next/image'
+import { getPlayerImageUrl } from '@/lib/image-utils'
 import {
   Home,
   LogOut,
@@ -874,10 +875,11 @@ export default function AdminPage() {
                       <div className="flex items-center gap-3 flex-1 min-w-0 w-full sm:w-auto justify-center sm:justify-start">
                         <div className="relative w-20 h-[100px] rounded-b-2xl overflow-hidden flex">
                           <Image
-                            src={player.image_url || '/no-image-player.png'}
+                            src={getPlayerImageUrl(player.image_url)}
                             alt={`${player.first_name} ${player.last_name}`}
                             fill
                             className="object-cover"
+                            unoptimized
                             onError={(e) => {
                               const target = e.target as HTMLImageElement
                               target.src = '/no-image-player.png'

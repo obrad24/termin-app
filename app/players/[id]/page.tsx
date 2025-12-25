@@ -8,6 +8,7 @@ import Image from 'next/image'
 import { ArrowLeft, Trophy, Target, Calendar, Menu } from 'lucide-react'
 import { format } from 'date-fns'
 import { Result, Team } from '@/lib/supabase'
+import { getPlayerImageUrl } from '@/lib/image-utils'
 
 interface PlayerWithStats {
   id: number
@@ -191,11 +192,12 @@ export default function PlayerProfilePage() {
         <div className="absolute inset-0 z-0 flex items-center justify-center">
           <div className="relative w-full h-full max-w-4xl mx-auto">
             <Image
-              src={player.image_url || '/no-image-player.png'}
+              src={getPlayerImageUrl(player.image_url)}
               alt={`${player.first_name} ${player.last_name}`}
               fill
               className="object-contain object-center"
               priority
+              unoptimized
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1200px"
               onError={(e) => {
                 const target = e.target as HTMLImageElement

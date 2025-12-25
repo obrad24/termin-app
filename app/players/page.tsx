@@ -5,6 +5,7 @@ import { Player } from '@/lib/supabase'
 import Header from '@/components/header'
 import Image from 'next/image'
 import Link from 'next/link'
+import { getPlayerImageUrl } from '@/lib/image-utils'
 
 interface PlayerWithStats extends Player {
   goals: number
@@ -143,11 +144,12 @@ export default function PlayersPage() {
                       {/* Player Image */}
                       <div className="relative w-full aspect-square rounded-t-2xl overflow-hidden bg-slate-700/50">
                         <Image
-                          src={player.image_url || '/no-image-player.png'}
+                          src={getPlayerImageUrl(player.image_url)}
                           alt={`${player.first_name} ${player.last_name}`}
                           fill
                           className="object-cover group-hover:scale-110 transition-transform duration-300"
                           sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
+                          unoptimized
                           onError={(e) => {
                             const target = e.target as HTMLImageElement
                             target.src = '/no-image-player.png'
