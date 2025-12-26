@@ -68,6 +68,7 @@ export default function NewMatchPage() {
     birth_year: new Date().getFullYear().toString(),
   })
   const [addingPlayer, setAddingPlayer] = useState(false)
+  const [officialResult, setOfficialResult] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -241,33 +242,35 @@ export default function NewMatchPage() {
         (p) => p.player_id && p.team_type
       )
 
-      // Provera da li broj golova odgovara broju strijelaca
-      const homeGoals = validGoals.filter((g) => g.team_type === 'home').length
-      const awayGoals = validGoals.filter((g) => g.team_type === 'away').length
+      // Provera da li broj golova odgovara broju strijelaca (samo ako nije službeni rezultat)
+      if (!officialResult) {
+        const homeGoals = validGoals.filter((g) => g.team_type === 'home').length
+        const awayGoals = validGoals.filter((g) => g.team_type === 'away').length
 
-      if (
-        homeGoals > 0 &&
-        parseInt(formData.home_score) !== homeGoals
-      ) {
-        const confirm = window.confirm(
-          `Broj strijelaca za domaći tim (${homeGoals}) ne odgovara rezultatu (${formData.home_score}). Da li želite da nastavite?`
-        )
-        if (!confirm) {
-          setLoading(false)
-          return
+        if (
+          homeGoals > 0 &&
+          parseInt(formData.home_score) !== homeGoals
+        ) {
+          const confirm = window.confirm(
+            `Broj strijelaca za domaći tim (${homeGoals}) ne odgovara rezultatu (${formData.home_score}). Da li želite da nastavite?`
+          )
+          if (!confirm) {
+            setLoading(false)
+            return
+          }
         }
-      }
 
-      if (
-        awayGoals > 0 &&
-        parseInt(formData.away_score) !== awayGoals
-      ) {
-        const confirm = window.confirm(
-          `Broj strijelaca za gostujući tim (${awayGoals}) ne odgovara rezultatu (${formData.away_score}). Da li želite da nastavite?`
-        )
-        if (!confirm) {
-          setLoading(false)
-          return
+        if (
+          awayGoals > 0 &&
+          parseInt(formData.away_score) !== awayGoals
+        ) {
+          const confirm = window.confirm(
+            `Broj strijelaca za gostujući tim (${awayGoals}) ne odgovara rezultatu (${formData.away_score}). Da li želite da nastavite?`
+          )
+          if (!confirm) {
+            setLoading(false)
+            return
+          }
         }
       }
 
@@ -615,51 +618,81 @@ export default function NewMatchPage() {
                 </CardHeader>
                 <CardContent className="space-y-6 sm:space-y-8">
                   {/* Score */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="home_score" className="text-sm sm:text-base font-medium">Golovi domaćeg tima</Label>
-                      <Input
-                        id="home_score"
-                        type="number"
-                        min="0"
-                        value={formData.home_score}
-                        onChange={(e) =>
-                          setFormData({ ...formData, home_score: e.target.value })
-                        }
-                        required
-                        className="h-11 text-lg"
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="official_result"
+                        checked={officialResult}
+                        onCheckedChange={(checked) => {
+                          setOfficialResult(checked === true)
+                          if (checked) {
+                            // Ako je službeni rezultat, obriši sve golove
+                            setGoals([])
+                          }
+                        }}
                       />
+                      <Label
+                        htmlFor="official_result"
+                        className="text-sm sm:text-base font-medium cursor-pointer"
+                      >
+                        Službeni rezultat (bez strijelaca)
+                      </Label>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="away_score" className="text-sm sm:text-base font-medium">Golovi gostujućeg tima</Label>
-                      <Input
-                        id="away_score"
-                        type="number"
-                        min="0"
-                        value={formData.away_score}
-                        onChange={(e) =>
-                          setFormData({ ...formData, away_score: e.target.value })
-                        }
-                        required
-                        className="h-11 text-lg"
-                      />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="home_score" className="text-sm sm:text-base font-medium">Golovi domaćeg tima</Label>
+                        <Input
+                          id="home_score"
+                          type="number"
+                          min="0"
+                          value={formData.home_score}
+                          onChange={(e) =>
+                            setFormData({ ...formData, home_score: e.target.value })
+                          }
+                          required
+                          className="h-11 text-lg"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="away_score" className="text-sm sm:text-base font-medium">Golovi gostujućeg tima</Label>
+                        <Input
+                          id="away_score"
+                          type="number"
+                          min="0"
+                          value={formData.away_score}
+                          onChange={(e) =>
+                            setFormData({ ...formData, away_score: e.target.value })
+                          }
+                          required
+                          className="h-11 text-lg"
+                        />
+                      </div>
                     </div>
                   </div>
 
                   {/* Goals */}
                   <div className="space-y-4">
-                    <div>
-                      <h3 className="text-base sm:text-lg font-semibold mb-2">Strijelci</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Kliknite na igrača da označite gol. Kliknite ponovo da uklonite.
-                      </p>
-                    </div>
+                    {!officialResult && (
+                      <>
+                        <div>
+                          <h3 className="text-base sm:text-lg font-semibold mb-2">Strijelci</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Kliknite na igrača da označite gol. Kliknite ponovo da uklonite.
+                          </p>
+                        </div>
+                      </>
+                    )}
+                    {officialResult && (
+                      <div className="text-sm text-muted-foreground text-center py-4 px-4 border rounded-lg bg-muted/30">
+                        Službeni rezultat - nema strijelaca
+                      </div>
+                    )}
 
-                    {selectedPlayers.length === 0 ? (
+                    {!officialResult && selectedPlayers.length === 0 ? (
                       <div className="text-sm text-muted-foreground text-center py-6 px-4 border rounded-lg bg-muted/30">
                         Prvo izaberite igrače u prethodnom koraku.
                       </div>
-                    ) : (
+                    ) : !officialResult && (
                       <div className="space-y-6">
                         {/* Home Team Goals */}
                         <div className="space-y-3">

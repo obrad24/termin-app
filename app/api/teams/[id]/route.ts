@@ -59,10 +59,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         .in('result_id', resultIds)
 
       if (allGoals && !goalsError) {
-        // Filtriranje golova samo za ovaj tim
+        // Filtriranje golova samo za ovaj tim i samo za postojeće mečeve
         const teamGoals = allGoals.filter((goal: any) => {
+          // Proveri da li meč još uvek postoji
           const result = results.find(r => r.id === goal.result_id)
           if (!result) return false
+          // Proveri da li je gol za ovaj tim
           if (goal.team_type === 'home' && result.home_team === team.name) return true
           if (goal.team_type === 'away' && result.away_team === team.name) return true
           return false

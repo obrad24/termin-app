@@ -32,46 +32,97 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: 'Player not found' }, { status: 404 })
     }
 
-    // Brojanje golova
+    // Prvo dobijamo sve postojeće rezultate (mečeve)
+    const { data: existingResults, error: resultsError } = await supabase
+      .from('results')
+      .select('id')
+
+    if (resultsError) {
+      console.error('Error fetching results:', resultsError)
+    }
+
+    // Kreiraj Set sa ID-ovima postojećih rezultata za brže provere
+    const existingResultIds = new Set<number>()
+    if (existingResults) {
+      existingResults.forEach((result: any) => {
+        const resultId = typeof result.id === 'string' 
+          ? parseInt(result.id, 10) 
+          : result.id
+        if (resultId != null && !isNaN(resultId) && typeof resultId === 'number') {
+          existingResultIds.add(resultId)
+        }
+      })
+    }
+
+    // Brojanje golova - samo za postojeće mečeve
     const { data: goals, error: goalsError } = await supabase
       .from('match_goals')
-      .select('id')
+      .select('id, result_id')
       .eq('player_id', id)
+      .not('result_id', 'is', null)
 
-    const goalsCount = goals?.length || 0
+    // Filtriraj golove samo za postojeće mečeve
+    const validGoals = goals?.filter(goal => {
+      const resultId = typeof goal.result_id === 'string' 
+        ? parseInt(goal.result_id, 10) 
+        : goal.result_id
+      return resultId != null && !isNaN(resultId) && existingResultIds.has(resultId)
+    }) || []
 
-    // Brojanje odigranih mečeva
+    const goalsCount = validGoals.length
+
+    // Brojanje odigranih mečeva - samo za postojeće mečeve
     const { data: matchPlayers, error: matchPlayersError } = await supabase
       .from('match_players')
       .select('result_id')
       .eq('player_id', id)
+      .not('result_id', 'is', null)
 
-    const uniqueMatches = new Set(matchPlayers?.map(mp => mp.result_id) || [])
+    // Filtriraj match_players samo za postojeće mečeve
+    const validMatchPlayers = matchPlayers?.filter(mp => {
+      const resultId = typeof mp.result_id === 'string' 
+        ? parseInt(mp.result_id, 10) 
+        : mp.result_id
+      return resultId != null && !isNaN(resultId) && existingResultIds.has(resultId)
+    }) || []
+
+    const uniqueMatches = new Set(validMatchPlayers.map(mp => mp.result_id))
     const matchesPlayed = uniqueMatches.size
 
-    // Dobijanje detalja o golovima
+    // Dobijanje detalja o golovima - samo za postojeće mečeve
     const { data: goalsData, error: goalsDataError } = await supabase
       .from('match_goals')
       .select('id, goal_minute, team_type, result_id')
       .eq('player_id', id)
+      .not('result_id', 'is', null)
 
-    // Dobijanje informacija o utakmicama
+    // Dobijanje informacija o utakmicama - samo za postojeće mečeve
     let goalsWithMatches: any[] = []
     if (goalsData && goalsData.length > 0) {
-      const resultIds = [...new Set(goalsData.map(g => g.result_id))]
-      const { data: resultsData } = await supabase
-        .from('results')
-        .select('id, home_team, away_team, home_score, away_score, date')
-        .in('id', resultIds)
-        .order('date', { ascending: false })
-
-      goalsWithMatches = goalsData.map(goal => ({
-        ...goal,
-        results: resultsData?.find(r => r.id === goal.result_id) || null,
-      })).sort((a, b) => {
-        if (!a.results || !b.results) return 0
-        return new Date(b.results.date).getTime() - new Date(a.results.date).getTime()
+      // Filtriraj golove samo za postojeće mečeve
+      const validGoalsData = goalsData.filter(goal => {
+        const resultId = typeof goal.result_id === 'string' 
+          ? parseInt(goal.result_id, 10) 
+          : goal.result_id
+        return resultId != null && !isNaN(resultId) && existingResultIds.has(resultId)
       })
+
+      if (validGoalsData.length > 0) {
+        const resultIds = [...new Set(validGoalsData.map(g => g.result_id))]
+        const { data: resultsData } = await supabase
+          .from('results')
+          .select('id, home_team, away_team, home_score, away_score, date')
+          .in('id', resultIds)
+          .order('date', { ascending: false })
+
+        goalsWithMatches = validGoalsData.map(goal => ({
+          ...goal,
+          results: resultsData?.find(r => r.id === goal.result_id) || null,
+        })).filter(goal => goal.results !== null).sort((a, b) => {
+          if (!a.results || !b.results) return 0
+          return new Date(b.results.date).getTime() - new Date(a.results.date).getTime()
+        })
+      }
     }
 
     return NextResponse.json({

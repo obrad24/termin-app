@@ -32,27 +32,57 @@ export async function GET() {
       return NextResponse.json([])
     }
 
-    // Dobijanje svih golova
+    // Prvo dobijamo sve postojeće rezultate (mečeve)
+    const { data: existingResults, error: resultsError } = await supabase
+      .from('results')
+      .select('id')
+
+    if (resultsError) {
+      console.error('Error fetching results:', resultsError)
+    }
+
+    // Kreiraj Set sa ID-ovima postojećih rezultata za brže provere
+    const existingResultIds = new Set<number>()
+    if (existingResults) {
+      existingResults.forEach((result: any) => {
+        const resultId = typeof result.id === 'string' 
+          ? parseInt(result.id, 10) 
+          : result.id
+        if (resultId != null && !isNaN(resultId) && typeof resultId === 'number') {
+          existingResultIds.add(resultId)
+        }
+      })
+    }
+
+    // Dobijanje svih golova samo za postojeće mečeve
     const { data: allGoals, error: goalsError } = await supabase
       .from('match_goals')
-      .select('player_id')
+      .select('player_id, result_id')
       .not('player_id', 'is', null)
+      .not('result_id', 'is', null)
 
     if (goalsError) {
       console.error('Error fetching goals:', goalsError)
     }
 
-    // Brojanje golova po igraču
+    // Brojanje golova po igraču - samo za postojeće mečeve
     const goalsByPlayer: Record<number, number> = {}
     if (allGoals) {
       allGoals.forEach((goal) => {
-        // Filtriraj samo validne player_id vrednosti (brojevi, ne null/undefined)
-        const playerId = typeof goal.player_id === 'string' 
-          ? parseInt(goal.player_id, 10) 
-          : goal.player_id
+        // Proveri da li meč još uvek postoji
+        const resultId = typeof goal.result_id === 'string' 
+          ? parseInt(goal.result_id, 10) 
+          : goal.result_id
         
-        if (playerId != null && !isNaN(playerId) && typeof playerId === 'number') {
-          goalsByPlayer[playerId] = (goalsByPlayer[playerId] || 0) + 1
+        if (resultId != null && !isNaN(resultId) && existingResultIds.has(resultId)) {
+          // Filtriraj samo validne player_id vrednosti (brojevi, ne null/undefined)
+          const playerId = typeof goal.player_id === 'string' 
+            ? parseInt(goal.player_id, 10) 
+            : goal.player_id
+          
+          if (playerId != null && !isNaN(playerId) && typeof playerId === 'number') {
+            goalsByPlayer[playerId] = (goalsByPlayer[playerId] || 0) + 1
+          }
         }
       })
     }
@@ -79,16 +109,23 @@ export async function GET() {
 
       if (!matchPlayersWithResultsError && matchPlayersWithResults) {
         matchPlayersWithResults.forEach((mp: any) => {
-          // Filtriraj samo validne player_id vrednosti
-          const playerId = typeof mp.player_id === 'string' 
-            ? parseInt(mp.player_id, 10) 
-            : mp.player_id
+          // Proveri da li meč još uvek postoji
+          const resultId = typeof mp.result_id === 'string' 
+            ? parseInt(mp.result_id, 10) 
+            : mp.result_id
           
-          if (playerId != null && !isNaN(playerId) && typeof playerId === 'number' && mp.result_id != null) {
-            if (!matchesByPlayer[playerId]) {
-              matchesByPlayer[playerId] = new Set()
+          if (resultId != null && !isNaN(resultId) && existingResultIds.has(resultId)) {
+            // Filtriraj samo validne player_id vrednosti
+            const playerId = typeof mp.player_id === 'string' 
+              ? parseInt(mp.player_id, 10) 
+              : mp.player_id
+            
+            if (playerId != null && !isNaN(playerId) && typeof playerId === 'number') {
+              if (!matchesByPlayer[playerId]) {
+                matchesByPlayer[playerId] = new Set()
+              }
+              matchesByPlayer[playerId].add(resultId)
             }
-            matchesByPlayer[playerId].add(mp.result_id)
           }
         })
       }
