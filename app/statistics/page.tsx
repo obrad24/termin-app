@@ -111,9 +111,13 @@ export default function StatisticsPage() {
                       fill
                       className="object-cover"
                       unoptimized
+                      priority
                       onError={(e) => {
                         const target = e.target as HTMLImageElement
-                        target.src = '/no-image-player.png'
+                        if (target.src !== '/no-image-player.png') {
+                          console.warn(`Failed to load image for top scorer ${topScorers[0].id}:`, topScorers[0].image_url)
+                          target.src = '/no-image-player.png'
+                        }
                       }}
                     />
                   </div>
@@ -161,9 +165,13 @@ export default function StatisticsPage() {
                         fill
                         className="object-cover"
                         unoptimized
+                        loading="lazy"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement
-                          target.src = '/no-image-player.png'
+                          if (target.src !== '/no-image-player.png') {
+                            console.warn(`Failed to load image for player ${player.id}:`, player.image_url)
+                            target.src = '/no-image-player.png'
+                          }
                         }}
                       />
                     </div>

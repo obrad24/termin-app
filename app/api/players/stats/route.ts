@@ -36,6 +36,7 @@ export async function GET() {
     const { data: allGoals, error: goalsError } = await supabase
       .from('match_goals')
       .select('player_id')
+      .not('player_id', 'is', null)
 
     if (goalsError) {
       console.error('Error fetching goals:', goalsError)
@@ -45,7 +46,14 @@ export async function GET() {
     const goalsByPlayer: Record<number, number> = {}
     if (allGoals) {
       allGoals.forEach((goal) => {
-        goalsByPlayer[goal.player_id] = (goalsByPlayer[goal.player_id] || 0) + 1
+        // Filtriraj samo validne player_id vrednosti (brojevi, ne null/undefined)
+        const playerId = typeof goal.player_id === 'string' 
+          ? parseInt(goal.player_id, 10) 
+          : goal.player_id
+        
+        if (playerId != null && !isNaN(playerId) && typeof playerId === 'number') {
+          goalsByPlayer[playerId] = (goalsByPlayer[playerId] || 0) + 1
+        }
       })
     }
 
@@ -53,6 +61,7 @@ export async function GET() {
     const { data: allMatchPlayers, error: matchPlayersError } = await supabase
       .from('match_players')
       .select('player_id')
+      .not('player_id', 'is', null)
 
     if (matchPlayersError) {
       console.error('Error fetching match players:', matchPlayersError)
@@ -65,13 +74,22 @@ export async function GET() {
       const { data: matchPlayersWithResults, error: matchPlayersWithResultsError } = await supabase
         .from('match_players')
         .select('player_id, result_id')
+        .not('player_id', 'is', null)
+        .not('result_id', 'is', null)
 
       if (!matchPlayersWithResultsError && matchPlayersWithResults) {
         matchPlayersWithResults.forEach((mp: any) => {
-          if (!matchesByPlayer[mp.player_id]) {
-            matchesByPlayer[mp.player_id] = new Set()
+          // Filtriraj samo validne player_id vrednosti
+          const playerId = typeof mp.player_id === 'string' 
+            ? parseInt(mp.player_id, 10) 
+            : mp.player_id
+          
+          if (playerId != null && !isNaN(playerId) && typeof playerId === 'number' && mp.result_id != null) {
+            if (!matchesByPlayer[playerId]) {
+              matchesByPlayer[playerId] = new Set()
+            }
+            matchesByPlayer[playerId].add(mp.result_id)
           }
-          matchesByPlayer[mp.player_id].add(mp.result_id)
         })
       }
     }
