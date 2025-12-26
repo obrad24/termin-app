@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Header from '@/components/header'
 import Image from 'next/image'
-import { ArrowLeft, Trophy, Target, Calendar, Menu } from 'lucide-react'
+import { ArrowLeft, Trophy, Target, Calendar, Menu, TrendingUp } from 'lucide-react'
 import { format } from 'date-fns'
 import { Result, Team } from '@/lib/supabase'
 import { getPlayerImageUrl } from '@/lib/image-utils'
@@ -19,6 +19,12 @@ interface PlayerWithStats {
   image_url?: string | null
   goals: number
   matches_played: number
+  pace?: number | null
+  shooting?: number | null
+  passing?: number | null
+  dribbling?: number | null
+  defending?: number | null
+  physical?: number | null
   goals_details: Array<{
     id: number
     goal_minute?: number | null
@@ -325,6 +331,136 @@ export default function PlayerProfilePage() {
               </div>
             )}
           </div>
+
+          {/* Player Ratings */}
+          {(player.pace !== null && player.pace !== undefined) ||
+           (player.shooting !== null && player.shooting !== undefined) ||
+           (player.passing !== null && player.passing !== undefined) ||
+           (player.dribbling !== null && player.dribbling !== undefined) ||
+           (player.defending !== null && player.defending !== undefined) ||
+           (player.physical !== null && player.physical !== undefined) ? (
+            <div className="bg-slate-800/90 backdrop-blur-md rounded-2xl p-6 sm:p-8 border border-white/20">
+              <h2 className="text-xl sm:text-2xl font-bold text-white mb-6 flex items-center gap-2">
+                <TrendingUp className="w-6 h-6" />
+                Ocene igrača
+              </h2>
+              
+              {/* Overall Rating */}
+              {(() => {
+                const ratings = [
+                  player.pace,
+                  player.shooting,
+                  player.passing,
+                  player.dribbling,
+                  player.defending,
+                  player.physical,
+                ].filter((r): r is number => r !== null && r !== undefined)
+                
+                const averageRating = ratings.length > 0
+                  ? Math.round(ratings.reduce((sum, r) => sum + r, 0) / ratings.length)
+                  : null
+
+                return averageRating !== null ? (
+                  <div className="mb-6 pb-6 border-b border-white/10">
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/60 text-sm sm:text-base">Ukupna ocena</span>
+                      <div className="text-4xl sm:text-5xl font-bold text-white">
+                        {averageRating}
+                      </div>
+                    </div>
+                  </div>
+                ) : null
+              })()}
+
+              {/* Individual Ratings */}
+              <div className="space-y-4">
+                {player.pace !== null && player.pace !== undefined && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-white text-sm sm:text-base font-medium">Pace (Brzina)</span>
+                      <span className="text-white font-bold text-lg">{player.pace}</span>
+                    </div>
+                    <div className="w-full bg-slate-700/50 rounded-full h-3 overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all"
+                        style={{ width: `${player.pace}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+                {player.shooting !== null && player.shooting !== undefined && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-white text-sm sm:text-base font-medium">Shooting (Šut)</span>
+                      <span className="text-white font-bold text-lg">{player.shooting}</span>
+                    </div>
+                    <div className="w-full bg-slate-700/50 rounded-full h-3 overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-red-500 to-red-600 rounded-full transition-all"
+                        style={{ width: `${player.shooting}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+                {player.passing !== null && player.passing !== undefined && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-white text-sm sm:text-base font-medium">Passing (Dodavanje)</span>
+                      <span className="text-white font-bold text-lg">{player.passing}</span>
+                    </div>
+                    <div className="w-full bg-slate-700/50 rounded-full h-3 overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-green-500 to-green-600 rounded-full transition-all"
+                        style={{ width: `${player.passing}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+                {player.dribbling !== null && player.dribbling !== undefined && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-white text-sm sm:text-base font-medium">Dribbling (Dribling)</span>
+                      <span className="text-white font-bold text-lg">{player.dribbling}</span>
+                    </div>
+                    <div className="w-full bg-slate-700/50 rounded-full h-3 overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-purple-500 to-purple-600 rounded-full transition-all"
+                        style={{ width: `${player.dribbling}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+                {player.defending !== null && player.defending !== undefined && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-white text-sm sm:text-base font-medium">Defending (Odbrana)</span>
+                      <span className="text-white font-bold text-lg">{player.defending}</span>
+                    </div>
+                    <div className="w-full bg-slate-700/50 rounded-full h-3 overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-full transition-all"
+                        style={{ width: `${player.defending}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+                {player.physical !== null && player.physical !== undefined && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-white text-sm sm:text-base font-medium">Physical (Fizička snaga)</span>
+                      <span className="text-white font-bold text-lg">{player.physical}</span>
+                    </div>
+                    <div className="w-full bg-slate-700/50 rounded-full h-3 overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-orange-500 to-orange-600 rounded-full transition-all"
+                        style={{ width: `${player.physical}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
 
           {/* Goals Details */}
           {player.goals_details && player.goals_details.length > 0 && (

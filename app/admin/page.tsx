@@ -76,6 +76,14 @@ export default function AdminPage() {
     date: '',
   })
   const [editPlayerTeam, setEditPlayerTeam] = useState<string>('')
+  const [editPlayerRatings, setEditPlayerRatings] = useState({
+    pace: '',
+    shooting: '',
+    passing: '',
+    dribbling: '',
+    defending: '',
+    physical: '',
+  })
   const { toast } = useToast()
 
   const checkAuth = async () => {
@@ -310,6 +318,12 @@ export default function AdminPage() {
           birth_year: updatedPlayer.birth_year,
           team: updatedPlayer.team || '',
           image_url: imageUrl || '',
+          pace: editPlayerRatings.pace || null,
+          shooting: editPlayerRatings.shooting || null,
+          passing: editPlayerRatings.passing || null,
+          dribbling: editPlayerRatings.dribbling || null,
+          defending: editPlayerRatings.defending || null,
+          physical: editPlayerRatings.physical || null,
         }),
       })
 
@@ -907,6 +921,14 @@ export default function AdminPage() {
                           onClick={() => {
                             setEditingPlayer(player)
                             setEditPlayerTeam(player.team || 'none')
+                            setEditPlayerRatings({
+                              pace: player.pace?.toString() || '',
+                              shooting: player.shooting?.toString() || '',
+                              passing: player.passing?.toString() || '',
+                              dribbling: player.dribbling?.toString() || '',
+                              defending: player.defending?.toString() || '',
+                              physical: player.physical?.toString() || '',
+                            })
                           }}
                           className="text-blue-500 hover:text-blue-600 flex-shrink-0"
                         >
@@ -1369,6 +1391,14 @@ export default function AdminPage() {
             setEditingPlayer(null)
             setEditPlayerImageFile(null)
             setEditPlayerTeam('none')
+            setEditPlayerRatings({
+              pace: '',
+              shooting: '',
+              passing: '',
+              dribbling: '',
+              defending: '',
+              physical: '',
+            })
           }
         }}>
           <DialogContent>
@@ -1472,6 +1502,102 @@ export default function AdminPage() {
                     required
                   />
                 </div>
+
+                {/* Player Ratings Section */}
+                <div className="space-y-4 pt-4 border-t">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">Ocene igrača (FIFA stil)</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Unesite ocene od 0 do 100 za svaki atribut
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="edit_pace">Pace (Brzina)</Label>
+                      <Input
+                        id="edit_pace"
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={editPlayerRatings.pace}
+                        onChange={(e) =>
+                          setEditPlayerRatings({ ...editPlayerRatings, pace: e.target.value })
+                        }
+                        placeholder="0-100"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit_shooting">Shooting (Šut)</Label>
+                      <Input
+                        id="edit_shooting"
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={editPlayerRatings.shooting}
+                        onChange={(e) =>
+                          setEditPlayerRatings({ ...editPlayerRatings, shooting: e.target.value })
+                        }
+                        placeholder="0-100"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit_passing">Passing (Dodavanje)</Label>
+                      <Input
+                        id="edit_passing"
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={editPlayerRatings.passing}
+                        onChange={(e) =>
+                          setEditPlayerRatings({ ...editPlayerRatings, passing: e.target.value })
+                        }
+                        placeholder="0-100"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit_dribbling">Dribbling (Dribling)</Label>
+                      <Input
+                        id="edit_dribbling"
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={editPlayerRatings.dribbling}
+                        onChange={(e) =>
+                          setEditPlayerRatings({ ...editPlayerRatings, dribbling: e.target.value })
+                        }
+                        placeholder="0-100"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit_defending">Defending (Odbrana)</Label>
+                      <Input
+                        id="edit_defending"
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={editPlayerRatings.defending}
+                        onChange={(e) =>
+                          setEditPlayerRatings({ ...editPlayerRatings, defending: e.target.value })
+                        }
+                        placeholder="0-100"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit_physical">Physical (Fizička snaga)</Label>
+                      <Input
+                        id="edit_physical"
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={editPlayerRatings.physical}
+                        onChange={(e) =>
+                          setEditPlayerRatings({ ...editPlayerRatings, physical: e.target.value })
+                        }
+                        placeholder="0-100"
+                      />
+                    </div>
+                  </div>
+                </div>
                 <DialogFooter>
                   <Button
                     type="button"
@@ -1479,6 +1605,14 @@ export default function AdminPage() {
                     onClick={() => {
                       setEditingPlayer(null)
                       setEditPlayerImageFile(null)
+                      setEditPlayerRatings({
+                        pace: '',
+                        shooting: '',
+                        passing: '',
+                        dribbling: '',
+                        defending: '',
+                        physical: '',
+                      })
                     }}
                   >
                     Otkaži

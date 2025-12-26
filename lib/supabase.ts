@@ -37,6 +37,12 @@ export interface Player {
   birth_year: number
   team?: string | null
   image_url?: string | null
+  pace?: number | null
+  shooting?: number | null
+  passing?: number | null
+  dribbling?: number | null
+  defending?: number | null
+  physical?: number | null
   created_at?: string
 }
 

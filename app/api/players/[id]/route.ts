@@ -202,7 +202,19 @@ export async function PUT(
 
     const { id: idParam } = await params
     const body = await request.json()
-    const { first_name, last_name, birth_year, team, image_url } = body
+    const { 
+      first_name, 
+      last_name, 
+      birth_year, 
+      team, 
+      image_url,
+      pace,
+      shooting,
+      passing,
+      dribbling,
+      defending,
+      physical
+    } = body
 
     const id = parseInt(idParam, 10)
     if (isNaN(id)) {
@@ -218,6 +230,14 @@ export async function PUT(
       return NextResponse.json({ error: 'Invalid birth year' }, { status: 400 })
     }
 
+    // Validacija ocena (0-100)
+    const validateRating = (rating: any): number | null => {
+      if (rating === null || rating === undefined || rating === '') return null
+      const num = parseInt(String(rating), 10)
+      if (isNaN(num) || num < 0 || num > 100) return null
+      return num
+    }
+
     const { data, error } = await supabase
       .from('players')
       .update({
@@ -226,6 +246,12 @@ export async function PUT(
         birth_year: year,
         team: team || null,
         image_url: image_url || null,
+        pace: validateRating(pace),
+        shooting: validateRating(shooting),
+        passing: validateRating(passing),
+        dribbling: validateRating(dribbling),
+        defending: validateRating(defending),
+        physical: validateRating(physical),
       })
       .eq('id', id)
       .select()
