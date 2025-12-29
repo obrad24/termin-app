@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Header from '@/components/header'
 import Image from 'next/image'
-import { ArrowLeft, Trophy, Target, Calendar, Menu, TrendingUp } from 'lucide-react'
+import { ArrowLeft, Trophy, Target, Calendar, Menu, TrendingUp, Star } from 'lucide-react'
 import { format } from 'date-fns'
 import { Result, Team } from '@/lib/supabase'
 import { getPlayerImageUrl } from '@/lib/image-utils'
@@ -88,12 +88,12 @@ export default function PlayerProfilePage() {
 
   const fetchPreviousMatches = async () => {
     if (!player || !player.goals_details) return
-    
+
     try {
       // Kreiraj mapu golova po meču i skup mečeva
       const goalsByMatch: Record<number, number> = {}
       const matchesMap: Record<number, any> = {}
-      
+
       player.goals_details.forEach((goal) => {
         if (goal.results) {
           const matchId = goal.results.id
@@ -104,7 +104,7 @@ export default function PlayerProfilePage() {
 
       // Kreiraj listu mečeva sa protivničkim timom
       const playerMatches: PlayerMatch[] = []
-      
+
       Object.entries(matchesMap).forEach(([matchId, match]) => {
         // Odredi protivnički tim na osnovu team_type gola
         const goal = player.goals_details.find(g => g.results?.id === parseInt(matchId))
@@ -189,9 +189,9 @@ export default function PlayerProfilePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#a80710] relative overflow-hidden">
+    <main className="min-h-screen bg-[#a80710] relative overflow-hidden pb-24">
       <Header />
-      
+
       {/* Hero Section with Player Image */}
       <div className="relative w-full min-h-[60vh] sm:min-h-[70vh] md:min-h-[80vh] flex items-center justify-center overflow-hidden bg-[#a80710]">
         {/* Player Background Image */}
@@ -210,37 +210,132 @@ export default function PlayerProfilePage() {
                 target.src = '/no-image-player.png'
               }}
             />
-            
+
           </div>
           {/* Dark gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#a80710]/30 to-[#a80710]/80" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#a80710] via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#a80710] via-[#a80710]/15 to-transparent" />
         </div>
 
-        {/* Top Section - Name */}
+        {/* Top Section - Name and Overall Rating */}
         <div className="absolute top-0 left-0 right-0 z-10 px-4 sm:px-6 pt-[50px] sm:pt-24">
-          <h1 className="flex flex-col text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white uppercase tracking-wide drop-shadow-lg">
-            <span className='text-sm'>{player.first_name}</span>
-            <span className='text-3xl'>{player.last_name}</span> 
-          </h1>
+          <div className="flex items-end justify-between relative">
+            <h1 className="flex flex-col text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white uppercase tracking-wide drop-shadow-lg">
+              <span className='text-sm'>{player.first_name}</span>
+              <span className='text-3xl'>{player.last_name}</span>
+            </h1>
+            {/* Overall Rating in Top Right */}
+            {(() => {
+              const ratings = [
+                player.pace,
+                player.shooting,
+                player.passing,
+                player.dribbling,
+                player.defending,
+                player.physical,
+              ].filter((r): r is number => r !== null && r !== undefined)
+
+              const averageRating = ratings.length > 0
+                ? Math.round(ratings.reduce((sum, r) => sum + r, 0) / ratings.length)
+                : null
+
+              const getRatingColor = (rating: number): string => {
+                if (rating >= 0 && rating <= 59) return '#E53935' // 🔴
+                if (rating >= 60 && rating <= 64) return '#FB8C00' // 🟠
+                if (rating >= 65 && rating <= 69) return '#FDD835' // 🟡
+                if (rating >= 70 && rating <= 79) return '#43A047' // 🟢
+                if (rating >= 80 && rating <= 100) return '#1B5E20' // 🟢 tamno zelena
+                return '#000000' // default crna
+              }
+
+              return averageRating !== null ? (
+                <div className="absolute top-0 right-0 w-[90px] h-[120px] sm:w-24 sm:h-24 md:w-28 md:h-28">
+                  <Image
+                    src="/pozadina-att.webp"
+                    alt="Star"
+                    fill
+                    className="object-contain"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span 
+                      className="text-[54px] sm:text-4xl md:text-5xl font-black drop-shadow-lg"
+                      style={{ 
+                        color: getRatingColor(averageRating),
+                        WebkitTextStroke: '1.5px #ffffff',
+                        textShadow: '0 0 3px rgba(0, 0, 0, 0.8), 0 0 3px rgba(0, 0, 0, 0.8)'
+                      }}
+                    >
+                      {averageRating}
+                    </span>
+                  </div>
+                </div>
+              ) : null
+            })()}
+          </div>
         </div>
 
-        {/* Player Name Overlay at Bottom */}
-        {/* <div className="absolute bottom-0 left-0 right-0 z-10 px-4 sm:px-6 pb-6 sm:pb-8">
-          <div className="bg-gradient-to-t from-[#a80710] via-[#a80710]/90 to-transparent pt-8 pb-4">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white uppercase tracking-wide drop-shadow-2xl text-center sm:text-left">
-              {player.first_name} {player.last_name}
-            </h1>
-          </div>
-        </div> */}
       </div>
 
       {/* Content Section */}
-      <section className="relative px-4 sm:px-6 lg:px-8 py-6 sm:py-8 -mt-20 sm:-mt-32 z-20">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <section className="relative h-auto -mt-20 sm:-mt-32 z-20 ">
+        <div>
+          {/* Player Ratings */}
+          {((player.pace !== null && player.pace !== undefined) ||
+            (player.shooting !== null && player.shooting !== undefined) ||
+            (player.passing !== null && player.passing !== undefined) ||
+            (player.dribbling !== null && player.dribbling !== undefined) ||
+            (player.defending !== null && player.defending !== undefined) ||
+            (player.physical !== null && player.physical !== undefined)) && (
+              <div className="relative px-4 sm:px-6 bg-[#d7b35f] mb-4 py-1 rounded-full w-[95%] mx-auto">
+                <div className="flex gap-2 justify-around px-4 font-black">
+                  {player.pace !== null && player.pace !== undefined && (
+                    <div className="flex flex-col items-center">
+                      <span className='text-sm'>PAC</span>
+                      <span className='text-[24px] leading-7'>{player.pace}</span>
+                    </div>
+                  )}
+
+                  {player.shooting !== null && player.shooting !== undefined && (
+                    <div className="flex flex-col items-center">
+                      <span className='text-sm'>SHO</span>
+                      <span className='text-[24px] leading-7'>{player.shooting}</span>
+                    </div>
+                  )}
+
+                  {player.passing !== null && player.passing !== undefined && (
+                    <div className="flex flex-col items-center">
+                      <span className='text-sm'>PAS</span>
+                      <span className='text-[24px] leading-7'>{player.passing}</span>
+                    </div>
+                  )}
+
+                  {player.dribbling !== null && player.dribbling !== undefined && (
+                    <div className="flex flex-col items-center">
+                      <span className='text-sm'>DRI</span>
+                      <span className='text-[24px] leading-7'>{player.dribbling}</span>
+                    </div>
+                  )}
+
+                  {player.defending !== null && player.defending !== undefined && (
+                    <div className="flex flex-col items-center">
+                      <span className='text-sm'>DEF</span>
+                      <span className='text-[24px] leading-7'>{player.defending}</span>
+                    </div>
+                  )}
+
+                  {player.physical !== null && player.physical !== undefined && (
+                    <div className="flex flex-col items-center">
+                      <span className='text-sm'>PHY</span>
+                      <span className='text-[24px] leading-7'>{player.physical}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
           {/* Previous Matches Slider */}
           {previousMatches.length > 0 && (
-            <div className="relative">
+            <div className="relative px-2">
               <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory scroll-smooth">
                 {previousMatches.map((match) => (
                   <Link
@@ -257,11 +352,11 @@ export default function PlayerProfilePage() {
                       </div>
                     </div>
                     <div className="flex items-center justify-center gap-4 mb-3">
-                    <div className="text-center">
-                      <div className="text-6xl font-bold text-white mb-1">
-                        {match.playerGoals}
+                      <div className="text-center">
+                        <div className="text-6xl font-bold text-white mb-1">
+                          {match.playerGoals}
+                        </div>
                       </div>
-                    </div>
                       <span className="text-white/60 text-sm font-medium">VS</span>
                       <div className="flex flex-col items-center gap-2">
                         <div className="relative w-16 h-16 rounded-full overflow-hidden bg-slate-700/50 border-2 border-white/20">
@@ -293,7 +388,7 @@ export default function PlayerProfilePage() {
           )}
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 px-2">
             <div className="bg-slate-800/90 backdrop-blur-md rounded-2xl p-4 border border-white/20">
               <div className="flex items-center gap-2 mb-2">
                 <Trophy className="w-5 h-5 text-yellow-400" />
@@ -332,139 +427,10 @@ export default function PlayerProfilePage() {
             )}
           </div>
 
-          {/* Player Ratings */}
-          {(player.pace !== null && player.pace !== undefined) ||
-           (player.shooting !== null && player.shooting !== undefined) ||
-           (player.passing !== null && player.passing !== undefined) ||
-           (player.dribbling !== null && player.dribbling !== undefined) ||
-           (player.defending !== null && player.defending !== undefined) ||
-           (player.physical !== null && player.physical !== undefined) ? (
-            <div className="bg-slate-800/90 backdrop-blur-md rounded-2xl p-6 sm:p-8 border border-white/20">
-              <h2 className="text-xl sm:text-2xl font-bold text-white mb-6 flex items-center gap-2">
-                <TrendingUp className="w-6 h-6" />
-                Ocene igrača
-              </h2>
-              
-              {/* Overall Rating */}
-              {(() => {
-                const ratings = [
-                  player.pace,
-                  player.shooting,
-                  player.passing,
-                  player.dribbling,
-                  player.defending,
-                  player.physical,
-                ].filter((r): r is number => r !== null && r !== undefined)
-                
-                const averageRating = ratings.length > 0
-                  ? Math.round(ratings.reduce((sum, r) => sum + r, 0) / ratings.length)
-                  : null
-
-                return averageRating !== null ? (
-                  <div className="mb-6 pb-6 border-b border-white/10">
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/60 text-sm sm:text-base">Ukupna ocena</span>
-                      <div className="text-4xl sm:text-5xl font-bold text-white">
-                        {averageRating}
-                      </div>
-                    </div>
-                  </div>
-                ) : null
-              })()}
-
-              {/* Individual Ratings */}
-              <div className="space-y-4">
-                {player.pace !== null && player.pace !== undefined && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-white text-sm sm:text-base font-medium">Pace (Brzina)</span>
-                      <span className="text-white font-bold text-lg">{player.pace}</span>
-                    </div>
-                    <div className="w-full bg-slate-700/50 rounded-full h-3 overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all"
-                        style={{ width: `${player.pace}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-                {player.shooting !== null && player.shooting !== undefined && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-white text-sm sm:text-base font-medium">Shooting (Šut)</span>
-                      <span className="text-white font-bold text-lg">{player.shooting}</span>
-                    </div>
-                    <div className="w-full bg-slate-700/50 rounded-full h-3 overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-red-500 to-red-600 rounded-full transition-all"
-                        style={{ width: `${player.shooting}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-                {player.passing !== null && player.passing !== undefined && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-white text-sm sm:text-base font-medium">Passing (Dodavanje)</span>
-                      <span className="text-white font-bold text-lg">{player.passing}</span>
-                    </div>
-                    <div className="w-full bg-slate-700/50 rounded-full h-3 overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-green-500 to-green-600 rounded-full transition-all"
-                        style={{ width: `${player.passing}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-                {player.dribbling !== null && player.dribbling !== undefined && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-white text-sm sm:text-base font-medium">Dribbling (Dribling)</span>
-                      <span className="text-white font-bold text-lg">{player.dribbling}</span>
-                    </div>
-                    <div className="w-full bg-slate-700/50 rounded-full h-3 overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-purple-500 to-purple-600 rounded-full transition-all"
-                        style={{ width: `${player.dribbling}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-                {player.defending !== null && player.defending !== undefined && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-white text-sm sm:text-base font-medium">Defending (Odbrana)</span>
-                      <span className="text-white font-bold text-lg">{player.defending}</span>
-                    </div>
-                    <div className="w-full bg-slate-700/50 rounded-full h-3 overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-full transition-all"
-                        style={{ width: `${player.defending}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-                {player.physical !== null && player.physical !== undefined && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-white text-sm sm:text-base font-medium">Physical (Fizička snaga)</span>
-                      <span className="text-white font-bold text-lg">{player.physical}</span>
-                    </div>
-                    <div className="w-full bg-slate-700/50 rounded-full h-3 overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-orange-500 to-orange-600 rounded-full transition-all"
-                        style={{ width: `${player.physical}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : null}
 
           {/* Goals Details */}
           {player.goals_details && player.goals_details.length > 0 && (
-            <div className="bg-slate-800/90 backdrop-blur-md rounded-2xl p-6 sm:p-8 border border-white/20">
+            <div className="bg-slate-800/90 backdrop-blur-md rounded-2xl p-6 sm:p-8 border border-white/20 mt-3 mx-2">
               <h2 className="text-xl sm:text-2xl font-bold text-white mb-6 flex items-center gap-2">
                 <Target className="w-6 h-6" />
                 Detalji golova
@@ -473,7 +439,7 @@ export default function PlayerProfilePage() {
                 {player.goals_details.map((goal) => {
                   const match = goal.results
                   if (!match) return null
-                  
+
                   const isHome = goal.team_type === 'home'
                   const opponent = isHome ? match.away_team : match.home_team
                   const playerTeam = isHome ? match.home_team : match.away_team
