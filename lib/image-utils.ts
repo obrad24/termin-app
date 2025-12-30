@@ -48,8 +48,6 @@ export function getPlayerImageUrl(imageUrl: string | null | undefined, addCacheB
         finalUrl = `${baseUrl}/storage/v1/object/public/team-logos/${trimmedUrl}`
       }
     }
-    // Ako je samo ime fajla ili nešto što ne odgovara gornjim slučajevima
-    // Pretpostavi da je u team-logos bucket-u
     else {
       finalUrl = `${baseUrl}/storage/v1/object/public/team-logos/${trimmedUrl}`
     }
