@@ -148,9 +148,14 @@ export async function GET() {
         player.stamina,
       ].filter((r): r is number => r !== null && r !== undefined)
       
-      const averageRating = ratings.length > 0
+      let averageRating = ratings.length > 0
         ? Math.round(ratings.reduce((sum, r) => sum + r, 0) / ratings.length)
         : null
+
+      // Dodaj rating_bonus na prosječni rating
+      if (averageRating !== null && player.rating_bonus !== null && player.rating_bonus !== undefined) {
+        averageRating = Math.max(0, Math.min(100, averageRating + player.rating_bonus))
+      }
 
       return {
         ...player,

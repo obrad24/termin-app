@@ -224,7 +224,8 @@ export async function PUT(
       defending,
       physical,
       stamina,
-      injury
+      injury,
+      rating_bonus
     } = body
 
     const id = parseInt(idParam, 10)
@@ -249,6 +250,14 @@ export async function PUT(
       return num
     }
 
+    // Validacija rating_bonus (može biti negativan ili pozitivan)
+    const validateRatingBonus = (bonus: any): number | null => {
+      if (bonus === null || bonus === undefined || bonus === '') return null
+      const num = parseInt(String(bonus), 10)
+      if (isNaN(num)) return null
+      return num
+    }
+
     const { data, error } = await supabase
       .from('players')
       .update({
@@ -265,6 +274,7 @@ export async function PUT(
         physical: validateRating(physical),
         stamina: validateRating(stamina),
         injury: injury === true || injury === 'true' ? true : (injury === false || injury === 'false' ? false : null),
+        rating_bonus: validateRatingBonus(rating_bonus),
       })
       .eq('id', id)
       .select()

@@ -312,6 +312,9 @@ export default function AdminPage() {
         imageUrl = uploadData.url
       }
 
+      const ratingBonusValue = parseInt(ratingBonus, 10)
+      const finalRatingBonus = isNaN(ratingBonusValue) ? null : ratingBonusValue
+
       const response = await fetch(`/api/players/${updatedPlayer.id}`, {
         method: 'PUT',
         headers: {
@@ -331,6 +334,7 @@ export default function AdminPage() {
           physical: editPlayerRatings.physical || null,
           stamina: editPlayerRatings.stamina || null,
           injury: editPlayerInjury,
+          rating_bonus: finalRatingBonus,
         }),
       })
 
@@ -938,7 +942,7 @@ export default function AdminPage() {
                               physical: player.physical?.toString() || '',
                               stamina: player.stamina?.toString() || '',
                             })
-                            setRatingBonus('')
+                            setRatingBonus(player.rating_bonus?.toString() || '0')
                           }}
                           className="text-blue-500 hover:text-blue-600 flex-shrink-0"
                         >
@@ -1411,7 +1415,7 @@ export default function AdminPage() {
               physical: '',
               stamina: '',
             })
-            setRatingBonus('')
+            setRatingBonus('0')
           }
         }}>
           <DialogContent>
@@ -1547,38 +1551,29 @@ export default function AdminPage() {
                         editingPlayer.physical,
                         editingPlayer.stamina,
                       ].filter((r): r is number => r !== null && r !== undefined)
-                      const currentAvg = originalRatings.length > 0
+                      
+                      let baseAvg = originalRatings.length > 0
                         ? Math.round(originalRatings.reduce((sum, r) => sum + r, 0) / originalRatings.length)
                         : null
                       
-                      // Računaj novi prosječni rating iz unesenih podataka u formi
-                      const getRatingValue = (formValue: string, originalValue: number | null | undefined): number | null => {
-                        if (formValue && formValue !== '') {
-                          const parsed = parseInt(formValue, 10)
-                          if (!isNaN(parsed)) return parsed
-                        }
-                        return originalValue !== null && originalValue !== undefined ? originalValue : null
-                      }
+                      // Dodaj trenutni bonus
+                      const currentBonus = editingPlayer.rating_bonus || 0
+                      let currentAvg = baseAvg !== null ? Math.max(0, Math.min(100, baseAvg + currentBonus)) : null
                       
-                      const newRatings = [
-                        getRatingValue(editPlayerRatings.pace, editingPlayer.pace),
-                        getRatingValue(editPlayerRatings.shooting, editingPlayer.shooting),
-                        getRatingValue(editPlayerRatings.passing, editingPlayer.passing),
-                        getRatingValue(editPlayerRatings.dribbling, editingPlayer.dribbling),
-                        getRatingValue(editPlayerRatings.defending, editingPlayer.defending),
-                        getRatingValue(editPlayerRatings.physical, editingPlayer.physical),
-                        getRatingValue(editPlayerRatings.stamina, editingPlayer.stamina),
-                      ].filter((r): r is number => r !== null && r !== undefined)
-                      
-                      const newAvg = newRatings.length > 0
-                        ? Math.round(newRatings.reduce((sum, r) => sum + r, 0) / newRatings.length)
-                        : null
+                      // Računaj novi prosječni rating sa novim bonusom
+                      const newBonus = parseInt(ratingBonus, 10) || 0
+                      let newAvg = baseAvg !== null ? Math.max(0, Math.min(100, baseAvg + newBonus)) : null
                       
                       return (
                         <div className="mb-4 p-3 bg-muted rounded-lg space-y-1">
                           {currentAvg !== null && (
                             <p className="text-sm font-medium">
                               Trenutni prosječni rating: <span className="text-lg font-bold">{currentAvg}</span>
+                              {currentBonus !== 0 && (
+                                <span className="text-xs ml-2 text-muted-foreground">
+                                  (bazni: {baseAvg}, bonus: {currentBonus > 0 ? '+' : ''}{currentBonus})
+                                </span>
+                              )}
                             </p>
                           )}
                           {newAvg !== null && newAvg !== currentAvg && (
@@ -1587,6 +1582,11 @@ export default function AdminPage() {
                               {currentAvg !== null && (
                                 <span className="text-xs ml-2">
                                   ({newAvg > currentAvg ? '+' : ''}{newAvg - currentAvg})
+                                </span>
+                              )}
+                              {newBonus !== 0 && (
+                                <span className="text-xs ml-2 text-muted-foreground">
+                                  (bonus: {newBonus > 0 ? '+' : ''}{newBonus})
                                 </span>
                               )}
                             </p>
@@ -1634,52 +1634,9 @@ export default function AdminPage() {
                         >
                           <Plus className="w-4 h-4" />
                         </Button>
-                        <Button
-                          type="button"
-                          variant="default"
-                          onClick={() => {
-                            const bonus = parseInt(ratingBonus, 10)
-                            if (isNaN(bonus) || bonus === 0) {
-                              toast({
-                                title: 'Greška',
-                                description: 'Unesite validan broj (različit od 0)',
-                                variant: 'destructive',
-                              })
-                              return
-                            }
-                            
-                            // Primijeni bonus na sve postojeće ocene
-                            const applyBonus = (current: string | null | undefined): string => {
-                              if (!current || current === '') return ''
-                              const currentValue = parseInt(current, 10)
-                              if (isNaN(currentValue)) return current
-                              const newValue = Math.max(0, Math.min(100, currentValue + bonus))
-                              return newValue.toString()
-                            }
-                            
-                            setEditPlayerRatings({
-                              pace: applyBonus(editPlayerRatings.pace || editingPlayer.pace?.toString()),
-                              shooting: applyBonus(editPlayerRatings.shooting || editingPlayer.shooting?.toString()),
-                              passing: applyBonus(editPlayerRatings.passing || editingPlayer.passing?.toString()),
-                              dribbling: applyBonus(editPlayerRatings.dribbling || editingPlayer.dribbling?.toString()),
-                              defending: applyBonus(editPlayerRatings.defending || editingPlayer.defending?.toString()),
-                              physical: applyBonus(editPlayerRatings.physical || editingPlayer.physical?.toString()),
-                              stamina: applyBonus(editPlayerRatings.stamina || editingPlayer.stamina?.toString()),
-                            })
-                            
-                            toast({
-                              title: 'Uspešno!',
-                              description: `Bonus od ${bonus > 0 ? '+' : ''}${bonus} je primijenjen na sve ocene`,
-                            })
-                            
-                            setRatingBonus('')
-                          }}
-                        >
-                          Primijeni
-                        </Button>
                       </div>
                       <p className="text-xs text-muted-foreground mt-2">
-                        Koristite +/- dugmad ili unesite broj. Bonus će se dodati na sve postojeće ocene (0-100)
+                        Koristite +/- dugmad ili unesite broj. Bonus će se dodati na prosječni rating (ne mijenja ocene atributa). Bonus se čuva kada sačuvate formu.
                       </p>
                     </div>
                   </div>
@@ -1801,7 +1758,7 @@ export default function AdminPage() {
                         physical: '',
                         stamina: '',
                       })
-                      setRatingBonus('')
+                      setRatingBonus('0')
                     }}
                   >
                     Otkaži
