@@ -28,7 +28,7 @@ export default function PlayersPage() {
     try {
       const response = await fetch('/api/players/stats')
       const contentType = response.headers.get('content-type')
-      
+
       if (response.ok) {
         if (contentType && contentType.includes('application/json')) {
           const data = await response.json()
@@ -48,7 +48,7 @@ export default function PlayersPage() {
         } catch (parseError) {
           errorData = { error: response.statusText, status: response.status }
         }
-        
+
         // Loguj samo ako nije 503 (Supabase not configured) - to je očekivano
         if (response.status !== 503) {
           console.error('Error fetching players:', errorData)
@@ -75,8 +75,8 @@ export default function PlayersPage() {
   })
 
   const togglePlayerSelection = (playerId: number) => {
-    setSelectedPlayers(prev => 
-      prev.includes(playerId) 
+    setSelectedPlayers(prev =>
+      prev.includes(playerId)
         ? prev.filter(id => id !== playerId)
         : [...prev, playerId]
     )
@@ -150,16 +150,16 @@ export default function PlayersPage() {
                     <Link
                       key={player.id}
                       href={`/players/${player.id}`}
-                      className="relative bg-slate-800/50 rounded-2xl border border-[#a80710]/30 hover:border-[#a80710]/60 transition-all cursor-pointer overflow-hidden group block"
+                      className="relative cursor-pointer overflow-hidden group block rounded-2xl aspect-[3/4] transition-all bg-zlatna"
                     >
 
                       {/* Player Image */}
-                      <div className="relative w-full aspect-square rounded-t-2xl overflow-hidden bg-slate-700/50">
+                      <div className="relative w-full h-[67%] flex items-end justify-center overflow-hidden">
                         <Image
                           src={getPlayerImageUrl(player.image_url)}
                           alt={`${player.first_name} ${player.last_name}`}
                           fill
-                          className="object-cover group-hover:scale-110 transition-transform duration-300"
+                          className="object-contain object-bottom group-hover:scale-105 transition-transform duration-300"
                           sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
                           unoptimized
                           onError={(e) => {
@@ -167,30 +167,71 @@ export default function PlayersPage() {
                             target.src = '/no-image-player.png'
                           }}
                         />
-                        {/* Average Rating Badge */}
-                        {player.average_rating !== null && (
-                          <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
-                            <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                            <span 
-                              className="text-xs font-bold"
-                              style={{ color: getRatingColor(player.average_rating) }}
-                            >
-                              {player.average_rating}
-                            </span>
-                          </div>
-                        )}
                       </div>
 
-                      {/* Player Name */}
-                      <div className="p-3 text-center bg-red-950">
-                        <h3 className="font-bold text-white text-sm sm:text-base truncate uppercase">
-                          {player.first_name} {player.last_name}
-                        </h3>
-                        {player.team && (
-                          <p className="text-xs text-white/60 truncate mt-1">
-                            {player.team}
-                          </p>
-                        )}
+                      {/* Average Rating Badge */}
+                      {player.average_rating !== null && (
+                        <div className="absolute left-3 top-3 w-14 h-16 sm:w-16 sm:h-20">
+                          <span
+                            className="text-2xl sm:text-base font-black leading-tight">
+                            {player.average_rating}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Player Name Section */}
+                      <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-3 h-[36%] flex flex-col pt-3 gap-0.5">
+                        <div className='flex justify-center items-center'>
+                          <h3 className="font-bold text-black text-base sm:text-sm truncate text-center">
+                            {player.first_name.charAt(0).toUpperCase()}. {player.last_name}
+                          </h3>
+                        </div>
+
+                        {/* Player Attributes */}
+                        <div className="flex text-sm justify-around px-[6px]">
+                          {player.pace !== null && player.pace !== undefined && (
+                            <div className="flex flex-col items-center">
+                              <span className="text-black text-[10px] font-semibold">PAC</span>
+                              <span className="text-black font-bold">{player.pace}</span>
+                            </div>
+                          )}
+                          {player.shooting !== null && player.shooting !== undefined && (
+                            <div className="flex flex-col items-center">
+                              <span className="text-black text-[10px] font-semibold">SHO</span>
+                              <span className="text-black font-bold">{player.shooting}</span>
+                            </div>
+                          )}
+                          {player.passing !== null && player.passing !== undefined && (
+                            <div className="flex flex-col items-center">
+                              <span className="text-black text-[10px] font-semibold">PAS</span>
+                              <span className="text-black font-bold">{player.passing}</span>
+                            </div>
+                          )}
+                          {player.dribbling !== null && player.dribbling !== undefined && (
+                            <div className="flex flex-col items-center">
+                              <span className="text-black text-[10px] font-semibold">DRI</span>
+                              <span className="text-black font-bold">{player.dribbling}</span>
+                            </div>
+                          )}
+                          {player.defending !== null && player.defending !== undefined && (
+                            <div className="flex flex-col items-center">
+                              <span className="text-black text-[10px] font-semibold">DEF</span>
+                              <span className="text-black font-bold">{player.defending}</span>
+                            </div>
+                          )}
+                          {player.physical !== null && player.physical !== undefined && (
+                            <div className="flex flex-col items-center">
+                              <span className="text-black text-[10px] font-semibold">PHY</span>
+                              <span className="text-black font-bold">{player.physical}</span>
+                            </div>
+                          )}
+                          {player.stamina !== null && player.stamina !== undefined && (
+                            <div className="flex flex-col items-center">
+                              <span className="text-black text-[10px] font-semibold">STA</span>
+                              <span className="text-black font-bold">{player.stamina}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </Link>
                   )

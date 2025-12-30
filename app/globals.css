@@ -143,3 +143,10 @@
     font-family: system-ui, -apple-system, sans-serif;
   }
 }
+
+.bg-zlatna {
+  background-image: url('/pozadina-zlatna.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
