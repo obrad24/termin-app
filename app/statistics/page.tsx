@@ -104,12 +104,12 @@ export default function StatisticsPage() {
                   href={`/players/${topScorers[0].id}`}
                   className="flex flex-col items-center gap-2 mb-8 pb-2 border-b border-white/10 hover:opacity-90 transition-opacity cursor-pointer"
                 >
-                  <div className="relative w-32 h-32 sm:w-40 sm:h-40 rounded-full overflow-hidden border-4 border-yellow-400/50 bg-slate-700/50 shadow-2xl">
+                  <div className="relative w-32 h-32 sm:w-40 sm:h-40 rounded-full overflow-hidden border-4 border-yellow-400/50 bg-slate-700/50 shadow-2xl flex items-center justify-center">
                     <Image
                       src={getPlayerImageUrl(topScorers[0].image_url)}
                       alt={`${topScorers[0].first_name} ${topScorers[0].last_name}`}
                       fill
-                      className="object-cover"
+                      className="object-contain object-center"
                       unoptimized
                       priority
                       onError={(e) => {
@@ -158,12 +158,12 @@ export default function StatisticsPage() {
                   >
 
                     {/* Player Image */}
-                    <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border border-white/30 bg-slate-700/50 shrink-0">
+                    <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border border-white/30 shrink-0 flex items-center justify-center">
                       <Image
                         src={getPlayerImageUrl(player.image_url)}
                         alt={`${player.first_name} ${player.last_name}`}
                         fill
-                        className="object-cover"
+                        className="object-contain object-center"
                         unoptimized
                         loading="lazy"
                         onError={(e) => {

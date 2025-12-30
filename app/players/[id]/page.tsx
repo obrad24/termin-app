@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Header from '@/components/header'
 import Image from 'next/image'
-import { ArrowLeft, Trophy, Target, Calendar, Menu, TrendingUp, Star, Bandage } from 'lucide-react'
+import { ArrowLeft, Trophy, Target, Calendar, Menu, TrendingUp, Star, Bandage, Ambulance } from 'lucide-react'
 import { format } from 'date-fns'
 import { Result, Team } from '@/lib/supabase'
 import { getPlayerImageUrl } from '@/lib/image-utils'
@@ -228,8 +228,8 @@ export default function PlayerProfilePage() {
               </h1>
               {/* Injury Badge */}
               {player.injury === true && (
-                <div className="mt-2 inline-flex items-center justify-center bg-white rounded-full p-1.5 border-2 border-red-600 shadow-lg">
-                  <Bandage className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" strokeWidth={2.5} />
+                <div className="mt-2 inline-flex items-center justify-center bg-white rounded-full p-1.5 border-2 border-red-600 shadow-lg w-fit">
+                  <Ambulance className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" strokeWidth={2.5} />
                 </div>
               )}
             </div>
