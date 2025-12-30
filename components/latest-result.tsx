@@ -110,7 +110,7 @@ export default function LatestResult() {
   if (loading) {
     return (
       <section className="relative min-h-[70vh] sm:min-h-[80vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
-        <div className="absolute inset-0 hero-bg" />
+        <div className="absolute inset-0 bg-[#a80710]" />
         <div className="relative z-10 text-white text-sm sm:text-base">Učitavanje...</div>
       </section>
     )
@@ -119,7 +119,7 @@ export default function LatestResult() {
   if (!latestResult) {
     return (
       <section className="relative min-h-[70vh] sm:min-h-[80vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
-        <div className="absolute inset-0 hero-bg" />
+        <div className="absolute inset-0 bg-[#a80710]" />
         <div className="relative z-10 text-white text-center px-4">
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4">Nema rezultata</h2>
           <p className="text-blue-300/60 text-sm sm:text-base">Dodajte rezultate u admin panelu</p>
@@ -139,7 +139,7 @@ export default function LatestResult() {
         </h2>
         {/* Match result */}
         <Link href={`/matches/${latestResult.id}`} className="block">
-          <div className="bg-slate-800/50 border border-white/30 rounded-2xl sm:rounded-3xl p-2 sm:p-6 md:p-8 lg:p-12 backdrop-blur-md shadow-2xl hover:border-white/60 transition-all hover:shadow-2xl hover:scale-[1.01] sm:hover:scale-[1.02] cursor-pointer">
+          <div className="bg-slate-800/50 border border-[#a80710]/30 rounded-2xl sm:rounded-3xl p-2 sm:p-6 md:p-8 lg:p-12 backdrop-blur-md shadow-2xl hover:border-[#a80710]/60 transition-all hover:shadow-2xl hover:scale-[1.01] sm:hover:scale-[1.02] cursor-pointer">
             {/* Mobile Layout */}
             <div className="md:hidden space-y-4">
               {/* Score - Mobile */}

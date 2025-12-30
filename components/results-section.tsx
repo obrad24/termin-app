@@ -39,6 +39,31 @@ export default function ResultsSection() {
     return team?.logo_url || '/placeholder-logo.svg'
   }
 
+  // Grupiše golove po igraču i vraća niz sa imenom i brojem golova
+  const groupGoalsByPlayer = (goals: GoalWithPlayer[]) => {
+    const grouped = new Map<string, { name: string; count: number; playerId: number | null; player: Player | null }>()
+    
+    goals.forEach((goal) => {
+      const playerKey = goal.player_id?.toString() || 'unknown'
+      const playerName = goal.players
+        ? `${goal.players.first_name} ${goal.players.last_name}`
+        : `Igrač #${goal.player_id}`
+      
+      if (grouped.has(playerKey)) {
+        grouped.get(playerKey)!.count++
+      } else {
+        grouped.set(playerKey, { 
+          name: playerName, 
+          count: 1, 
+          playerId: goal.player_id || null,
+          player: goal.players
+        })
+      }
+    })
+    
+    return Array.from(grouped.values())
+  }
+
   const fetchResults = async () => {
     try {
       const response = await fetch('/api/results')
@@ -231,7 +256,7 @@ export default function ResultsSection() {
                       </div>
                     </div>
 
-                    <div className="text-center space-y-2 lg:hidden pt-2">
+                    <div className="text-center space-y-2 lg:hidden pt-2 ">
                       <div className="flex items-center justify-center gap-3">
                         <span className="text-6xl font-bold text-white drop-shadow-lg">
                           {result.home_score}
@@ -243,20 +268,20 @@ export default function ResultsSection() {
                       </div>
                       {/* Goal Scorers - Mobile */}
                       {goalsByMatch[result.id] && goalsByMatch[result.id].length > 0 && (
-                        <div className="flex justify-between">
+                        <div className="flex justify-between gap-3">
                           {/* Home goals */}
-                          <div>
+                          <div className="w-1/2">
                             {goalsByMatch[result.id].filter(g => g.team_type === 'home').length > 0 ? (
                               <div className="space-y-2 text-start">
-                                {goalsByMatch[result.id]
-                                  .filter(g => g.team_type === 'home')
-                                  .map((goal) => (
-                                    <div key={goal.id} className="text-white text-sm sm:text-base">
-                                      <span className="truncate">
-                                        {goal.players
-                                          ? `${goal.players.first_name} ${goal.players.last_name}`
-                                          : `Igrač #${goal.player_id}`}
-                                      </span>
+                                {groupGoalsByPlayer(goalsByMatch[result.id].filter(g => g.team_type === 'home'))
+                                  .map((player, index) => (
+                                    <div key={index} className="text-white text-sm sm:text-base">
+                                      <div className="truncate flex justify-between">
+                                        <span>
+                                        {player.name}
+                                        </span>
+                                        <span className="text ml-1 leading-0 inline-flex items-center gap-0.5">{player.count > 1 && <span className="text-bold text-lg leading-0 text-yellow-400">{player.count}</span>} ⚽</span>
+                                      </div>
                                     </div>
                                   ))}
                               </div>
@@ -266,18 +291,18 @@ export default function ResultsSection() {
                           </div>
 
                           {/* Away goals */}
-                          <div>
+                          <div className="w-1/2">
                             {goalsByMatch[result.id].filter(g => g.team_type === 'away').length > 0 ? (
                               <div className="space-y-2 text-end">
-                                {goalsByMatch[result.id]
-                                  .filter(g => g.team_type === 'away')
-                                  .map((goal) => (
-                                    <div key={goal.id} className="text-white text-sm sm:text-base">
-                                      <span className="truncate">
-                                        {goal.players
-                                          ? `${goal.players.first_name} ${goal.players.last_name}`
-                                          : `Igrač #${goal.player_id}`}
-                                      </span>
+                                {groupGoalsByPlayer(goalsByMatch[result.id].filter(g => g.team_type === 'away'))
+                                  .map((player, index) => (
+                                    <div key={index} className="text-white text-sm sm:text-base">
+                                      <div className="truncate flex justify-between">
+                                        <span className="text ml-1 leading-0 inline-flex items-center gap-0.5">⚽{player.count > 1 && <span className="text-bold text-lg leading-0 text-yellow-400">{player.count}</span>}</span>
+                                        <span>
+                                        {player.name}
+                                        </span>
+                                      </div>
                                     </div>
                                   ))}
                               </div>
@@ -342,23 +367,22 @@ export default function ResultsSection() {
                             <div className="text-right">
                               {goalsByMatch[result.id].filter(g => g.team_type === 'home').length > 0 ? (
                                 <div className="space-y-1">
-                                  {goalsByMatch[result.id]
-                                    .filter(g => g.team_type === 'home')
-                                    .map((goal) => (
-                                      <div key={goal.id} className="text-white text-xs sm:text-sm">
-                                        {goal.players && goal.player_id ? (
+                                  {groupGoalsByPlayer(goalsByMatch[result.id].filter(g => g.team_type === 'home'))
+                                    .map((player, index) => (
+                                      <div key={index} className="text-white text-xs sm:text-sm">
+                                        {player.player && player.playerId ? (
                                           <Link
-                                            href={`/players/${goal.player_id}`}
+                                            href={`/players/${player.playerId}`}
                                             className="truncate hover:text-[#a80710] transition-colors cursor-pointer inline-block"
                                             onClick={(e) => e.stopPropagation()}
                                           >
-                                            {goal.players.first_name} {goal.players.last_name}
+                                            {player.name}
+                                            <span className="text ml-1 leading-0 inline-flex items-center gap-0.5">⚽{player.count > 1 && <span className="text-bold text-lg leading-0 text-yellow-400">{player.count}</span>}</span>
                                           </Link>
                                         ) : (
                                           <span className="truncate">
-                                            {goal.players
-                                              ? `${goal.players.first_name} ${goal.players.last_name}`
-                                              : `Igrač #${goal.player_id}`}
+                                            {player.name}
+                                            <span className="text ml-1 leading-0 inline-flex items-center gap-0.5">⚽{player.count > 1 && <span className="text-bold text-lg leading-0 text-yellow-400">{player.count}</span>}</span>
                                           </span>
                                         )}
                                       </div>
@@ -373,23 +397,22 @@ export default function ResultsSection() {
                             <div className="text-left">
                               {goalsByMatch[result.id].filter(g => g.team_type === 'away').length > 0 ? (
                                 <div className="space-y-1">
-                                  {goalsByMatch[result.id]
-                                    .filter(g => g.team_type === 'away')
-                                    .map((goal) => (
-                                      <div key={goal.id} className="text-white text-xs sm:text-sm">
-                                        {goal.players && goal.player_id ? (
+                                  {groupGoalsByPlayer(goalsByMatch[result.id].filter(g => g.team_type === 'away'))
+                                    .map((player, index) => (
+                                      <div key={index} className="text-white text-xs sm:text-sm">
+                                        {player.player && player.playerId ? (
                                           <Link
-                                            href={`/players/${goal.player_id}`}
+                                            href={`/players/${player.playerId}`}
                                             className="truncate hover:text-[#a80710] transition-colors cursor-pointer inline-block"
                                             onClick={(e) => e.stopPropagation()}
                                           >
-                                            {goal.players.first_name} {goal.players.last_name}
+                                            {player.name}
+                                            <span className="text ml-1 leading-0 inline-flex items-center gap-0.5">⚽{player.count > 1 && <span className="text-bold text-lg leading-0 text-yellow-400">{player.count}</span>}</span>
                                           </Link>
                                         ) : (
                                           <span className="truncate">
-                                            {goal.players
-                                              ? `${goal.players.first_name} ${goal.players.last_name}`
-                                              : `Igrač #${goal.player_id}`}
+                                            {player.name}
+                                            <span className="text ml-1 leading-0 inline-flex items-center gap-0.5">⚽{player.count > 1 && <span className="text-bold text-lg leading-0 text-yellow-400">{player.count}</span>}</span>
                                           </span>
                                         )}
                                       </div>

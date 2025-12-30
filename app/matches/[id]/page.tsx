@@ -53,6 +53,31 @@ export default function MatchDetailPage() {
     return team?.logo_url || '/placeholder-logo.svg'
   }
 
+  // Grupiše golove po igraču i vraća niz sa imenom i brojem golova
+  const groupGoalsByPlayer = (goals: GoalWithPlayer[]) => {
+    const grouped = new Map<string, { name: string; count: number; playerId: number | null; player: Player | null }>()
+    
+    goals.forEach((goal) => {
+      const playerKey = goal.player_id?.toString() || 'unknown'
+      const playerName = goal.players
+        ? `${goal.players.first_name} ${goal.players.last_name}`
+        : `Igrač #${goal.player_id}`
+      
+      if (grouped.has(playerKey)) {
+        grouped.get(playerKey)!.count++
+      } else {
+        grouped.set(playerKey, { 
+          name: playerName, 
+          count: 1, 
+          playerId: goal.player_id || null,
+          player: goal.players
+        })
+      }
+    })
+    
+    return Array.from(grouped.values())
+  }
+
   const fetchMatch = async () => {
     try {
       const response = await fetch(`/api/results/${params.id}`)
@@ -250,43 +275,27 @@ export default function MatchDetailPage() {
 
           {/* Goals */}
           {(homeGoals.length > 0 || awayGoals.length > 0) && (
-            <div className="bg-slate-800/50 border border-white/30 rounded-2xl sm:rounded-3xl p-6 sm:p-8 backdrop-blur-md shadow-2xl">
-              <h2 className="text-xl sm:text-2xl font-bold text-white mb-6">Strijelci</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+            <div className="bg-slate-800/50 border border-white/30 rounded-2xl sm:rounded-3xl p-2 sm:p-8 backdrop-blur-md shadow-2xl">
+              <h2 className="text-xl sm:text-2xl font-bold text-white text-center mb-4">Strijelci</h2>
+              <div className="flex gap-6">
                 {/* Home goals */}
-                <div>
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="relative w-8 h-8 rounded-lg overflow-hidden bg-slate-700/50 flex items-center justify-center shadow-md flex-shrink-0">
-                      <Image
-                        src={getTeamLogo(match.home_team)}
-                        alt={match.home_team}
-                        fill
-                        className="object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement
-                          target.src = '/placeholder-logo.svg'
-                        }}
-                      />
-                    </div>
-                    <h3 className="text-lg font-semibold text-white">{match.home_team}</h3>
-                  </div>
+                <div className="flex-1">
                   {homeGoals.length > 0 ? (
                     <div className="space-y-3">
-                      {homeGoals.map((goal) => (
-                        <div key={goal.id} className="flex items-center gap-3 p-3 bg-slate-700/30 rounded-lg">
-                          <span className="text-[#a80710] font-bold text-sm min-w-[3rem]">
-                            {goal.goal_minute}'
-                          </span>
-                          {goal.players && goal.player_id ? (
+                      {groupGoalsByPlayer(homeGoals).map((player, index) => (
+                        <div key={index} className="flex items-center gap-3 p-3 bg-slate-700/30 rounded-lg">
+                          {player.player && player.playerId ? (
                             <Link
-                              href={`/players/${goal.player_id}`}
-                              className="text-white hover:text-[#a80710] transition-colors cursor-pointer"
+                              href={`/players/${player.playerId}`}
+                              className="text-white hover:text-[#a80710] transition-colors cursor-pointer flex items-center gap-2"
                             >
-                              {goal.players.first_name} {goal.players.last_name}
+                              {player.name}
+                              <span className="inline-flex items-center gap-0.5">⚽{player.count > 1 && <span className="text-bold text-lg leading-0 text-yellow-400">{player.count}</span>}</span>
                             </Link>
                           ) : (
-                            <span className="text-white">
-                              {goal.players?.first_name} {goal.players?.last_name}
+                            <span className="text-white flex items-center gap-2">
+                              {player.name}
+                              <span className="inline-flex items-center gap-0.5">⚽{player.count > 1 && <span className="text-bold text-lg leading-0 text-yellow-400">{player.count}</span>}</span>
                             </span>
                           )}
                         </div>
@@ -298,39 +307,23 @@ export default function MatchDetailPage() {
                 </div>
 
                 {/* Away goals */}
-                <div>
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="relative w-8 h-8 rounded-lg overflow-hidden bg-slate-700/50 flex items-center justify-center shadow-md flex-shrink-0">
-                      <Image
-                        src={getTeamLogo(match.away_team)}
-                        alt={match.away_team}
-                        fill
-                        className="object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement
-                          target.src = '/placeholder-logo.svg'
-                        }}
-                      />
-                    </div>
-                    <h3 className="text-lg font-semibold text-white">{match.away_team}</h3>
-                  </div>
+                <div className="flex-1">
                   {awayGoals.length > 0 ? (
                     <div className="space-y-3">
-                      {awayGoals.map((goal) => (
-                        <div key={goal.id} className="flex items-center gap-3 p-3 bg-slate-700/30 rounded-lg">
-                          <span className="text-[#a80710] font-bold text-sm min-w-[3rem]">
-                            {goal.goal_minute}'
-                          </span>
-                          {goal.players && goal.player_id ? (
+                      {groupGoalsByPlayer(awayGoals).map((player, index) => (
+                        <div key={index} className="flex items-center gap-3 p-3 bg-slate-700/30 rounded-lg">
+                          {player.player && player.playerId ? (
                             <Link
-                              href={`/players/${goal.player_id}`}
-                              className="text-white hover:text-[#a80710] transition-colors cursor-pointer"
+                              href={`/players/${player.playerId}`}
+                              className="text-white hover:text-[#a80710] transition-colors cursor-pointer flex items-center gap-2"
                             >
-                              {goal.players.first_name} {goal.players.last_name}
+                              {player.name}
+                              <span className="inline-flex items-center gap-0.5">⚽{player.count > 1 && <span className="text-bold text-lg leading-0 text-yellow-400">{player.count}</span>}</span>
                             </Link>
                           ) : (
-                            <span className="text-white">
-                              {goal.players?.first_name} {goal.players?.last_name}
+                            <span className="text-white flex items-center gap-2">
+                              {player.name}
+                              <span className="inline-flex items-center gap-0.5">⚽{player.count > 1 && <span className="text-bold text-lg leading-0 text-yellow-400">{player.count}</span>}</span>
                             </span>
                           )}
                         </div>
@@ -346,7 +339,7 @@ export default function MatchDetailPage() {
 
           {/* Players */}
           {(homePlayers.length > 0 || awayPlayers.length > 0) && (
-            <div className="bg-slate-800/50 border border-white/30 rounded-2xl sm:rounded-3xl p-6 sm:p-8 backdrop-blur-md shadow-2xl">
+            <div className="bg-slate-800/50 border border-white/30 rounded-2xl sm:rounded-3xl p-2 sm:p-8 backdrop-blur-md shadow-2xl">
               <h2 className="text-xl sm:text-2xl font-bold text-white mb-6">Igrači</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
                 {/* Home players */}
