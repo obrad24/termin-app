@@ -92,7 +92,7 @@ export default function PlayersPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#a80710] pb-20 md:pb-0">
+    <main className="min-h-screen hero-bg pb-20 md:pb-0">
       <Header />
       <section className="relative px-2 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-4 sm:pt-28">
         <div className="space-y-6">
@@ -114,7 +114,7 @@ export default function PlayersPage() {
                 placeholder="Pretraži igrače..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-12 py-4 rounded-2xl bg-slate-800/50 border border-[#a80710]/30 text-white placeholder-white/40 focus:outline-none focus:border-[#a80710]/60 focus:ring-2 focus:ring-[#a80710]/20 transition-all"
+                className="w-full pl-12 pr-12 py-4 rounded-2xl bg-slate-800/50 border border-white/30 text-white placeholder-white/40 focus:outline-none focus:border-white/60 focus:ring-2 focus:ring-[#a80710]/20 transition-all"
               />
               {searchTerm && (
                 <button
@@ -141,7 +141,7 @@ export default function PlayersPage() {
               </p>
             </div>
           ) : (
-            <div className=" backdrop-blur-xl rounded-3xl border border-[#a80710]/30 sm:p-6">
+            <div className=" backdrop-blur-xl rounded-3xl sm:p-6">
               {/* Players Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {filteredPlayers.map((player) => {
@@ -180,7 +180,7 @@ export default function PlayersPage() {
                       )}
 
                       {/* Player Name Section */}
-                      <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-3 h-[36%] flex flex-col pt-3 gap-0.5">
+                      <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-3 h-[36%] flex flex-col pt-3 gap-0.5 px-1">
                         <div className='flex justify-center items-center'>
                           <h3 className="font-bold text-black text-base sm:text-sm truncate text-center">
                             {player.first_name.charAt(0).toUpperCase()}. {player.last_name}
@@ -188,7 +188,7 @@ export default function PlayersPage() {
                         </div>
 
                         {/* Player Attributes */}
-                        <div className="flex text-sm justify-around px-[6px]">
+                        <div className="flex text-sm justify-around">
                           {player.pace !== null && player.pace !== undefined && (
                             <div className="flex flex-col items-center">
                               <span className="text-black text-[10px] font-semibold">PAC</span>

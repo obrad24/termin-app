@@ -164,7 +164,7 @@ export default function PlayerProfilePage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#a80710] pt-16 pb-20 md:pb-0">
+      <main className="min-h-screen hero-bg pt-16 pb-20 md:pb-0">
         <Header />
         <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-4 sm:pt-28">
           <div className="text-white text-center py-12">Učitavanje...</div>
@@ -175,7 +175,7 @@ export default function PlayerProfilePage() {
 
   if (!player) {
     return (
-      <main className="min-h-screen bg-[#a80710] pt-16 pb-20 md:pb-0">
+      <main className="min-h-screen hero-bg pt-16 pb-20 md:pb-0">
         <Header />
         <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-4 sm:pt-28">
           <div className="text-white text-center py-12">
@@ -190,11 +190,11 @@ export default function PlayerProfilePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#a80710] relative overflow-hidden pb-24">
+    <main className="min-h-screen hero-bg relative overflow-hidden pb-24">
       <Header />
 
       {/* Hero Section with Player Image */}
-      <div className="relative w-full min-h-[60vh] sm:min-h-[70vh] md:min-h-[80vh] flex items-center justify-center overflow-hidden bg-[#a80710]">
+      <div className="relative w-full min-h-[60vh] sm:min-h-[70vh] md:min-h-[80vh] flex items-center justify-center overflow-hidden hero-bg">
         {/* Player Background Image */}
         <div className="absolute inset-0 z-0 flex items-center justify-center">
           <div className="relative w-full h-full max-w-4xl mx-auto">

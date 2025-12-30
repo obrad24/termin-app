@@ -150,3 +150,51 @@
   background-position: center;
   background-repeat: no-repeat;
 }
+
+.hero-bg {
+  background: 
+    /* Base dark gradient */
+    linear-gradient(
+      135deg,
+      #0a0d1a 0%,
+      #0f1525 20%,
+      #141b2e 40%,
+      #1a2340 60%,
+      #152035 80%,
+      #0d121f 100%
+    ),
+    /* Blue glow from top */
+    radial-gradient(
+      ellipse 120% 80% at 50% 0%,
+      rgba(59, 130, 246, 0.15) 0%,
+      rgba(37, 99, 235, 0.1) 30%,
+      transparent 70%
+    ),
+    /* Purple glow from bottom right */
+    radial-gradient(
+      ellipse 100% 100% at 100% 100%,
+      rgba(139, 92, 246, 0.2) 0%,
+      rgba(124, 58, 237, 0.15) 40%,
+      transparent 80%
+    ),
+    /* Subtle blue accent top left */
+    radial-gradient(
+      circle at 0% 0%,
+      rgba(96, 165, 250, 0.1) 0%,
+      transparent 50%
+    ),
+    /* Dark overlay for depth */
+    linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.3) 0%,
+      transparent 50%,
+      rgba(0, 0, 0, 0.2) 100%
+    );
+  background-blend-mode: normal, screen, screen, normal, multiply;
+  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+
+  

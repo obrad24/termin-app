@@ -133,7 +133,7 @@ export default function MatchesPage() {
   }, {} as Record<string, Result[]>)
 
   return (
-    <main className="min-h-screen bg-[#a80710] pb-20 md:pb-0">
+    <main className="min-h-screen hero-bg pb-20 md:pb-0">
       <Header />
       <section className="relative px-2 sm:px-6 lg:px-8 sm:py-12 max-w-7xl mx-auto sm:pt-28 pt-4">
         <div className="space-y-6 sm:space-y-8">
@@ -157,7 +157,7 @@ export default function MatchesPage() {
                 <div className="space-y-3 sm:space-y-4">
                   {dateResults.map((result) => (
                     <Link key={result.id} href={`/matches/${result.id}`} className="block">
-                      <div className="bg-slate-800/50 border border-[#a80710]/30 rounded-2xl sm:rounded-3xl p-2 sm:p-6 md:p-8 lg:p-12 backdrop-blur-md shadow-2xl hover:border-[#a80710]/60 transition-all hover:shadow-2xl hover:scale-[1.01] sm:hover:scale-[1.02] cursor-pointer">
+                      <div className="bg-slate-800/50 border border-white/30 rounded-2xl sm:rounded-3xl p-2 sm:p-6 md:p-8 lg:p-12 backdrop-blur-md shadow-2xl hover:border-white/60 transition-all hover:shadow-2xl hover:scale-[1.01] sm:hover:scale-[1.02] cursor-pointer">
                         {/* Mobile Layout */}
                         <div className="md:hidden space-y-4">
                           {/* Teams - Mobile */}

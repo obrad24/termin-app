@@ -71,7 +71,7 @@ export default function MatchDetailPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#a80710] pb-20 md:pb-0">
+      <main className="min-h-screen hero-bg pb-20 md:pb-0">
         <Header />
         <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-24 sm:pt-28">
           <div className="text-white text-center py-12">Učitavanje...</div>
@@ -82,7 +82,7 @@ export default function MatchDetailPage() {
 
   if (!match) {
     return (
-      <main className="min-h-screen bg-[#a80710] pb-20 md:pb-0">
+      <main className="min-h-screen hero-bg pb-20 md:pb-0">
         <Header />
         <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-24 sm:pt-28">
           <div className="text-white text-center py-12">
@@ -102,7 +102,7 @@ export default function MatchDetailPage() {
   const awayPlayers = match.players?.filter(p => p.team_type === 'away') || []
 
   return (
-    <main className="min-h-screen bg-[#a80710]">
+    <main className="min-h-screen hero-bg">
       <Header />
       <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto">
         <div className="space-y-6 sm:space-y-8">
@@ -116,7 +116,7 @@ export default function MatchDetailPage() {
           </Link>
 
           {/* Match header */}
-          <div className="bg-slate-800/50 border border-[#a80710]/30 rounded-2xl sm:rounded-3xl p-2 sm:p-6 md:p-8 lg:p-12 backdrop-blur-md shadow-2xl">
+          <div className="bg-slate-800/50 border border-white/30 rounded-2xl sm:rounded-3xl p-2 sm:p-6 md:p-8 lg:p-12 backdrop-blur-md shadow-2xl">
             {/* Mobile Layout */}
             <div className="md:hidden space-y-4">
               {/* Teams - Mobile */}
@@ -250,7 +250,7 @@ export default function MatchDetailPage() {
 
           {/* Goals */}
           {(homeGoals.length > 0 || awayGoals.length > 0) && (
-            <div className="bg-slate-800/50 border border-[#a80710]/30 rounded-2xl sm:rounded-3xl p-6 sm:p-8 backdrop-blur-md shadow-2xl">
+            <div className="bg-slate-800/50 border border-white/30 rounded-2xl sm:rounded-3xl p-6 sm:p-8 backdrop-blur-md shadow-2xl">
               <h2 className="text-xl sm:text-2xl font-bold text-white mb-6">Strijelci</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
                 {/* Home goals */}
@@ -328,7 +328,7 @@ export default function MatchDetailPage() {
 
           {/* Players */}
           {(homePlayers.length > 0 || awayPlayers.length > 0) && (
-            <div className="bg-slate-800/50 border border-[#a80710]/30 rounded-2xl sm:rounded-3xl p-6 sm:p-8 backdrop-blur-md shadow-2xl">
+            <div className="bg-slate-800/50 border border-white/30 rounded-2xl sm:rounded-3xl p-6 sm:p-8 backdrop-blur-md shadow-2xl">
               <h2 className="text-xl sm:text-2xl font-bold text-white mb-6">Igrači</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
                 {/* Home players */}

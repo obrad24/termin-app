@@ -52,7 +52,7 @@ export default function Header() {
           </SheetTrigger>
           <SheetContent 
             side="right" 
-            className="!w-full sm:!w-[380px] bg-[#a80710] backdrop-blur-xl border-l border-blue-500/20 p-0 [&>button]:hidden"
+            className="!w-full sm:!w-[380px] hero-bg backdrop-blur-xl border-l border-blue-500/20 p-0 [&>button]:hidden"
           >
             <SheetHeader className="sr-only">
               <SheetTitle>Navigation Menu</SheetTitle>
@@ -136,7 +136,7 @@ export default function Header() {
       </button>
 
       {/* Mobile Bottom Navigation - Fixed navigation buttons */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#a80710]/50 backdrop-blur-xl border-t border-white/20 rounded-t-3xl">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 hero-bg/50 backdrop-blur-xl border-t border-white/20 rounded-t-3xl">
         <div className="flex items-center justify-around px-2 py-2">
           <Link
             href="/"

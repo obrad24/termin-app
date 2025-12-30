@@ -319,7 +319,7 @@ export default function NewMatchPage() {
 
   if (loadingData) {
     return (
-      <div className="min-h-screen bg-[#a80710] flex items-center justify-center px-4">
+      <div className="min-h-screen hero-bg flex items-center justify-center px-4">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <div className="text-center text-white">Učitavanje...</div>
@@ -335,7 +335,7 @@ export default function NewMatchPage() {
   const selectedPlayers = getSelectedPlayers()
 
   return (
-    <div className="min-h-screen bg-[#a80710] py-4 sm:py-8 px-4 sm:px-6">
+    <div className="min-h-screen hero-bg py-4 sm:py-8 px-4 sm:px-6">
       <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">

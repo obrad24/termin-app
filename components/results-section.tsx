@@ -182,7 +182,7 @@ export default function ResultsSection() {
             <div className="space-y-3 sm:space-y-4">
               {dateResults.map((result) => (
                 <Link key={result.id} href={`/matches/${result.id}`} className="block">
-                  <div className="bg-slate-800/50 border z-20 border-[#a80710]/30 rounded-2xl sm:rounded-3xl p-2 sm:p-6 md:p-8 lg:p-12 backdrop-blur-md shadow-2xl hover:border-[#a80710]/60 transition-all hover:shadow-2xl hover:scale-[1.01] sm:hover:scale-[1.02] cursor-pointer">
+                  <div className="bg-slate-800/50 border z-20 border-white/30 rounded-2xl sm:rounded-3xl p-2 sm:p-6 md:p-8 lg:p-12 backdrop-blur-md shadow-2xl hover:border-white/60 transition-all hover:shadow-2xl hover:scale-[1.01] sm:hover:scale-[1.02] cursor-pointer">
                     {/* Mobile Layout */}
                     <div className="md:hidden space-y-4">
                       {/* Teams - Mobile */}
@@ -418,7 +418,7 @@ export default function ResultsSection() {
               <Button
                 variant="outline"
                 size="lg"
-                className="bg-slate-800/50 border border-[#a80710]/30 text-white hover:bg-[#a80710]/20 hover:border-[#a80710]/60"
+                className="bg-slate-800/50 border border-[#60a5fa]/30 text-white hover:bg-[#60a5fa]/20 hover:border-[#60a5fa]/60"
               >
                 Prikaži više
               </Button>

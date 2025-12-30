@@ -82,7 +82,7 @@ export default function StatisticsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#a80710] pt-4 pb-20 md:pb-0">
+    <main className="min-h-screen hero-bg pt-4 pb-20 md:pb-0">
       <Header />
       <section className="relative px-2 sm:px-6 lg:px-8 sm:py-12 max-w-7xl mx-auto sm:pt-28">
         <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-3 sm:mb-8">Statistika</h2>
@@ -97,7 +97,7 @@ export default function StatisticsPage() {
               </p>
             </div>
           ) : (
-            <div className="backdrop-blur-xl rounded-3xl border border-[#a80710]/30 sm:p-6">
+            <div className="backdrop-blur-xl rounded-3xl sm:p-6">
               {/* Top Scorer */}
               {topScorers.length >= 1 && (
                 <Link
@@ -154,11 +154,11 @@ export default function StatisticsPage() {
                   <Link
                     key={player.id}
                     href={`/players/${player.id}`}
-                    className="flex items-center gap-4 px-2 py-4 bg-slate-800/50 rounded-xl border border-[#a80710]/30 hover:border-[#a80710]/60 transition-all cursor-pointer"
+                    className="flex items-center gap-4 px-2 py-4 bg-slate-800/50 rounded-xl border border-white/30 hover:border-white/60 transition-all cursor-pointer"
                   >
 
                     {/* Player Image */}
-                    <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border border-[#a80710]/30 bg-slate-700/50 shrink-0">
+                    <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border border-white/30 bg-slate-700/50 shrink-0">
                       <Image
                         src={getPlayerImageUrl(player.image_url)}
                         alt={`${player.first_name} ${player.last_name}`}
