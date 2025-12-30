@@ -156,7 +156,6 @@ export default function StatisticsPage() {
                     className="flex items-center gap-4 px-2 py-4 bg-slate-800/50 rounded-xl border border-white/30 hover:border-white/60 transition-all cursor-pointer"
                   >
 
-                    {/* Player Image */}
                     <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border border-white/30 shrink-0 flex items-center justify-center">
                       <Image
                         src={getPlayerImageUrl(player.image_url)}
