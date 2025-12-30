@@ -30,6 +30,20 @@ export async function GET() {
     return NextResponse.json(data || [])
   } catch (error: any) {
     console.error('Error:', error)
+    
+    // Proveri da li je timeout greška
+    if (error.message?.includes('timeout') || error.message?.includes('TIMEOUT') || error.cause?.code === 'UND_ERR_CONNECT_TIMEOUT') {
+      return NextResponse.json(
+        { 
+          error: 'Connection timeout',
+          message: 'Supabase connection timed out. Please check your network connection and Supabase URL.',
+          details: error.message,
+          hint: 'Verify that NEXT_PUBLIC_SUPABASE_URL is correct and that your Supabase project is active.'
+        },
+        { status: 504 }
+      )
+    }
+    
     return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 })
   }
 }
@@ -116,6 +130,20 @@ export async function POST(request: Request) {
     return NextResponse.json(data, { status: 201 })
   } catch (error: any) {
     console.error('Error:', error)
+    
+    // Proveri da li je timeout greška
+    if (error.message?.includes('timeout') || error.message?.includes('TIMEOUT') || error.cause?.code === 'UND_ERR_CONNECT_TIMEOUT') {
+      return NextResponse.json(
+        { 
+          error: 'Connection timeout',
+          message: 'Supabase connection timed out. Please check your network connection and Supabase URL.',
+          details: error.message,
+          hint: 'Verify that NEXT_PUBLIC_SUPABASE_URL is correct and that your Supabase project is active.'
+        },
+        { status: 504 }
+      )
+    }
+    
     return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 })
   }
 }

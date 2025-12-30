@@ -169,7 +169,7 @@ export default function HeroSection() {
           </span>
         </div>
       </div>
-      <div className="absolute inset-0 w-full h-full z-[15]" style={{ background: 'linear-gradient(to top, #a80710 0%, #a80710 33%, rgba(168, 7, 16, 0.5) 66%, transparent 100%)' }}></div>
+      <div className="absolute inset-0 w-full h-full z-[15]" style={{ background: 'linear-gradient(to top, rgba(10, 13, 26, 0.95) 0%, rgba(15, 21, 37, 0.85) 25%, rgba(20, 27, 46, 0.6) 50%, rgba(168, 7, 16, 0.2) 75%, transparent 100%)' }}></div>
       <div className='rajko absolute bottom-0 left-0 h-10 w-full bg-black'></div>
     </section>
   )

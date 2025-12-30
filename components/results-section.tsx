@@ -168,7 +168,7 @@ export default function ResultsSection() {
     <section className="relative px-2 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-4">
 
       <div className="space-y-6 sm:space-y-8">
-        <div className="absolute inset-0 w-full h-[100px] bg-gradient-to-b from-[#a80710] via-[#a80710]/50 to-transparent z-[15]"></div>
+        <div className="absolute inset-0 w-full h-[100px] bg-gradient-to-b from-[rgba(10,13,26,0.95)] via-[rgba(15,21,37,0.6)] to-transparent z-[15]"></div>
         <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-3 sm:mb-8 text-center z-20 relative">Rezultati</h2>
 
         {Object.entries(groupedResults).map(([date, dateResults]) => (

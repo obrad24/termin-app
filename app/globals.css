@@ -193,7 +193,6 @@
   background-blend-mode: normal, screen, screen, normal, multiply;
   background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
   background-attachment: fixed;
-  min-height: 100vh;
 }
 
 

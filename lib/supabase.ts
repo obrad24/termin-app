@@ -13,9 +13,50 @@ export const isSupabaseConfigured = () => {
            supabaseAnonKey !== 'your-anon-key-here')
 }
 
+// Helper funkcija za kreiranje fetch sa timeout-om
+const createFetchWithTimeout = (timeoutMs: number = 8000) => {
+  return (url: RequestInfo | URL, options: RequestInit = {}) => {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+    
+    return fetch(url, {
+      ...options,
+      signal: options.signal 
+        ? (() => {
+            // Kombinuj postojeći signal sa timeout signalom
+            const combinedController = new AbortController()
+            const originalSignal = options.signal
+            
+            originalSignal.addEventListener('abort', () => {
+              combinedController.abort()
+            })
+            
+            controller.signal.addEventListener('abort', () => {
+              combinedController.abort()
+            })
+            
+            return combinedController.signal
+          })()
+        : controller.signal,
+    }).finally(() => {
+      clearTimeout(timeoutId)
+    })
+  }
+}
+
 // Kreiraj klijent - API routes će proveriti pre korišćenja
 export const supabase: SupabaseClient = isSupabaseConfigured()
-  ? createClient(supabaseUrl, supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      db: {
+        schema: 'public',
+      },
+      auth: {
+        persistSession: false,
+      },
+      global: {
+        fetch: createFetchWithTimeout(8000),
+      },
+    })
   : createClient('https://placeholder.supabase.co', 'placeholder-key')
 
 // Tipovi za rezultate
