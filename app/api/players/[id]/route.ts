@@ -213,7 +213,8 @@ export async function PUT(
       passing,
       dribbling,
       defending,
-      physical
+      physical,
+      stamina
     } = body
 
     const id = parseInt(idParam, 10)
@@ -252,6 +253,7 @@ export async function PUT(
         dribbling: validateRating(dribbling),
         defending: validateRating(defending),
         physical: validateRating(physical),
+        stamina: validateRating(stamina),
       })
       .eq('id', id)
       .select()

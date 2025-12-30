@@ -43,6 +43,7 @@ export interface Player {
   dribbling?: number | null
   defending?: number | null
   physical?: number | null
+  stamina?: number | null
   created_at?: string
 }
 

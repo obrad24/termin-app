@@ -6,10 +6,12 @@ import Header from '@/components/header'
 import Image from 'next/image'
 import Link from 'next/link'
 import { getPlayerImageUrl } from '@/lib/image-utils'
+import { Star } from 'lucide-react'
 
 interface PlayerWithStats extends Player {
   goals: number
   matches_played: number
+  average_rating: number | null
 }
 
 export default function PlayersPage() {
@@ -30,6 +32,7 @@ export default function PlayersPage() {
       if (response.ok) {
         if (contentType && contentType.includes('application/json')) {
           const data = await response.json()
+          console.log('Fetched players:', data?.length || 0, 'players')
           setPlayers(data || [])
         }
       } else {
@@ -77,6 +80,15 @@ export default function PlayersPage() {
         ? prev.filter(id => id !== playerId)
         : [...prev, playerId]
     )
+  }
+
+  const getRatingColor = (rating: number): string => {
+    if (rating >= 0 && rating <= 59) return '#E53935' // 🔴
+    if (rating >= 60 && rating <= 64) return '#FB8C00' // 🟠
+    if (rating >= 65 && rating <= 69) return '#FDD835' // 🟡
+    if (rating >= 70 && rating <= 79) return '#43A047' // 🟢
+    if (rating >= 80 && rating <= 100) return '#1B5E20' // 🟢 tamno zelena
+    return '#000000' // default crna
   }
 
   return (
@@ -155,6 +167,18 @@ export default function PlayersPage() {
                             target.src = '/no-image-player.png'
                           }}
                         />
+                        {/* Average Rating Badge */}
+                        {player.average_rating !== null && (
+                          <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
+                            <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                            <span 
+                              className="text-xs font-bold"
+                              style={{ color: getRatingColor(player.average_rating) }}
+                            >
+                              {player.average_rating}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Player Name */}

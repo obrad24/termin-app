@@ -131,12 +131,30 @@ export async function GET() {
       }
     }
 
-    // Kombinovanje podataka
-    const playersWithStats = players.map((player) => ({
-      ...player,
-      goals: goalsByPlayer[player.id] || 0,
-      matches_played: matchesByPlayer[player.id]?.size || 0,
-    }))
+    // Kombinovanje podataka sa ocenama
+    const playersWithStats = players.map((player) => {
+      // Izračunaj prosečnu ocenu
+      const ratings = [
+        player.pace,
+        player.shooting,
+        player.passing,
+        player.dribbling,
+        player.defending,
+        player.physical,
+        player.stamina,
+      ].filter((r): r is number => r !== null && r !== undefined)
+      
+      const averageRating = ratings.length > 0
+        ? Math.round(ratings.reduce((sum, r) => sum + r, 0) / ratings.length)
+        : null
+
+      return {
+        ...player,
+        goals: goalsByPlayer[player.id] || 0,
+        matches_played: matchesByPlayer[player.id]?.size || 0,
+        average_rating: averageRating,
+      }
+    })
 
     return NextResponse.json(playersWithStats)
   } catch (error: any) {

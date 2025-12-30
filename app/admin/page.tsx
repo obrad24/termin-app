@@ -83,6 +83,7 @@ export default function AdminPage() {
     dribbling: '',
     defending: '',
     physical: '',
+    stamina: '',
   })
   const { toast } = useToast()
 
@@ -324,6 +325,7 @@ export default function AdminPage() {
           dribbling: editPlayerRatings.dribbling || null,
           defending: editPlayerRatings.defending || null,
           physical: editPlayerRatings.physical || null,
+          stamina: editPlayerRatings.stamina || null,
         }),
       })
 
@@ -928,6 +930,7 @@ export default function AdminPage() {
                               dribbling: player.dribbling?.toString() || '',
                               defending: player.defending?.toString() || '',
                               physical: player.physical?.toString() || '',
+                              stamina: player.stamina?.toString() || '',
                             })
                           }}
                           className="text-blue-500 hover:text-blue-600 flex-shrink-0"
@@ -1398,6 +1401,7 @@ export default function AdminPage() {
               dribbling: '',
               defending: '',
               physical: '',
+              stamina: '',
             })
           }
         }}>
@@ -1513,7 +1517,7 @@ export default function AdminPage() {
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     <div>
-                      <Label htmlFor="edit_pace">Pace (Brzina)</Label>
+                      <Label htmlFor="edit_pace">Pace</Label>
                       <Input
                         id="edit_pace"
                         type="number"
@@ -1527,7 +1531,7 @@ export default function AdminPage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="edit_shooting">Shooting (Šut)</Label>
+                      <Label htmlFor="edit_shooting">Shooting</Label>
                       <Input
                         id="edit_shooting"
                         type="number"
@@ -1541,7 +1545,7 @@ export default function AdminPage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="edit_passing">Passing (Dodavanje)</Label>
+                      <Label htmlFor="edit_passing">Passing</Label>
                       <Input
                         id="edit_passing"
                         type="number"
@@ -1555,7 +1559,7 @@ export default function AdminPage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="edit_dribbling">Dribbling (Dribling)</Label>
+                      <Label htmlFor="edit_dribbling">Dribbling</Label>
                       <Input
                         id="edit_dribbling"
                         type="number"
@@ -1569,7 +1573,7 @@ export default function AdminPage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="edit_defending">Defending (Odbrana)</Label>
+                      <Label htmlFor="edit_defending">Defending</Label>
                       <Input
                         id="edit_defending"
                         type="number"
@@ -1583,7 +1587,7 @@ export default function AdminPage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="edit_physical">Physical (Fizička snaga)</Label>
+                      <Label htmlFor="edit_physical">Physical</Label>
                       <Input
                         id="edit_physical"
                         type="number"
@@ -1592,6 +1596,20 @@ export default function AdminPage() {
                         value={editPlayerRatings.physical}
                         onChange={(e) =>
                           setEditPlayerRatings({ ...editPlayerRatings, physical: e.target.value })
+                        }
+                        placeholder="0-100"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit_stamina">Stamina</Label>
+                      <Input
+                        id="edit_stamina"
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={editPlayerRatings.stamina}
+                        onChange={(e) =>
+                          setEditPlayerRatings({ ...editPlayerRatings, stamina: e.target.value })
                         }
                         placeholder="0-100"
                       />
@@ -1612,6 +1630,7 @@ export default function AdminPage() {
                         dribbling: '',
                         defending: '',
                         physical: '',
+                        stamina: '',
                       })
                     }}
                   >

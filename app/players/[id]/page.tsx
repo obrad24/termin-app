@@ -25,6 +25,7 @@ interface PlayerWithStats {
   dribbling?: number | null
   defending?: number | null
   physical?: number | null
+  stamina?: number | null
   goals_details: Array<{
     id: number
     goal_minute?: number | null
@@ -233,6 +234,7 @@ export default function PlayerProfilePage() {
                 player.dribbling,
                 player.defending,
                 player.physical,
+                player.stamina,
               ].filter((r): r is number => r !== null && r !== undefined)
 
               const averageRating = ratings.length > 0
@@ -249,20 +251,22 @@ export default function PlayerProfilePage() {
               }
 
               return averageRating !== null ? (
-                <div className="absolute top-0 right-0 w-[90px] h-[120px] sm:w-24 sm:h-24 md:w-28 md:h-28">
-                  <Image
-                    src="/pozadina-att.webp"
-                    alt="Star"
-                    fill
-                    className="object-contain"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center">
+                <div className="absolute top-0 right-0 w-[70px] h-[80px] bg-gradient-to-b from-slate-800 to-slate-900 rounded-b-full flex items-center justify-center border-2 border-white/20 shadow-2xl">
+                  <div className="relative">
                     <span 
-                      className="text-[54px] sm:text-4xl md:text-5xl font-black drop-shadow-lg"
+                      className="text-[52px] sm:text-4xl md:text-5xl font-black relative z-10"
                       style={{ 
                         color: getRatingColor(averageRating),
-                        WebkitTextStroke: '1.5px #ffffff',
-                        textShadow: '0 0 3px rgba(0, 0, 0, 0.8), 0 0 3px rgba(0, 0, 0, 0.8)'
+                        textShadow: '0 0 10px rgba(0, 0, 0, 0.8), 0 2px 4px rgba(0, 0, 0, 0.9), 0 0 20px currentColor',
+                      }}
+                    >
+                      {averageRating}
+                    </span>
+                    {/* Glow effect */}
+                    <span 
+                      className="absolute inset-0 text-[52px] sm:text-4xl md:text-5xl font-black blur-sm opacity-50"
+                      style={{ 
+                        color: getRatingColor(averageRating),
                       }}
                     >
                       {averageRating}
@@ -285,7 +289,8 @@ export default function PlayerProfilePage() {
             (player.passing !== null && player.passing !== undefined) ||
             (player.dribbling !== null && player.dribbling !== undefined) ||
             (player.defending !== null && player.defending !== undefined) ||
-            (player.physical !== null && player.physical !== undefined)) && (
+            (player.physical !== null && player.physical !== undefined) ||
+            (player.stamina !== null && player.stamina !== undefined)) && (
               <div className="relative px-4 sm:px-6 bg-[#d7b35f] mb-4 py-1 rounded-full w-[95%] mx-auto">
                 <div className="flex gap-2 justify-around px-4 font-black">
                   {player.pace !== null && player.pace !== undefined && (
@@ -327,6 +332,13 @@ export default function PlayerProfilePage() {
                     <div className="flex flex-col items-center">
                       <span className='text-sm'>PHY</span>
                       <span className='text-[24px] leading-7'>{player.physical}</span>
+                    </div>
+                  )}
+
+                  {player.stamina !== null && player.stamina !== undefined && (
+                    <div className="flex flex-col items-center">
+                      <span className='text-sm'>STA</span>
+                      <span className='text-[24px] leading-7'>{player.stamina}</span>
                     </div>
                   )}
                 </div>

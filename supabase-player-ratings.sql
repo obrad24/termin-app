@@ -8,7 +8,8 @@ ADD COLUMN IF NOT EXISTS shooting INTEGER CHECK (shooting >= 0 AND shooting <= 1
 ADD COLUMN IF NOT EXISTS passing INTEGER CHECK (passing >= 0 AND passing <= 100),
 ADD COLUMN IF NOT EXISTS dribbling INTEGER CHECK (dribbling >= 0 AND dribbling <= 100),
 ADD COLUMN IF NOT EXISTS defending INTEGER CHECK (defending >= 0 AND defending <= 100),
-ADD COLUMN IF NOT EXISTS physical INTEGER CHECK (physical >= 0 AND physical <= 100);
+ADD COLUMN IF NOT EXISTS physical INTEGER CHECK (physical >= 0 AND physical <= 100),
+ADD COLUMN IF NOT EXISTS stamina INTEGER CHECK (stamina >= 0 AND stamina <= 100);
 
 -- Komentar za dokumentaciju
 COMMENT ON COLUMN players.pace IS 'Brzina igrača (0-100)';
@@ -17,4 +18,5 @@ COMMENT ON COLUMN players.passing IS 'Dodavanje igrača (0-100)';
 COMMENT ON COLUMN players.dribbling IS 'Dribling igrača (0-100)';
 COMMENT ON COLUMN players.defending IS 'Odbrana igrača (0-100)';
 COMMENT ON COLUMN players.physical IS 'Fizička snaga igrača (0-100)';
+COMMENT ON COLUMN players.stamina IS 'Stamina igrača (0-100)';
 
