@@ -80,6 +80,9 @@ export async function POST(request: Request) {
       home_score, 
       away_score, 
       date,
+      odds_1,
+      odds_x,
+      odds_2,
       goals = [],
       players = []
     } = body
@@ -102,6 +105,9 @@ export async function POST(request: Request) {
           home_score: parseInt(home_score),
           away_score: parseInt(away_score),
           date,
+          odds_1: odds_1 ? parseFloat(odds_1) : null,
+          odds_x: odds_x ? parseFloat(odds_x) : null,
+          odds_2: odds_2 ? parseFloat(odds_2) : null,
         },
       ])
       .select()

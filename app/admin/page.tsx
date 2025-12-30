@@ -89,6 +89,23 @@ export default function AdminPage() {
     stamina: '',
   })
   const [ratingBonus, setRatingBonus] = useState<string>('')
+  const [nextMatch, setNextMatch] = useState<{
+    home_team: string
+    away_team: string
+    match_date: string
+    odds_1: string
+    odds_x: string
+    odds_2: string
+  }>({
+    home_team: '',
+    away_team: '',
+    match_date: new Date().toISOString().split('T')[0],
+    odds_1: '',
+    odds_x: '',
+    odds_2: '',
+  })
+  const [loadingNextMatch, setLoadingNextMatch] = useState(true)
+  const [showTerminBetDialog, setShowTerminBetDialog] = useState(false)
   const { toast } = useToast()
 
   const checkAuth = async () => {
@@ -101,6 +118,7 @@ export default function AdminPage() {
           fetchResults()
           fetchPlayers()
           fetchTeams()
+          fetchNextMatch()
         }
       }
     } catch (error) {
@@ -127,6 +145,7 @@ export default function AdminPage() {
         fetchResults()
         fetchPlayers()
         fetchTeams()
+        fetchNextMatch()
         toast({
           title: 'Uspešno prijavljivanje',
           description: 'Dobrodošli u admin dashboard',
@@ -204,6 +223,79 @@ export default function AdminPage() {
       console.error('Error fetching teams:', error)
     } finally {
       setLoadingTeams(false)
+    }
+  }
+
+  const fetchNextMatch = async () => {
+    setLoadingNextMatch(true)
+    try {
+      const response = await fetch('/api/next-match')
+      if (response.ok) {
+        const data = await response.json()
+        if (data) {
+          setNextMatch({
+            home_team: data.home_team || '',
+            away_team: data.away_team || '',
+            match_date: data.match_date ? new Date(data.match_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            odds_1: data.odds_1?.toString() || '',
+            odds_x: data.odds_x?.toString() || '',
+            odds_2: data.odds_2?.toString() || '',
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching next match:', error)
+    } finally {
+      setLoadingNextMatch(false)
+    }
+  }
+
+  const handleSaveNextMatch = async () => {
+    setLoading(true)
+    try {
+      if (!nextMatch.home_team || !nextMatch.away_team) {
+        toast({
+          title: 'Greška',
+          description: 'Morate izabrati oba tima',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      const response = await fetch('/api/next-match', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          home_team: nextMatch.home_team,
+          away_team: nextMatch.away_team,
+          match_date: nextMatch.match_date,
+          odds_1: nextMatch.odds_1 ? parseFloat(nextMatch.odds_1) : null,
+          odds_x: nextMatch.odds_x ? parseFloat(nextMatch.odds_x) : null,
+          odds_2: nextMatch.odds_2 ? parseFloat(nextMatch.odds_2) : null,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Greška pri čuvanju sledećeg meča')
+      }
+
+      toast({
+        title: 'Uspešno!',
+        description: 'Sledeći meč je sačuvan',
+      })
+
+      fetchNextMatch()
+    } catch (error: any) {
+      toast({
+        title: 'Greška',
+        description: error.message || 'Nešto je pošlo po zlu',
+        variant: 'destructive',
+      })
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -505,6 +597,176 @@ export default function AdminPage() {
             </Button>
           </div>
         </div>
+
+        {/* TerminBet Button */}
+        <div className="mb-6">
+          <Button
+            onClick={() => setShowTerminBetDialog(true)}
+            className="w-full sm:w-auto relative overflow-hidden bg-[#280071]"
+            size="lg"
+            variant="outline"
+          >
+            <div className="absolute top-0 left-0 w-[25%] h-full bg-amber-400 z-0"></div>
+            <div className="absolute top-0 right-0 w-[25%] h-full bg-amber-400 z-0"></div>
+            <span className='text-white text-2xl font-bold'>
+              TerminBet
+            </span>
+          </Button>
+        </div>
+
+        {/* TerminBet Dialog */}
+        <Dialog open={showTerminBetDialog} onOpenChange={setShowTerminBetDialog}>
+          <DialogContent className="max-w-2xl h-[80vh] flex flex-col w-[95%]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                TerminBet
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+              {loadingNextMatch ? (
+                <div className="text-center py-4 text-muted-foreground">Učitavanje...</div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="next_home_team">Domaći tim</Label>
+                      {teams.length === 0 ? (
+                        <div className="text-sm text-muted-foreground py-2">
+                          Nema timova. Dodajte timove prvo.
+                        </div>
+                      ) : (
+                        <Select
+                          value={nextMatch.home_team}
+                          onValueChange={(value) =>
+                            setNextMatch({ ...nextMatch, home_team: value })
+                          }
+                        >
+                          <SelectTrigger id="next_home_team">
+                            <SelectValue placeholder="Izaberi tim" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {teams.map((team) => (
+                              <SelectItem key={team.id} value={team.name}>
+                                {team.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="next_away_team">Gostujući tim</Label>
+                      {teams.length === 0 ? (
+                        <div className="text-sm text-muted-foreground py-2">
+                          Nema timova. Dodajte timove prvo.
+                        </div>
+                      ) : (
+                        <Select
+                          value={nextMatch.away_team}
+                          onValueChange={(value) =>
+                            setNextMatch({ ...nextMatch, away_team: value })
+                          }
+                        >
+                          <SelectTrigger id="next_away_team">
+                            <SelectValue placeholder="Izaberi tim" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {teams.map((team) => (
+                              <SelectItem key={team.id} value={team.name}>
+                                {team.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="next_match_date">Datum meča</Label>
+                    <Input
+                      id="next_match_date"
+                      type="date"
+                      value={nextMatch.match_date}
+                      onChange={(e) =>
+                        setNextMatch({ ...nextMatch, match_date: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-4 pt-4 border-t">
+                    <div>
+                      <h3 className="text-base font-semibold mb-3">Kvote (1 X 2)</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="next_odds_1">
+                            1 (Pobeda {nextMatch.home_team || 'domaćeg tima'})
+                          </Label>
+                          <Input
+                            id="next_odds_1"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={nextMatch.odds_1}
+                            onChange={(e) =>
+                              setNextMatch({ ...nextMatch, odds_1: e.target.value })
+                            }
+                            placeholder="npr. 7.75"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="next_odds_x">X (Nerešeno)</Label>
+                          <Input
+                            id="next_odds_x"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={nextMatch.odds_x}
+                            onChange={(e) =>
+                              setNextMatch({ ...nextMatch, odds_x: e.target.value })
+                            }
+                            placeholder="npr. 4.80"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="next_odds_2">
+                            2 (Pobeda {nextMatch.away_team || 'gostujućeg tima'})
+                          </Label>
+                          <Input
+                            id="next_odds_2"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={nextMatch.odds_2}
+                            onChange={(e) =>
+                              setNextMatch({ ...nextMatch, odds_2: e.target.value })
+                            }
+                            placeholder="npr. 1.40"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowTerminBetDialog(false)}
+              >
+                Otkaži
+              </Button>
+              <Button
+                onClick={async () => {
+                  await handleSaveNextMatch()
+                  setShowTerminBetDialog(false)
+                }}
+                disabled={loading}
+              >
+                {loading ? 'Čuvanje...' : 'Sačuvaj'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Statistics Cards */}
         <div className="flex flex-col gap-4">
@@ -1551,19 +1813,19 @@ export default function AdminPage() {
                         editingPlayer.physical,
                         editingPlayer.stamina,
                       ].filter((r): r is number => r !== null && r !== undefined)
-                      
+
                       let baseAvg = originalRatings.length > 0
                         ? Math.round(originalRatings.reduce((sum, r) => sum + r, 0) / originalRatings.length)
                         : null
-                      
+
                       // Dodaj trenutni bonus
                       const currentBonus = editingPlayer.rating_bonus || 0
                       let currentAvg = baseAvg !== null ? Math.max(0, Math.min(100, baseAvg + currentBonus)) : null
-                      
+
                       // Računaj novi prosječni rating sa novim bonusom
                       const newBonus = parseInt(ratingBonus, 10) || 0
                       let newAvg = baseAvg !== null ? Math.max(0, Math.min(100, baseAvg + newBonus)) : null
-                      
+
                       return (
                         <div className="mb-4 p-3 bg-muted rounded-lg space-y-1">
                           {currentAvg !== null && (

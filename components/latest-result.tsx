@@ -191,7 +191,7 @@ export default function LatestResult() {
               </div>
             </div>
 
-            <div className="text-center space-y-2 lg:hidden">
+            <div className="text-center space-y-2 lg:hidden pt-2">
               <div className="flex items-center justify-center gap-3">
                 <span className="text-6xl font-bold text-white drop-shadow-lg">
                   {latestResult.home_score}

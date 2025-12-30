@@ -67,6 +67,9 @@ export interface Result {
   home_score: number
   away_score: number
   date: string
+  odds_1?: number | null
+  odds_x?: number | null
+  odds_2?: number | null
   created_at?: string
 }
 
