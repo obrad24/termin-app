@@ -147,7 +147,6 @@ export default function StatisticsPage() {
                 </Link>
               )}
 
-              {/* Full List */}
               <div className="space-y-3">
                 <h2 className="text-xl sm:text-2xl font-bold text-white mb-4">Kompletna lista</h2>
                 {topScorers.map((player, index) => (

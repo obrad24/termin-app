@@ -346,11 +346,21 @@ export default function ResultsSection() {
                                     .filter(g => g.team_type === 'home')
                                     .map((goal) => (
                                       <div key={goal.id} className="text-white text-xs sm:text-sm">
-                                        <span className="truncate">
-                                          {goal.players
-                                            ? `${goal.players.first_name} ${goal.players.last_name}`
-                                            : `Igrač #${goal.player_id}`}
-                                        </span>
+                                        {goal.players && goal.player_id ? (
+                                          <Link
+                                            href={`/players/${goal.player_id}`}
+                                            className="truncate hover:text-[#a80710] transition-colors cursor-pointer inline-block"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            {goal.players.first_name} {goal.players.last_name}
+                                          </Link>
+                                        ) : (
+                                          <span className="truncate">
+                                            {goal.players
+                                              ? `${goal.players.first_name} ${goal.players.last_name}`
+                                              : `Igrač #${goal.player_id}`}
+                                          </span>
+                                        )}
                                       </div>
                                     ))}
                                 </div>
@@ -367,11 +377,21 @@ export default function ResultsSection() {
                                     .filter(g => g.team_type === 'away')
                                     .map((goal) => (
                                       <div key={goal.id} className="text-white text-xs sm:text-sm">
-                                        <span className="truncate">
-                                          {goal.players
-                                            ? `${goal.players.first_name} ${goal.players.last_name}`
-                                            : `Igrač #${goal.player_id}`}
-                                        </span>
+                                        {goal.players && goal.player_id ? (
+                                          <Link
+                                            href={`/players/${goal.player_id}`}
+                                            className="truncate hover:text-[#a80710] transition-colors cursor-pointer inline-block"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            {goal.players.first_name} {goal.players.last_name}
+                                          </Link>
+                                        ) : (
+                                          <span className="truncate">
+                                            {goal.players
+                                              ? `${goal.players.first_name} ${goal.players.last_name}`
+                                              : `Igrač #${goal.player_id}`}
+                                          </span>
+                                        )}
                                       </div>
                                     ))}
                                 </div>

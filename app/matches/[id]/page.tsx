@@ -277,9 +277,18 @@ export default function MatchDetailPage() {
                           <span className="text-[#a80710] font-bold text-sm min-w-[3rem]">
                             {goal.goal_minute}'
                           </span>
-                          <span className="text-white">
-                            {goal.players?.first_name} {goal.players?.last_name}
-                          </span>
+                          {goal.players && goal.player_id ? (
+                            <Link
+                              href={`/players/${goal.player_id}`}
+                              className="text-white hover:text-[#a80710] transition-colors cursor-pointer"
+                            >
+                              {goal.players.first_name} {goal.players.last_name}
+                            </Link>
+                          ) : (
+                            <span className="text-white">
+                              {goal.players?.first_name} {goal.players?.last_name}
+                            </span>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -312,9 +321,18 @@ export default function MatchDetailPage() {
                           <span className="text-[#a80710] font-bold text-sm min-w-[3rem]">
                             {goal.goal_minute}'
                           </span>
-                          <span className="text-white">
-                            {goal.players?.first_name} {goal.players?.last_name}
-                          </span>
+                          {goal.players && goal.player_id ? (
+                            <Link
+                              href={`/players/${goal.player_id}`}
+                              className="text-white hover:text-[#a80710] transition-colors cursor-pointer"
+                            >
+                              {goal.players.first_name} {goal.players.last_name}
+                            </Link>
+                          ) : (
+                            <span className="text-white">
+                              {goal.players?.first_name} {goal.players?.last_name}
+                            </span>
+                          )}
                         </div>
                       ))}
                     </div>
