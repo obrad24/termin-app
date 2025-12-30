@@ -149,8 +149,6 @@ export default function HeroSection() {
           />
         </div>
 
-        {/* Red Gradient Overlay - odozdo */}
-        
 
         {/* Content */}
         <div
