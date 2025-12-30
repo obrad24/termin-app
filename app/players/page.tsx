@@ -24,6 +24,15 @@ export default function PlayersPage() {
     fetchPlayers()
   }, [])
 
+  // Osveži podatke kada se stranica fokusira (korisnik se vratio na tab)
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchPlayers()
+    }
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [])
+
   const fetchPlayers = async () => {
     try {
       const response = await fetch('/api/players/stats', {
@@ -165,7 +174,7 @@ export default function PlayersPage() {
                       {/* Player Image */}
                       <div className="relative w-full h-[67%] flex items-end justify-center overflow-hidden">
                         <Image
-                          src={getPlayerImageUrl(player.image_url)}
+                          src={getPlayerImageUrl(player.image_url, true)}
                           alt={`${player.first_name} ${player.last_name}`}
                           fill
                           className="object-contain object-bottom group-hover:scale-105 transition-transform duration-300"
