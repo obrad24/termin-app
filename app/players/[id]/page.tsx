@@ -214,8 +214,7 @@ export default function PlayerProfilePage() {
 
           </div>
           {/* Dark gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#a80710]/30 to-[#a80710]/80" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#a80710] via-[#a80710]/15 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-[75%]" style={{ background: 'linear-gradient(to top, #0a0d1a 0%, rgba(10,13,26,0.95) 30%, rgba(124,58,237,0.3) 50%, rgba(139,92,246,0.2) 65%, rgba(34,197,94,0.15) 80%, transparent 100%)' }} />
         </div>
 
         {/* Top Section - Name and Overall Rating */}
