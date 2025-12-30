@@ -53,7 +53,6 @@ export function getPlayerImageUrl(imageUrl: string | null | undefined, addCacheB
     }
   }
 
-  // Dodaj cache busting query parameter ako je traženo
   if (addCacheBust && finalUrl && !finalUrl.includes('?')) {
     finalUrl += `?t=${Date.now()}`
   }
