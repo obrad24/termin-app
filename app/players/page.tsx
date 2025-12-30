@@ -6,7 +6,7 @@ import Header from '@/components/header'
 import Image from 'next/image'
 import Link from 'next/link'
 import { getPlayerImageUrl } from '@/lib/image-utils'
-import { Star } from 'lucide-react'
+import { Star, Ambulance } from 'lucide-react'
 
 interface PlayerWithStats extends Player {
   goals: number
@@ -26,13 +26,22 @@ export default function PlayersPage() {
 
   const fetchPlayers = async () => {
     try {
-      const response = await fetch('/api/players/stats')
+      const response = await fetch('/api/players/stats', {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      })
       const contentType = response.headers.get('content-type')
 
       if (response.ok) {
         if (contentType && contentType.includes('application/json')) {
           const data = await response.json()
           console.log('Fetched players:', data?.length || 0, 'players')
+          // Debug: proveri injury polje
+          if (data && data.length > 0) {
+            console.log('Sample player injury status:', data[0]?.injury, 'for player:', data[0]?.first_name, data[0]?.last_name)
+          }
           setPlayers(data || [])
         }
       } else {
@@ -176,6 +185,12 @@ export default function PlayersPage() {
                             className="text-2xl sm:text-base font-black leading-tight">
                             {player.average_rating}
                           </span>
+                        </div>
+                      )}
+
+                      {player.injury === true && (
+                        <div className="absolute right-2 top-3 flex items-center justify-center bg-white rounded-full p-1 border-2 border-red-600 shadow-lg">
+                          <Ambulance className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" strokeWidth={2.5} />
                         </div>
                       )}
 

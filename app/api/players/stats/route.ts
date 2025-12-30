@@ -150,6 +150,7 @@ export async function GET() {
 
       return {
         ...player,
+        injury: player.injury === true || player.injury === 'true' ? true : (player.injury === false || player.injury === 'false' ? false : null),
         goals: goalsByPlayer[player.id] || 0,
         matches_played: matchesByPlayer[player.id]?.size || 0,
         average_rating: averageRating,

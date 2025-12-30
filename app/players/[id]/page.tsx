@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Header from '@/components/header'
 import Image from 'next/image'
-import { ArrowLeft, Trophy, Target, Calendar, Menu, TrendingUp, Star } from 'lucide-react'
+import { ArrowLeft, Trophy, Target, Calendar, Menu, TrendingUp, Star, Bandage } from 'lucide-react'
 import { format } from 'date-fns'
 import { Result, Team } from '@/lib/supabase'
 import { getPlayerImageUrl } from '@/lib/image-utils'
@@ -26,6 +26,7 @@ interface PlayerWithStats {
   defending?: number | null
   physical?: number | null
   stamina?: number | null
+  injury?: boolean | null
   goals_details: Array<{
     id: number
     goal_minute?: number | null
@@ -220,10 +221,18 @@ export default function PlayerProfilePage() {
         {/* Top Section - Name and Overall Rating */}
         <div className="absolute top-0 left-0 right-0 z-10 px-4 sm:px-6 pt-[50px] sm:pt-24">
           <div className="flex items-end justify-between relative">
-            <h1 className="flex flex-col text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white uppercase tracking-wide drop-shadow-lg">
-              <span className='text-sm'>{player.first_name}</span>
-              <span className='text-3xl'>{player.last_name}</span>
-            </h1>
+            <div className="flex flex-col">
+              <h1 className="flex flex-col text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white uppercase tracking-wide drop-shadow-lg">
+                <span className='text-sm'>{player.first_name}</span>
+                <span className='text-3xl'>{player.last_name}</span>
+              </h1>
+              {/* Injury Badge */}
+              {player.injury === true && (
+                <div className="mt-2 inline-flex items-center justify-center bg-white rounded-full p-1.5 border-2 border-red-600 shadow-lg">
+                  <Bandage className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" strokeWidth={2.5} />
+                </div>
+              )}
+            </div>
             {/* Overall Rating in Top Right */}
             {(() => {
               const ratings = [

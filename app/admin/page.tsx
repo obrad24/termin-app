@@ -38,6 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
 
 export default function AdminPage() {
   const [password, setPassword] = useState('')
@@ -76,6 +77,7 @@ export default function AdminPage() {
     date: '',
   })
   const [editPlayerTeam, setEditPlayerTeam] = useState<string>('')
+  const [editPlayerInjury, setEditPlayerInjury] = useState<boolean>(false)
   const [editPlayerRatings, setEditPlayerRatings] = useState({
     pace: '',
     shooting: '',
@@ -326,6 +328,7 @@ export default function AdminPage() {
           defending: editPlayerRatings.defending || null,
           physical: editPlayerRatings.physical || null,
           stamina: editPlayerRatings.stamina || null,
+          injury: editPlayerInjury,
         }),
       })
 
@@ -923,6 +926,7 @@ export default function AdminPage() {
                           onClick={() => {
                             setEditingPlayer(player)
                             setEditPlayerTeam(player.team || 'none')
+                            setEditPlayerInjury(player.injury || false)
                             setEditPlayerRatings({
                               pace: player.pace?.toString() || '',
                               shooting: player.shooting?.toString() || '',
@@ -1394,6 +1398,7 @@ export default function AdminPage() {
             setEditingPlayer(null)
             setEditPlayerImageFile(null)
             setEditPlayerTeam('none')
+            setEditPlayerInjury(false)
             setEditPlayerRatings({
               pace: '',
               shooting: '',
@@ -1496,15 +1501,27 @@ export default function AdminPage() {
                     )}
                   </div>
                 </div>
-                <div>
-                  <Label htmlFor="edit_birth_year">Godina rođenja</Label>
-                  <Input
-                    id="edit_birth_year"
-                    name="birth_year"
-                    type="number"
-                    defaultValue={editingPlayer.birth_year}
-                    required
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit_birth_year">Godina rođenja</Label>
+                    <Input
+                      id="edit_birth_year"
+                      name="birth_year"
+                      type="number"
+                      defaultValue={editingPlayer.birth_year}
+                      required
+                    />
+                  </div>
+                  <div className="flex items-center space-x-2 pt-6">
+                    <Checkbox
+                      id="edit_injury"
+                      checked={editPlayerInjury}
+                      onCheckedChange={(checked) => setEditPlayerInjury(checked === true)}
+                    />
+                    <Label htmlFor="edit_injury" className="text-sm font-normal cursor-pointer">
+                      Povređen
+                    </Label>
+                  </div>
                 </div>
 
                 {/* Player Ratings Section */}
@@ -1623,6 +1640,7 @@ export default function AdminPage() {
                     onClick={() => {
                       setEditingPlayer(null)
                       setEditPlayerImageFile(null)
+                      setEditPlayerInjury(false)
                       setEditPlayerRatings({
                         pace: '',
                         shooting: '',

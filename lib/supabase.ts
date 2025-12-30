@@ -85,6 +85,7 @@ export interface Player {
   defending?: number | null
   physical?: number | null
   stamina?: number | null
+  injury?: boolean | null
   created_at?: string
 }
 
