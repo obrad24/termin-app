@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { requireAuth } from '@/lib/auth'
 
+// Onemogući cache-ovanje - osvježavaj podatke svaki put
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 // GET - svi igrači
 export async function GET() {
   try {
@@ -25,7 +29,12 @@ export async function GET() {
       return NextResponse.json({ error: 'Failed to fetch players', details: error.message }, { status: 500 })
     }
 
-    return NextResponse.json(data || [])
+    const response = NextResponse.json(data || [])
+    // Dodaj headere da se osigura da se ne cache-uje
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+    response.headers.set('Pragma', 'no-cache')
+    response.headers.set('Expires', '0')
+    return response
   } catch (error: any) {
     console.error('Error:', error)
     return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 })

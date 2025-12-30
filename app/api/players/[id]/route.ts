@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { requireAuth } from '@/lib/auth'
 
+// Onemogući cache-ovanje - osvježavaj podatke svaki put
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 // GET - Dobijanje podataka o igraču sa statistikama
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -125,12 +129,17 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       }
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       ...player,
       goals: goalsCount,
       matches_played: matchesPlayed,
       goals_details: goalsWithMatches,
     })
+    // Dodaj headere da se osigura da se ne cache-uje
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+    response.headers.set('Pragma', 'no-cache')
+    response.headers.set('Expires', '0')
+    return response
   } catch (error: any) {
     console.error('Error:', error)
     return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 })
