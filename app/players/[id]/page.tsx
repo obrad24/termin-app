@@ -27,6 +27,7 @@ interface PlayerWithStats {
   physical?: number | null
   stamina?: number | null
   injury?: boolean | null
+  rating_bonus?: number | null
   goals_details: Array<{
     id: number
     goal_minute?: number | null
