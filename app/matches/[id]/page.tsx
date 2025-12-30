@@ -129,7 +129,7 @@ export default function MatchDetailPage() {
   return (
     <main className="min-h-screen hero-bg">
       <Header />
-      <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto">
+      <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pb-20">
         <div className="space-y-6 sm:space-y-8">
           {/* Back button */}
           <Link

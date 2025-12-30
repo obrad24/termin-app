@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, Users } from 'lucide-react'
 import Link from 'next/link'
 import {
   Sheet,
@@ -30,8 +30,9 @@ export default function Header() {
         <Link href="/matches" className="text-white/60 hover:text-white transition text-sm lg:text-base">
           Utakmice
         </Link>
-        <Link href="/players" className="text-white/60 hover:text-white transition text-sm lg:text-base">
-          Igrači
+        <Link href="/players" className="flex items-center gap-2 text-white/60 hover:text-white transition text-sm lg:text-base">
+          <Users className="w-4 h-4 lg:w-5 lg:h-5" />
+          <span>Igrači</span>
         </Link>
         <Link href="/statistics" className="text-white/60 hover:text-white transition text-sm lg:text-base">
           Statistika
@@ -154,6 +155,13 @@ export default function Header() {
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
             </svg>
+          </Link>
+          
+          <Link
+            href="/players"
+            className="flex flex-col items-center gap-1 px-2 py-2 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition-all active:scale-95 flex-1"
+          >
+            <Users className="w-6 h-6" />
           </Link>
           
           <Link
