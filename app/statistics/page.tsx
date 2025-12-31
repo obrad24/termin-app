@@ -102,9 +102,9 @@ export default function StatisticsPage() {
               {topScorers.length >= 1 && (
                 <Link
                   href={`/players/${topScorers[0].id}`}
-                  className="flex flex-col items-center gap-2 mb-8 pb-2 border-b border-white/10 hover:opacity-90 transition-opacity cursor-pointer"
+                  className="flex flex-row items-center gap-4 sm:gap-6 mb-4 hover:opacity-90 transition-opacity cursor-pointer border-b border-white/10 rounded-2xl"
                 >
-                  <div className="relative w-32 h-32 sm:w-40 sm:h-40 rounded-full overflow-hidden border-4 border-yellow-400/50 bg-slate-700/50 shadow-2xl flex items-center justify-center">
+                  <div className="relative w-[200px] h-[200px] sm:w-40 sm:h-40 overflow-hidden flex items-center justify-center shrink-0">
                     <Image
                       src={getPlayerImageUrl(topScorers[0].image_url)}
                       alt={`${topScorers[0].first_name} ${topScorers[0].last_name}`}
@@ -121,27 +121,23 @@ export default function StatisticsPage() {
                       }}
                     />
                   </div>
-                  <div className="flex items-center gap-0">
+                  <div className="flex-1 flex flex-col gap-2">
                     <span className="text-yellow-400 font-bold text-sm sm:text-xl">Najbolji strijelac</span>
-                  </div>
-                  <div className="text-center">
-                    <h3 className="font-bold text-white text-3xl sm:text-2xl lg:text-3xl">
+                    <h3 className="font-bold text-white text-2xl sm:text-3xl lg:text-4xl">
                       {topScorers[0].first_name} {topScorers[0].last_name}
                     </h3>
                     {topScorers[0].team && (
-                      <p className="text-white/60 text-sm sm:text-base mt-1">
+                      <p className="text-white/60 text-base sm:text-lg">
                         {topScorers[0].team}
                       </p>
                     )}
-                    <div className="flex items-center justify-center gap-4 mt-2">
-                      <div className="text-center">
-                        <p className="text-white font-bold text-4xl sm:text-5xl lg:text-6xl">
-                          {topScorers[0].goals}
-                        </p>
-                        <p className="text-white/60 text-sm sm:text-base mt-1">
-                          {topScorers[0].goals === 1 ? 'gol' : topScorers[0].goals < 5 ? 'gola' : 'golova'}
-                        </p>
-                      </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <p className="text-white font-bold text-3xl sm:text-4xl lg:text-5xl">
+                        {topScorers[0].goals}
+                      </p>
+                      <p className="text-white/60 text-sm sm:text-base mt-1">
+                        {topScorers[0].goals === 1 ? 'gol' : topScorers[0].goals < 5 ? 'gola' : 'golova'}
+                      </p>
                     </div>
                   </div>
                 </Link>

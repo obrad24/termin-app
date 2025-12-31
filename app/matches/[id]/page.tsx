@@ -8,6 +8,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/header'
 import { ArrowLeft } from 'lucide-react'
+import { getPlayerImageUrl } from '@/lib/image-utils'
 
 interface GoalWithPlayer extends MatchGoal {
   players: Player
@@ -56,25 +57,25 @@ export default function MatchDetailPage() {
   // Grupiše golove po igraču i vraća niz sa imenom i brojem golova
   const groupGoalsByPlayer = (goals: GoalWithPlayer[]) => {
     const grouped = new Map<string, { name: string; count: number; playerId: number | null; player: Player | null }>()
-    
+
     goals.forEach((goal) => {
       const playerKey = goal.player_id?.toString() || 'unknown'
       const playerName = goal.players
         ? `${goal.players.first_name} ${goal.players.last_name}`
         : `Igrač #${goal.player_id}`
-      
+
       if (grouped.has(playerKey)) {
         grouped.get(playerKey)!.count++
       } else {
-        grouped.set(playerKey, { 
-          name: playerName, 
-          count: 1, 
+        grouped.set(playerKey, {
+          name: playerName,
+          count: 1,
           playerId: goal.player_id || null,
           player: goal.players
         })
       }
     })
-    
+
     return Array.from(grouped.values())
   }
 
@@ -277,26 +278,75 @@ export default function MatchDetailPage() {
           {(homeGoals.length > 0 || awayGoals.length > 0) && (
             <div className="bg-slate-800/50 border border-white/30 rounded-2xl sm:rounded-3xl p-2 sm:p-8 backdrop-blur-md shadow-2xl">
               <h2 className="text-xl sm:text-2xl font-bold text-white text-center mb-4">Strijelci</h2>
-              <div className="flex gap-6">
+              <div className="flex gap-4 sm:gap-6">
                 {/* Home goals */}
                 <div className="flex-1">
                   {homeGoals.length > 0 ? (
-                    <div className="space-y-3">
+                    <div className="flex flex-col gap-3">
                       {groupGoalsByPlayer(homeGoals).map((player, index) => (
-                        <div key={index} className="flex items-center gap-3 p-3 bg-slate-700/30 rounded-lg">
+                        <div key={index} className="relative aspect-[4/3] rounded-xl overflow-hidden bg-slate-700/30 hover:bg-slate-700/50 transition-all hover:scale-105 cursor-pointer group">
                           {player.player && player.playerId ? (
                             <Link
                               href={`/players/${player.playerId}`}
-                              className="text-white hover:text-[#a80710] transition-colors cursor-pointer flex items-center gap-2"
+                              className="block w-full h-full player-card-bg"
                             >
-                              {player.name}
-                              <span className="inline-flex items-center gap-0.5">⚽{player.count > 1 && <span className="text-bold text-lg leading-0 text-yellow-400">{player.count}</span>}</span>
+                              {/* Player Image */}
+                              <div className="relative w-full h-full bg-slate-800/50">
+                                <Image
+                                  src={getPlayerImageUrl(player.player.image_url)}
+                                  alt={player.name}
+                                  fill
+                                  className="object-contain object-bottom"
+                                  sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 50vw, 33vw"
+                                  unoptimized
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement
+                                    target.src = '/no-image-player.png'
+                                  }}
+                                />
+                              </div>
+                              
+                              {/* Goals Badge - Top Right */}
+                              <div className="absolute top-2 right-2 bg-yellow-500/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center justify-center gap-1 shadow-lg">
+                                <span>⚽</span>
+                                <span className="text-white font-bold text-sm">{player.count}</span>
+                              </div>
+                              
+                              {/* Player Name - Bottom Left */}
+                              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-3">
+                                <div className="text-white">
+                                  <div className="font-semibold text-sm">{player.player.first_name}</div>
+                                  <div className="font-bold text-base">{player.player.last_name}</div>
+                                </div>
+                              </div>
                             </Link>
                           ) : (
-                            <span className="text-white flex items-center gap-2">
-                              {player.name}
-                              <span className="inline-flex items-center gap-0.5">⚽{player.count > 1 && <span className="text-bold text-lg leading-0 text-yellow-400">{player.count}</span>}</span>
-                            </span>
+                            <div className="w-full h-full">
+                              {/* Player Image */}
+                              <div className="relative w-full h-full bg-slate-800/50">
+                                <Image
+                                  src="/no-image-player.png"
+                                  alt={player.name}
+                                  fill
+                                  className="object-contain object-bottom"
+                                  sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 50vw, 33vw"
+                                  unoptimized
+                                />
+                              </div>
+                              
+                              {/* Goals Badge - Top Right */}
+                              <div className="absolute top-2 right-2 bg-yellow-500/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center justify-center gap-1 shadow-lg">
+                                <span>⚽</span>
+                                <span className="text-white font-bold text-sm">{player.count}</span>
+                              </div>
+                              
+                              {/* Player Name - Bottom Left */}
+                              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-3">
+                                <div className="text-white">
+                                  <div className="font-semibold text-sm">{player.name}</div>
+                                </div>
+                              </div>
+                            </div>
                           )}
                         </div>
                       ))}
@@ -309,22 +359,71 @@ export default function MatchDetailPage() {
                 {/* Away goals */}
                 <div className="flex-1">
                   {awayGoals.length > 0 ? (
-                    <div className="space-y-3">
+                    <div className="flex flex-col gap-3">
                       {groupGoalsByPlayer(awayGoals).map((player, index) => (
-                        <div key={index} className="flex items-center gap-3 p-3 bg-slate-700/30 rounded-lg">
+                        <div key={index} className="relative aspect-[4/3] rounded-xl overflow-hidden bg-slate-700/30 hover:bg-slate-700/50 transition-all hover:scale-105 cursor-pointer group">
                           {player.player && player.playerId ? (
                             <Link
                               href={`/players/${player.playerId}`}
-                              className="text-white hover:text-[#a80710] transition-colors cursor-pointer flex items-center gap-2"
+                              className="block w-full h-full player-card-bg"
                             >
-                              {player.name}
-                              <span className="inline-flex items-center gap-0.5">⚽{player.count > 1 && <span className="text-bold text-lg leading-0 text-yellow-400">{player.count}</span>}</span>
+                              {/* Player Image */}
+                              <div className="relative w-full h-full bg-slate-800/50">
+                                <Image
+                                  src={getPlayerImageUrl(player.player.image_url)}
+                                  alt={player.name}
+                                  fill
+                                  className="object-contain object-bottom"
+                                  sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 50vw, 33vw"
+                                  unoptimized
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement
+                                    target.src = '/no-image-player.png'
+                                  }}
+                                />
+                              </div>
+                              
+                              {/* Goals Badge - Top Right */}
+                              <div className="absolute top-2 right-2 bg-yellow-500/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center justify-center gap-1 shadow-lg">
+                                <span>⚽</span>
+                                <span className="text-white font-bold text-sm">{player.count}</span>
+                              </div>
+                              
+                              {/* Player Name - Bottom Left */}
+                              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-3">
+                                <div className="text-white">
+                                  <div className="font-semibold text-sm">{player.player.first_name}</div>
+                                  <div className="font-bold text-base">{player.player.last_name}</div>
+                                </div>
+                              </div>
                             </Link>
                           ) : (
-                            <span className="text-white flex items-center gap-2">
-                              {player.name}
-                              <span className="inline-flex items-center gap-0.5">⚽{player.count > 1 && <span className="text-bold text-lg leading-0 text-yellow-400">{player.count}</span>}</span>
-                            </span>
+                            <div className="w-full h-full">
+                              {/* Player Image */}
+                              <div className="relative w-full h-full bg-slate-800/50">
+                                <Image
+                                  src="/no-image-player.png"
+                                  alt={player.name}
+                                  fill
+                                  className="object-contain object-bottom"
+                                  sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 50vw, 33vw"
+                                  unoptimized
+                                />
+                              </div>
+                              
+                              {/* Goals Badge - Top Right */}
+                              <div className="absolute top-2 right-2 bg-yellow-500/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center justify-center gap-1 shadow-lg">
+                                <span>⚽</span>
+                                <span className="text-white font-bold text-sm">{player.count}</span>
+                              </div>
+                              
+                              {/* Player Name - Bottom Left */}
+                              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-3">
+                                <div className="text-white">
+                                  <div className="font-semibold text-sm">{player.name}</div>
+                                </div>
+                              </div>
+                            </div>
                           )}
                         </div>
                       ))}
@@ -362,11 +461,29 @@ export default function MatchDetailPage() {
                   {homePlayers.length > 0 ? (
                     <div className="space-y-2">
                       {homePlayers.map((mp) => (
-                        <div key={mp.id} className="flex items-center gap-3 p-3 bg-slate-700/30 rounded-lg text-white">
+                        <Link
+                          key={mp.id}
+                          href={mp.players?.id ? `/players/${mp.players.id}` : '#'}
+                          className="flex items-center gap-3 p-3 bg-slate-700/30 rounded-lg text-white hover:bg-slate-700/50 transition-colors"
+                        >
+                          <div className="relative w-10 h-10 rounded-full overflow-hidden bg-slate-600/50 flex-shrink-0">
+                            <Image
+                              src={getPlayerImageUrl(mp.players?.image_url)}
+                              alt={`${mp.players?.first_name} ${mp.players?.last_name}`}
+                              fill
+                              className="object-cover"
+                              sizes="40px"
+                              unoptimized
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement
+                                target.src = '/no-image-player.png'
+                              }}
+                            />
+                          </div>
                           <span>
                             {mp.players?.first_name} {mp.players?.last_name}
                           </span>
-                        </div>
+                        </Link>
                       ))}
                     </div>
                   ) : (
@@ -394,11 +511,29 @@ export default function MatchDetailPage() {
                   {awayPlayers.length > 0 ? (
                     <div className="space-y-2">
                       {awayPlayers.map((mp) => (
-                        <div key={mp.id} className="flex items-center gap-3 p-3 bg-slate-700/30 rounded-lg text-white">
+                        <Link
+                          key={mp.id}
+                          href={mp.players?.id ? `/players/${mp.players.id}` : '#'}
+                          className="flex items-center gap-3 p-3 bg-slate-700/30 rounded-lg text-white hover:bg-slate-700/50 transition-colors"
+                        >
+                          <div className="relative w-10 h-10 rounded-full overflow-hidden bg-slate-600/50 flex-shrink-0">
+                            <Image
+                              src={getPlayerImageUrl(mp.players?.image_url)}
+                              alt={`${mp.players?.first_name} ${mp.players?.last_name}`}
+                              fill
+                              className="object-cover"
+                              sizes="40px"
+                              unoptimized
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement
+                                target.src = '/no-image-player.png'
+                              }}
+                            />
+                          </div>
                           <span>
                             {mp.players?.first_name} {mp.players?.last_name}
                           </span>
-                        </div>
+                        </Link>
                       ))}
                     </div>
                   ) : (

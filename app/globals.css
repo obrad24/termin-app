@@ -195,5 +195,28 @@
   background-attachment: fixed;
 }
 
+.player-card-bg {
+  background: #0d1417;
+  background: linear-gradient(47deg, rgba(13, 20, 23, 1) 0%, rgba(65, 140, 96, 1) 0%, rgba(126, 20, 157, 1) 100%);
+}
 
+@keyframes scroll-terminbet {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.terminbet-scroll {
+  display: flex;
+  white-space: nowrap;
+  animation: scroll-terminbet 15s linear infinite;
+  will-change: transform;
+}
+
+.terminbet-scroll > * {
+  flex-shrink: 0;
+}
   
