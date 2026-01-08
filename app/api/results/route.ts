@@ -95,28 +95,73 @@ export async function POST(request: Request) {
       )
     }
 
-    // Kreiranje rezultata
-    const { data: resultData, error: resultError } = await supabase
+    // Kreiranje rezultata - prvo pokušaj sa odds poljima
+    let resultData, resultError
+    
+    const insertData: any = {
+      home_team,
+      away_team,
+      home_score: parseInt(home_score),
+      away_score: parseInt(away_score),
+      date,
+    }
+
+    // Dodaj odds polja samo ako su uneta
+    if (odds_1 !== undefined && odds_1 !== null && odds_1 !== '') {
+      insertData.odds_1 = parseFloat(odds_1)
+    }
+    if (odds_x !== undefined && odds_x !== null && odds_x !== '') {
+      insertData.odds_x = parseFloat(odds_x)
+    }
+    if (odds_2 !== undefined && odds_2 !== null && odds_2 !== '') {
+      insertData.odds_2 = parseFloat(odds_2)
+    }
+
+    const result = await supabase
       .from('results')
-      .insert([
-        {
-          home_team,
-          away_team,
-          home_score: parseInt(home_score),
-          away_score: parseInt(away_score),
-          date,
-          odds_1: odds_1 ? parseFloat(odds_1) : null,
-          odds_x: odds_x ? parseFloat(odds_x) : null,
-          odds_2: odds_2 ? parseFloat(odds_2) : null,
-        },
-      ])
+      .insert([insertData])
       .select()
       .single()
+
+    resultData = result.data
+    resultError = result.error
+
+    // Ako greška kaže da kolone ne postoje, probaj ponovo bez odds polja
+    if (resultError && resultError.message?.includes('odds')) {
+      console.warn('Odds kolone ne postoje, pokušavam bez njih:', resultError.message)
+      
+      const insertDataWithoutOdds = {
+        home_team,
+        away_team,
+        home_score: parseInt(home_score),
+        away_score: parseInt(away_score),
+        date,
+      }
+
+      const retryResult = await supabase
+        .from('results')
+        .insert([insertDataWithoutOdds])
+        .select()
+        .single()
+
+      resultData = retryResult.data
+      resultError = retryResult.error
+
+      if (!resultError) {
+        console.warn('Rezultat je kreiran bez odds polja. Molimo pokrenite supabase-match-odds.sql skriptu u Supabase dashboard-u.')
+      }
+    }
 
     if (resultError) {
       console.error('Error creating result:', resultError)
       return NextResponse.json(
-        { error: 'Failed to create result', details: resultError.message },
+        { 
+          error: 'Failed to create result', 
+          details: resultError.message,
+          hint: resultError.message?.includes('odds') 
+            ? 'Kolone za kvote (odds_1, odds_x, odds_2) ne postoje u bazi. Pokrenite supabase-match-odds.sql skriptu u Supabase dashboard-u.'
+            : undefined
+        },
         { status: 500 }
       )
     }
