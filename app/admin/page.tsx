@@ -96,6 +96,30 @@ export default function AdminPage() {
     odds_1: string
     odds_x: string
     odds_2: string
+    match_result: '1' | 'X' | '2' | ''
+    home_score: string
+    away_score: string
+    total_goals: string
+    goals: Array<{
+      player_id: string
+      team_type: 'home' | 'away'
+      goal_count: string
+    }>
+    // Dodatne kvote
+    total_goals_odds: Array<{
+      goals: string
+      odd: string
+    }>
+    player_goals_odds: Array<{
+      player_id: string
+      goals: string
+      odd: string
+    }>
+    over_under_odds: Array<{
+      goals: string
+      over_odd: string
+      under_odd: string
+    }>
   }>({
     home_team: '',
     away_team: '',
@@ -103,6 +127,14 @@ export default function AdminPage() {
     odds_1: '',
     odds_x: '',
     odds_2: '',
+    match_result: '',
+    home_score: '',
+    away_score: '',
+    total_goals: '',
+    goals: [],
+    total_goals_odds: [],
+    player_goals_odds: [],
+    over_under_odds: [],
   })
   const [loadingNextMatch, setLoadingNextMatch] = useState(true)
   const [showTerminBetDialog, setShowTerminBetDialog] = useState(false)
@@ -240,6 +272,14 @@ export default function AdminPage() {
             odds_1: data.odds_1?.toString() || '',
             odds_x: data.odds_x?.toString() || '',
             odds_2: data.odds_2?.toString() || '',
+            match_result: data.match_result || '',
+            home_score: data.home_score?.toString() || '',
+            away_score: data.away_score?.toString() || '',
+            total_goals: data.total_goals?.toString() || '',
+            goals: data.goals || [],
+            total_goals_odds: data.total_goals_odds || [],
+            player_goals_odds: data.player_goals_odds || [],
+            over_under_odds: data.over_under_odds || [],
           })
         }
       }
@@ -262,6 +302,42 @@ export default function AdminPage() {
         return
       }
 
+      // Pripremi golove za slanje
+      const goalsToSend = nextMatch.goals
+        .filter((g) => g.player_id && g.goal_count)
+        .flatMap((goal) => {
+          // Kreiraj niz golova za svakog igrača (ako je goal_count > 1)
+          const count = parseInt(goal.goal_count) || 1
+          return Array(count).fill(null).map(() => ({
+            player_id: parseInt(goal.player_id),
+            team_type: goal.team_type,
+          }))
+        })
+
+      // Pripremi dodatne kvote
+      const totalGoalsOddsToSend = nextMatch.total_goals_odds
+        .filter((item) => item.goals && item.odd)
+        .map((item) => ({
+          goals: parseInt(item.goals),
+          odd: parseFloat(item.odd),
+        }))
+
+      const playerGoalsOddsToSend = nextMatch.player_goals_odds
+        .filter((item) => item.player_id && item.goals && item.odd)
+        .map((item) => ({
+          player_id: parseInt(item.player_id),
+          goals: parseInt(item.goals),
+          odd: parseFloat(item.odd),
+        }))
+
+      const overUnderOddsToSend = nextMatch.over_under_odds
+        .filter((item) => item.goals && (item.over_odd || item.under_odd))
+        .map((item) => ({
+          goals: parseFloat(item.goals),
+          over_odd: item.over_odd ? parseFloat(item.over_odd) : null,
+          under_odd: item.under_odd ? parseFloat(item.under_odd) : null,
+        }))
+
       const response = await fetch('/api/next-match', {
         method: 'POST',
         headers: {
@@ -274,6 +350,14 @@ export default function AdminPage() {
           odds_1: nextMatch.odds_1 ? parseFloat(nextMatch.odds_1) : null,
           odds_x: nextMatch.odds_x ? parseFloat(nextMatch.odds_x) : null,
           odds_2: nextMatch.odds_2 ? parseFloat(nextMatch.odds_2) : null,
+          match_result: nextMatch.match_result || null,
+          home_score: nextMatch.home_score ? parseInt(nextMatch.home_score) : null,
+          away_score: nextMatch.away_score ? parseInt(nextMatch.away_score) : null,
+          total_goals: nextMatch.total_goals ? parseInt(nextMatch.total_goals) : null,
+          goals: goalsToSend.length > 0 ? goalsToSend : null,
+          total_goals_odds: totalGoalsOddsToSend.length > 0 ? totalGoalsOddsToSend : null,
+          player_goals_odds: playerGoalsOddsToSend.length > 0 ? playerGoalsOddsToSend : null,
+          over_under_odds: overUnderOddsToSend.length > 0 ? overUnderOddsToSend : null,
         }),
       })
 
@@ -742,6 +826,290 @@ export default function AdminPage() {
                             placeholder="npr. 1.40"
                           />
                         </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Broj golova na terminu */}
+                  <div className="space-y-4 pt-4 border-t">
+                    <div>
+                      <div className="flex justify-between items-center mb-3">
+                        <h3 className="text-base font-semibold">Broj golova na terminu</h3>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setNextMatch({
+                              ...nextMatch,
+                              total_goals_odds: [
+                                ...nextMatch.total_goals_odds,
+                                { goals: '', odd: '' },
+                              ],
+                            })
+                          }}
+                        >
+                          <Plus className="w-4 h-4 mr-1" />
+                          Dodaj
+                        </Button>
+                      </div>
+                      <div className="space-y-3">
+                        {nextMatch.total_goals_odds.map((item, index) => (
+                          <div
+                            key={index}
+                            className="flex gap-2 items-end p-3 bg-muted rounded-lg"
+                          >
+                            <div className="flex-1 space-y-2">
+                              <Label className="text-xs">Broj golova</Label>
+                              <Input
+                                type="number"
+                                min="0"
+                                value={item.goals}
+                                onChange={(e) => {
+                                  const updated = [...nextMatch.total_goals_odds]
+                                  updated[index].goals = e.target.value
+                                  setNextMatch({ ...nextMatch, total_goals_odds: updated })
+                                }}
+                                placeholder="npr. 2"
+                              />
+                            </div>
+                            <div className="flex-1 space-y-2">
+                              <Label className="text-xs">Kvota</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={item.odd}
+                                onChange={(e) => {
+                                  const updated = [...nextMatch.total_goals_odds]
+                                  updated[index].odd = e.target.value
+                                  setNextMatch({ ...nextMatch, total_goals_odds: updated })
+                                }}
+                                placeholder="npr. 3.50"
+                              />
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const updated = nextMatch.total_goals_odds.filter((_, i) => i !== index)
+                                setNextMatch({ ...nextMatch, total_goals_odds: updated })
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                        {nextMatch.total_goals_odds.length === 0 && (
+                          <p className="text-sm text-muted-foreground text-center py-4">
+                            Nema dodatih kvota. Kliknite "Dodaj" da dodate.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Igrač sa termina i broj golova */}
+                  <div className="space-y-4 pt-4 border-t">
+                    <div>
+                      <div className="flex justify-between items-center mb-3">
+                        <h3 className="text-base font-semibold">Igrač sa termina i broj golova</h3>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setNextMatch({
+                              ...nextMatch,
+                              player_goals_odds: [
+                                ...nextMatch.player_goals_odds,
+                                { player_id: '', goals: '', odd: '' },
+                              ],
+                            })
+                          }}
+                        >
+                          <Plus className="w-4 h-4 mr-1" />
+                          Dodaj
+                        </Button>
+                      </div>
+                      <div className="space-y-3">
+                        {nextMatch.player_goals_odds.map((item, index) => {
+                          const allPlayers = players.filter(
+                            (p) => p.team === nextMatch.home_team || p.team === nextMatch.away_team
+                          )
+
+                          return (
+                            <div
+                              key={index}
+                              className="flex gap-2 items-end p-3 bg-muted rounded-lg"
+                            >
+                              <div className="flex-1 space-y-2">
+                                <Label className="text-xs">Igrač</Label>
+                                <Select
+                                  value={item.player_id}
+                                  onValueChange={(value) => {
+                                    const updated = [...nextMatch.player_goals_odds]
+                                    updated[index].player_id = value
+                                    setNextMatch({ ...nextMatch, player_goals_odds: updated })
+                                  }}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Izaberi igrača" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {allPlayers.map((player) => (
+                                      <SelectItem key={player.id} value={player.id.toString()}>
+                                        {player.first_name} {player.last_name} ({player.team})
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="w-24 space-y-2">
+                                <Label className="text-xs">Broj golova</Label>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  value={item.goals}
+                                  onChange={(e) => {
+                                    const updated = [...nextMatch.player_goals_odds]
+                                    updated[index].goals = e.target.value
+                                    setNextMatch({ ...nextMatch, player_goals_odds: updated })
+                                  }}
+                                  placeholder="npr. 2"
+                                />
+                              </div>
+                              <div className="flex-1 space-y-2">
+                                <Label className="text-xs">Kvota</Label>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={item.odd}
+                                  onChange={(e) => {
+                                    const updated = [...nextMatch.player_goals_odds]
+                                    updated[index].odd = e.target.value
+                                    setNextMatch({ ...nextMatch, player_goals_odds: updated })
+                                  }}
+                                  placeholder="npr. 4.20"
+                                />
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  const updated = nextMatch.player_goals_odds.filter((_, i) => i !== index)
+                                  setNextMatch({ ...nextMatch, player_goals_odds: updated })
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          )
+                        })}
+                        {nextMatch.player_goals_odds.length === 0 && (
+                          <p className="text-sm text-muted-foreground text-center py-4">
+                            Nema dodatih kvota. Kliknite "Dodaj" da dodate.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Preko/Ispod broj golova */}
+                  <div className="space-y-4 pt-4 border-t">
+                    <div>
+                      <div className="flex justify-between items-center mb-3">
+                        <h3 className="text-base font-semibold">Preko/Ispod broj golova</h3>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setNextMatch({
+                              ...nextMatch,
+                              over_under_odds: [
+                                ...nextMatch.over_under_odds,
+                                { goals: '', over_odd: '', under_odd: '' },
+                              ],
+                            })
+                          }}
+                        >
+                          <Plus className="w-4 h-4 mr-1" />
+                          Dodaj
+                        </Button>
+                      </div>
+                      <div className="space-y-3">
+                        {nextMatch.over_under_odds.map((item, index) => (
+                          <div
+                            key={index}
+                            className="flex gap-2 items-end p-3 bg-muted rounded-lg"
+                          >
+                            <div className="w-24 space-y-2">
+                              <Label className="text-xs">Broj golova</Label>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.5"
+                                value={item.goals}
+                                onChange={(e) => {
+                                  const updated = [...nextMatch.over_under_odds]
+                                  updated[index].goals = e.target.value
+                                  setNextMatch({ ...nextMatch, over_under_odds: updated })
+                                }}
+                                placeholder="npr. 2.5"
+                              />
+                            </div>
+                            <div className="flex-1 space-y-2">
+                              <Label className="text-xs">Kvota Preko</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={item.over_odd}
+                                onChange={(e) => {
+                                  const updated = [...nextMatch.over_under_odds]
+                                  updated[index].over_odd = e.target.value
+                                  setNextMatch({ ...nextMatch, over_under_odds: updated })
+                                }}
+                                placeholder="npr. 1.85"
+                              />
+                            </div>
+                            <div className="flex-1 space-y-2">
+                              <Label className="text-xs">Kvota Ispod</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={item.under_odd}
+                                onChange={(e) => {
+                                  const updated = [...nextMatch.over_under_odds]
+                                  updated[index].under_odd = e.target.value
+                                  setNextMatch({ ...nextMatch, over_under_odds: updated })
+                                }}
+                                placeholder="npr. 1.95"
+                              />
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const updated = nextMatch.over_under_odds.filter((_, i) => i !== index)
+                                setNextMatch({ ...nextMatch, over_under_odds: updated })
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                        {nextMatch.over_under_odds.length === 0 && (
+                          <p className="text-sm text-muted-foreground text-center py-4">
+                            Nema dodatih kvota. Kliknite "Dodaj" da dodate.
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -2107,6 +2475,6 @@ export default function AdminPage() {
           </DialogContent>
         </Dialog>
       </div>
-    </div>
+    </div >
   )
 }
