@@ -7,8 +7,9 @@ import { format } from 'date-fns'
 import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/header'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Star } from 'lucide-react'
 import { getPlayerImageUrl } from '@/lib/image-utils'
+import PlayerRatingDialog from '@/components/player-rating-dialog'
 
 interface GoalWithPlayer extends MatchGoal {
   players: Player
@@ -29,6 +30,9 @@ export default function MatchDetailPage() {
   const [match, setMatch] = useState<ResultWithDetails | null>(null)
   const [teams, setTeams] = useState<Team[]>([])
   const [loading, setLoading] = useState(true)
+  const [averageRatings, setAverageRatings] = useState<Record<number, { average: number; count: number }>>({})
+  const [ratingDialogOpen, setRatingDialogOpen] = useState(false)
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
 
   useEffect(() => {
     if (params.id) {
@@ -36,6 +40,26 @@ export default function MatchDetailPage() {
       fetchTeams()
     }
   }, [params.id])
+
+  useEffect(() => {
+    if (match?.id) {
+      fetchAverageRatings()
+    }
+  }, [match?.id])
+
+  const handlePlayerClick = (e: React.MouseEvent, player: Player | null) => {
+    e.preventDefault()
+    if (player) {
+      setSelectedPlayer(player)
+      setRatingDialogOpen(true)
+    }
+  }
+
+  const handleRatingSubmitted = () => {
+    if (match?.id) {
+      fetchAverageRatings()
+    }
+  }
 
   const fetchTeams = async () => {
     try {
@@ -46,6 +70,20 @@ export default function MatchDetailPage() {
       }
     } catch (error) {
       console.error('Error fetching teams:', error)
+    }
+  }
+
+  const fetchAverageRatings = async () => {
+    if (!match?.id) return
+    try {
+      const response = await fetch(`/api/match-ratings?match_id=${match.id}`)
+      if (response.ok) {
+        const data = await response.json()
+        // API vraća Record<number, { average: number; count: number }>
+        setAverageRatings(data || {})
+      }
+    } catch (error) {
+      console.error('Error fetching average ratings:', error)
     }
   }
 
@@ -308,7 +346,7 @@ export default function MatchDetailPage() {
 
                               {/* Goals Badge - Top Right */}
                               <div className="absolute top-2 right-2 bg-yellow-500/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center justify-center gap-1 shadow-lg">
-                                <span>⚽</span>
+                                <span className='text-sm'>⚽</span>
                                 <span className="text-white font-bold text-sm">{player.count}</span>
                               </div>
 
@@ -436,6 +474,88 @@ export default function MatchDetailPage() {
             </div>
           )}
 
+          {/* MVP Section */}
+          {(() => {
+            // Pronađi igrača sa najboljom prosječnom ocjenom
+            let mvpPlayer: MatchPlayerWithPlayer | null = null
+            let mvpRating: { average: number; count: number } | null = null
+
+            if (match?.players && Object.keys(averageRatings).length > 0) {
+              let highestRating = 0
+              let bestPlayerId: number | null = null
+
+              Object.entries(averageRatings).forEach(([playerId, rating]) => {
+                if (rating.average > highestRating) {
+                  highestRating = rating.average
+                  bestPlayerId = parseInt(playerId, 10)
+                }
+              })
+
+              if (bestPlayerId) {
+                mvpPlayer = match.players.find(mp => mp.players?.id === bestPlayerId) || null
+                mvpRating = averageRatings[bestPlayerId]
+              }
+            }
+
+            if (!mvpPlayer || !mvpRating) return null
+
+            return (
+              <div className="bg-gradient-to-br from-yellow-500/20 via-yellow-600/20 to-yellow-700/20 border-2 border-yellow-400/50 rounded-2xl sm:rounded-3xl p-4 sm:p-8 backdrop-blur-md shadow-2xl">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h2 className="text-xl sm:text-2xl font-bold text-white">MVP</h2>
+                  </div>
+                  
+                  <div 
+                    className="flex flex-col items-center gap-4 cursor-pointer hover:scale-105 transition-transform"
+                    onClick={(e) => handlePlayerClick(e, mvpPlayer!.players || null)}
+                  >
+                    <div className="relative w-32 h-40 sm:w-40 sm:h-52">
+                      <Image
+                        src={getPlayerImageUrl(mvpPlayer.players?.image_url)}
+                        alt={`${mvpPlayer.players?.first_name} ${mvpPlayer.players?.last_name}`}
+                        fill
+                        className="object-contain object-bottom"
+                        sizes="(max-width: 640px) 128px, 160px"
+                        unoptimized
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement
+                          target.src = '/no-image-player.png'
+                        }}
+                      />
+                    </div>
+                    
+                    <div className="text-center">
+                      <h3 className="text-xl sm:text-2xl font-bold text-white mb-1">
+                        {mvpPlayer.players?.first_name} {mvpPlayer.players?.last_name}
+                      </h3>
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="flex items-center gap-1">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              className={`w-5 h-5 ${
+                                star <= Math.round(mvpRating.average)
+                                  ? "fill-yellow-400 text-yellow-400"
+                                  : "fill-transparent text-white/30"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-white/90 font-semibold text-lg">
+                          {mvpRating.average.toFixed(1)}
+                        </span>
+                        <span className="text-white/60 text-sm">
+                          ({mvpRating.count} {mvpRating.count === 1 ? 'ocjena' : 'ocjena'})
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+
           {/* Players */}
           {(homePlayers.length > 0 || awayPlayers.length > 0) && (
             <div className="bg-slate-800/50 border border-white/30 rounded-2xl sm:rounded-3xl p-2 sm:p-8 backdrop-blur-md shadow-2xl">
@@ -460,36 +580,52 @@ export default function MatchDetailPage() {
                   </div>
                   {homePlayers.length > 0 ? (
                     <div className="space-y-2">
-                      {homePlayers.map((mp) => (
-                        <Link
-                        key={mp.id}
-                        href={mp.players?.id ? `/players/${mp.players.id}` : '#'}
-                        className="flex items-center gap-1 bg-slate-700/30 rounded-lg text-white hover:bg-slate-700/50 transition-colors justify-between pt-2"
-                      >
-                        <div className='flex flex-col py-2 pl-2'>
-                          <span className='text-xs text-start'>
-                            {mp.players?.first_name}
-                          </span>
-                          <span className='text-sm'>
-                            {mp.players?.last_name}
-                          </span>
-                        </div>
-                        <div className="relative w-18 h-18">
-                          <Image
-                            src={getPlayerImageUrl(mp.players?.image_url)}
-                            alt={`${mp.players?.first_name} ${mp.players?.last_name}`}
-                            fill
-                            className="object-contain"
-                            sizes="40px"
-                            unoptimized
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement
-                              target.src = '/no-image-player.png'
-                            }}
-                          />
-                        </div>
-                      </Link>
-                      ))}
+                      {homePlayers.map((mp) => {
+                        const playerId = mp.players?.id
+                        const rating = playerId ? averageRatings[playerId] : null
+                        return (
+                          <div
+                            key={mp.id}
+                            className="flex items-center gap-1 bg-slate-700/30 rounded-lg text-white hover:bg-slate-700/50 transition-colors justify-between pt-2"
+                          >
+                            <div
+                              className="flex items-center gap-1 flex-1 min-w-0 cursor-pointer"
+                              onClick={(e) => handlePlayerClick(e, mp.players || null)}
+                            >
+                              <div className='flex flex-col py-2 pl-2 flex-1 min-w-0'>
+                                <span className='text-xs text-start'>
+                                  {mp.players?.first_name}
+                                </span>
+                                <span className='text-sm'>
+                                  {mp.players?.last_name}
+                                </span>
+                                <div className="flex items-center gap-2 px-1 py-1 shrink-0">
+                                  {rating && rating.average > 0 && (
+                                    <div className="text-xs text-white/70">
+                                      ⭐ {rating.average.toFixed(1)} ({rating.count})
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="relative w-18 h-18 shrink-0">
+                                <Image
+                                  src={getPlayerImageUrl(mp.players?.image_url)}
+                                  alt={`${mp.players?.first_name} ${mp.players?.last_name}`}
+                                  fill
+                                  className="object-contain"
+                                  sizes="40px"
+                                  unoptimized
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement
+                                    target.src = '/no-image-player.png'
+                                  }}
+                                />
+                              </div>
+                            </div>
+
+                          </div>
+                        )
+                      })}
                     </div>
                   ) : (
                     <p className="text-white/60 text-sm">Nema igrača</p>
@@ -515,36 +651,52 @@ export default function MatchDetailPage() {
                   </div>
                   {awayPlayers.length > 0 ? (
                     <div className="space-y-2">
-                      {awayPlayers.map((mp) => (
-                        <Link
-                          key={mp.id}
-                          href={mp.players?.id ? `/players/${mp.players.id}` : '#'}
-                          className="flex items-center gap-1 bg-slate-700/30 rounded-lg text-white hover:bg-slate-700/50 transition-colors justify-between pt-2"
-                        >
-                          <div className="relative w-18 h-18">
-                            <Image
-                              src={getPlayerImageUrl(mp.players?.image_url)}
-                              alt={`${mp.players?.first_name} ${mp.players?.last_name}`}
-                              fill
-                              className="object-contain"
-                              sizes="40px"
-                              unoptimized
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement
-                                target.src = '/no-image-player.png'
-                              }}
-                            />
+                      {awayPlayers.map((mp) => {
+                        const playerId = mp.players?.id
+                        const rating = playerId ? averageRatings[playerId] : null
+                        return (
+                          <div
+                            key={mp.id}
+                            className="flex items-center gap-1 bg-slate-700/30 rounded-lg text-white hover:bg-slate-700/50 transition-colors justify-between pt-2"
+                          >
+
+                            <div
+                              className="flex items-center gap-1 flex-1 min-w-0 justify-end cursor-pointer"
+                              onClick={(e) => handlePlayerClick(e, mp.players || null)}
+                            >
+                              <div className="relative w-18 h-18 shrink-0">
+                                <Image
+                                  src={getPlayerImageUrl(mp.players?.image_url)}
+                                  alt={`${mp.players?.first_name} ${mp.players?.last_name}`}
+                                  fill
+                                  className="object-contain"
+                                  sizes="40px"
+                                  unoptimized
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement
+                                    target.src = '/no-image-player.png'
+                                  }}
+                                />
+                              </div>
+                              <div className='flex flex-col py-2 pr-2 flex-1 min-w-0'>
+                                <span className='text-xs text-end'>
+                                  {mp.players?.first_name}
+                                </span>
+                                <span className='text-sm text-end'>
+                                  {mp.players?.last_name}
+                                </span>
+                                <div className="flex items-center gap-2 px-1 py-1 shrink-0 justify-end">
+                                  {rating && rating.average > 0 && (
+                                    <div className="text-xs text-white/70">
+                                      ⭐ {rating.average.toFixed(1)} ({rating.count})
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                          <div className='flex flex-col py-2 pr-2'>
-                            <span className='text-xs text-end'>
-                              {mp.players?.first_name}
-                            </span>
-                            <span className='text-sm'>
-                              {mp.players?.last_name}
-                            </span>
-                          </div>
-                        </Link>
-                      ))}
+                        )
+                      })}
                     </div>
                   ) : (
                     <p className="text-white/60 text-sm">Nema igrača</p>
@@ -555,6 +707,19 @@ export default function MatchDetailPage() {
           )}
         </div>
       </section>
+
+      {/* Rating Dialog */}
+      {selectedPlayer && match && (
+        <PlayerRatingDialog
+          open={ratingDialogOpen}
+          onOpenChange={setRatingDialogOpen}
+          player={selectedPlayer}
+          matchId={match.id}
+          currentAverageRating={selectedPlayer.id ? averageRatings[selectedPlayer.id]?.average : 0}
+          ratingCount={selectedPlayer.id ? averageRatings[selectedPlayer.id]?.count : 0}
+          onRatingSubmitted={handleRatingSubmitted}
+        />
+      )}
     </main>
   )
 }
