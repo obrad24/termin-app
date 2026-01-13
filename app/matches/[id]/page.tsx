@@ -305,13 +305,13 @@ export default function MatchDetailPage() {
                                   }}
                                 />
                               </div>
-                              
+
                               {/* Goals Badge - Top Right */}
                               <div className="absolute top-2 right-2 bg-yellow-500/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center justify-center gap-1 shadow-lg">
                                 <span>⚽</span>
                                 <span className="text-white font-bold text-sm">{player.count}</span>
                               </div>
-                              
+
                               {/* Player Name - Bottom Left */}
                               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-3">
                                 <div className="text-white">
@@ -333,13 +333,13 @@ export default function MatchDetailPage() {
                                   unoptimized
                                 />
                               </div>
-                              
+
                               {/* Goals Badge - Top Right */}
                               <div className="absolute top-2 right-2 bg-yellow-500/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center justify-center gap-1 shadow-lg">
                                 <span>⚽</span>
                                 <span className="text-white font-bold text-sm">{player.count}</span>
                               </div>
-                              
+
                               {/* Player Name - Bottom Left */}
                               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-3">
                                 <div className="text-white">
@@ -382,13 +382,13 @@ export default function MatchDetailPage() {
                                   }}
                                 />
                               </div>
-                              
+
                               {/* Goals Badge - Top Right */}
                               <div className="absolute top-2 right-2 bg-yellow-500/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center justify-center gap-1 shadow-lg">
                                 <span>⚽</span>
                                 <span className="text-white font-bold text-sm">{player.count}</span>
                               </div>
-                              
+
                               {/* Player Name - Bottom Left */}
                               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-3">
                                 <div className="text-white">
@@ -410,13 +410,13 @@ export default function MatchDetailPage() {
                                   unoptimized
                                 />
                               </div>
-                              
+
                               {/* Goals Badge - Top Right */}
                               <div className="absolute top-2 right-2 bg-yellow-500/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center justify-center gap-1 shadow-lg">
                                 <span>⚽</span>
                                 <span className="text-white font-bold text-sm">{player.count}</span>
                               </div>
-                              
+
                               {/* Player Name - Bottom Left */}
                               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-3">
                                 <div className="text-white">
@@ -440,9 +440,9 @@ export default function MatchDetailPage() {
           {(homePlayers.length > 0 || awayPlayers.length > 0) && (
             <div className="bg-slate-800/50 border border-white/30 rounded-2xl sm:rounded-3xl p-2 sm:p-8 backdrop-blur-md shadow-2xl">
               <h2 className="text-xl sm:text-2xl font-bold text-white mb-6">Igrači</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+              <div className="flex gap-2 sm:gap-8">
                 {/* Home players */}
-                <div>
+                <div className='w-1/2'>
                   <div className="flex items-center gap-3 mb-4">
                     <div className="relative w-8 h-8 rounded-lg overflow-hidden bg-slate-700/50 flex items-center justify-center shadow-md flex-shrink-0">
                       <Image
@@ -462,28 +462,33 @@ export default function MatchDetailPage() {
                     <div className="space-y-2">
                       {homePlayers.map((mp) => (
                         <Link
-                          key={mp.id}
-                          href={mp.players?.id ? `/players/${mp.players.id}` : '#'}
-                          className="flex items-center gap-3 p-3 bg-slate-700/30 rounded-lg text-white hover:bg-slate-700/50 transition-colors"
-                        >
-                          <div className="relative w-10 h-10 rounded-full overflow-hidden bg-slate-600/50 flex-shrink-0">
-                            <Image
-                              src={getPlayerImageUrl(mp.players?.image_url)}
-                              alt={`${mp.players?.first_name} ${mp.players?.last_name}`}
-                              fill
-                              className="object-cover"
-                              sizes="40px"
-                              unoptimized
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement
-                                target.src = '/no-image-player.png'
-                              }}
-                            />
-                          </div>
-                          <span>
-                            {mp.players?.first_name} {mp.players?.last_name}
+                        key={mp.id}
+                        href={mp.players?.id ? `/players/${mp.players.id}` : '#'}
+                        className="flex items-center gap-1 bg-slate-700/30 rounded-lg text-white hover:bg-slate-700/50 transition-colors justify-between pt-2"
+                      >
+                        <div className='flex flex-col py-2 pl-2'>
+                          <span className='text-xs text-start'>
+                            {mp.players?.first_name}
                           </span>
-                        </Link>
+                          <span className='text-sm'>
+                            {mp.players?.last_name}
+                          </span>
+                        </div>
+                        <div className="relative w-18 h-18">
+                          <Image
+                            src={getPlayerImageUrl(mp.players?.image_url)}
+                            alt={`${mp.players?.first_name} ${mp.players?.last_name}`}
+                            fill
+                            className="object-contain"
+                            sizes="40px"
+                            unoptimized
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement
+                              target.src = '/no-image-player.png'
+                            }}
+                          />
+                        </div>
+                      </Link>
                       ))}
                     </div>
                   ) : (
@@ -492,8 +497,9 @@ export default function MatchDetailPage() {
                 </div>
 
                 {/* Away players */}
-                <div>
-                  <div className="flex items-center gap-3 mb-4">
+                <div className='w-1/2'>
+                  <div className="flex items-center gap-3 mb-4 justify-end">
+                    <h3 className="text-lg font-semibold text-white">{match.away_team}</h3>
                     <div className="relative w-8 h-8 rounded-lg overflow-hidden bg-slate-700/50 flex items-center justify-center shadow-md flex-shrink-0">
                       <Image
                         src={getTeamLogo(match.away_team)}
@@ -506,7 +512,6 @@ export default function MatchDetailPage() {
                         }}
                       />
                     </div>
-                    <h3 className="text-lg font-semibold text-white">{match.away_team}</h3>
                   </div>
                   {awayPlayers.length > 0 ? (
                     <div className="space-y-2">
@@ -514,14 +519,14 @@ export default function MatchDetailPage() {
                         <Link
                           key={mp.id}
                           href={mp.players?.id ? `/players/${mp.players.id}` : '#'}
-                          className="flex items-center gap-3 p-3 bg-slate-700/30 rounded-lg text-white hover:bg-slate-700/50 transition-colors"
+                          className="flex items-center gap-1 bg-slate-700/30 rounded-lg text-white hover:bg-slate-700/50 transition-colors justify-between pt-2"
                         >
-                          <div className="relative w-10 h-10 rounded-full overflow-hidden bg-slate-600/50 flex-shrink-0">
+                          <div className="relative w-18 h-18">
                             <Image
                               src={getPlayerImageUrl(mp.players?.image_url)}
                               alt={`${mp.players?.first_name} ${mp.players?.last_name}`}
                               fill
-                              className="object-cover"
+                              className="object-contain"
                               sizes="40px"
                               unoptimized
                               onError={(e) => {
@@ -530,9 +535,14 @@ export default function MatchDetailPage() {
                               }}
                             />
                           </div>
-                          <span>
-                            {mp.players?.first_name} {mp.players?.last_name}
-                          </span>
+                          <div className='flex flex-col py-2 pr-2'>
+                            <span className='text-xs text-end'>
+                              {mp.players?.first_name}
+                            </span>
+                            <span className='text-sm'>
+                              {mp.players?.last_name}
+                            </span>
+                          </div>
                         </Link>
                       ))}
                     </div>

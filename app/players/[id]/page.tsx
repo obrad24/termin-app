@@ -216,17 +216,33 @@ export default function PlayerProfilePage() {
 
           </div>
           {/* Dark gradient overlay */}
-          <div className="absolute inset-x-0 bottom-0 h-[75%]" style={{ background: 'linear-gradient(to top, #0a0d1a 0%, rgba(10,13,26,0.95) 30%, rgba(124,58,237,0.3) 50%, rgba(139,92,246,0.2) 65%, rgba(34,197,94,0.15) 80%, transparent 100%)' }} />
+          <div className="absolute inset-x-0 bottom-0 h-[56%]" style={{ background: 'linear-gradient(to top, #0a0d1a 0%, rgba(10,13,26,0.95) 30%, rgba(124,58,237,0.3) 50%, rgba(139,92,246,0.2) 65%, rgba(34,197,94,0.15) 80%, transparent 100%)' }} />
         </div>
-
+        <h1 className="absolute bottom-[100px] left-3 flex flex-col text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white uppercase tracking-wide drop-shadow-lg">
+          <span className='text-sm'>{player.first_name}</span>
+          <span className='text-3xl'>{player.last_name}</span>
+        </h1>
+        {player.team && (
+          <div className="absolute top-[68px] right-3 flex items-center gap-3">
+            <div className="relative w-12 h-12 sm:w-20 sm:h-20 rounded-full overflow-hidden bg-slate-700/50 border-2 border-white/20 shadow-lg">
+              <Image
+                src={getTeamLogo(player.team)}
+                alt={player.team}
+                fill
+                className="object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement
+                  target.src = '/placeholder-logo.svg'
+                }}
+              />
+            </div>
+          </div>
+        )}
         {/* Top Section - Name and Overall Rating */}
         <div className="absolute top-0 left-0 right-0 z-10 px-4 sm:px-6 pt-[50px] sm:pt-24">
           <div className="flex items-end justify-between relative">
             <div className="flex flex-col">
-              <h1 className="flex flex-col text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white uppercase tracking-wide drop-shadow-lg">
-                <span className='text-sm'>{player.first_name}</span>
-                <span className='text-3xl'>{player.last_name}</span>
-              </h1>
+
               {/* Injury Badge */}
               {player.injury === true && (
                 <div className="mt-2 inline-flex items-center justify-center bg-white rounded-full p-1.5 border-2 border-red-600 shadow-lg w-fit">
@@ -265,22 +281,13 @@ export default function PlayerProfilePage() {
               }
 
               return averageRating !== null ? (
-                <div className="absolute top-0 right-0 w-[70px] h-[80px] bg-gradient-to-b from-slate-800 to-slate-900 rounded-b-full flex items-center justify-center border-2 border-white/20 shadow-2xl">
+                <div className="absolute top-0 left-0 w-[70px] h-[80px] bg-gradient-to-b from-slate-800 to-slate-900 rounded-b-full flex items-center justify-center border-2 border-white/20 shadow-2xl">
                   <div className="relative">
-                    <span 
+                    <span
                       className="text-[52px] sm:text-4xl md:text-5xl font-black relative z-10"
-                      style={{ 
+                      style={{
                         color: getRatingColor(averageRating),
                         textShadow: '0 0 10px rgba(0, 0, 0, 0.8), 0 2px 4px rgba(0, 0, 0, 0.9), 0 0 20px currentColor',
-                      }}
-                    >
-                      {averageRating}
-                    </span>
-                    {/* Glow effect */}
-                    <span 
-                      className="absolute inset-0 text-[52px] sm:text-4xl md:text-5xl font-black blur-sm opacity-50"
-                      style={{ 
-                        color: getRatingColor(averageRating),
                       }}
                     >
                       {averageRating}
@@ -481,9 +488,7 @@ export default function PlayerProfilePage() {
                       <div className="flex items-center justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3 mb-2">
-                            <span className="text-[#a80710] font-bold text-sm min-w-12">
-                              {goal.goal_minute ? `${goal.goal_minute}'` : 'N/A'}
-                            </span>
+                            
                             <div className="flex-1 min-w-0">
                               <p className="text-white font-semibold text-sm sm:text-base truncate">
                                 {playerTeam} vs {opponent}
