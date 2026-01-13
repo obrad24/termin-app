@@ -54,9 +54,6 @@ export default function NewMatchPage() {
     home_score: '',
     away_score: '',
     date: new Date().toISOString().split('T')[0],
-    odds_1: '',
-    odds_x: '',
-    odds_2: '',
   })
 
   const [goals, setGoals] = useState<Goal[]>([])
@@ -286,9 +283,6 @@ export default function NewMatchPage() {
           ...formData,
           home_score: parseInt(formData.home_score),
           away_score: parseInt(formData.away_score),
-          odds_1: formData.odds_1 ? parseFloat(formData.odds_1) : null,
-          odds_x: formData.odds_x ? parseFloat(formData.odds_x) : null,
-          odds_2: formData.odds_2 ? parseFloat(formData.odds_2) : null,
           goals: validGoals.map((g) => ({
             player_id: parseInt(g.player_id),
             team_type: g.team_type,
@@ -675,72 +669,6 @@ export default function NewMatchPage() {
                       </div>
                     </div>
                   </div>
-
-                  {/* Odds/Kvote - samo za Lalat vs Murinjo */}
-                  {(formData.home_team === 'Lalat' && formData.away_team === 'Murinjo') || 
-                   (formData.home_team === 'Murinjo' && formData.away_team === 'Lalat') ? (
-                    <div className="space-y-4">
-                      <div>
-                        <h3 className="text-base sm:text-lg font-semibold mb-2">Kvote (1 X 2)</h3>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          Unesite kvote za sledeći meč između Lalat i Murinjo
-                        </p>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-                        <div className="space-y-2">
-                          <Label htmlFor="odds_1" className="text-sm sm:text-base font-medium">
-                            1 (Pobeda {formData.home_team})
-                          </Label>
-                          <Input
-                            id="odds_1"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={formData.odds_1}
-                            onChange={(e) =>
-                              setFormData({ ...formData, odds_1: e.target.value })
-                            }
-                            placeholder="npr. 7.75"
-                            className="h-11"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="odds_x" className="text-sm sm:text-base font-medium">
-                            X (Nerešeno)
-                          </Label>
-                          <Input
-                            id="odds_x"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={formData.odds_x}
-                            onChange={(e) =>
-                              setFormData({ ...formData, odds_x: e.target.value })
-                            }
-                            placeholder="npr. 4.80"
-                            className="h-11"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="odds_2" className="text-sm sm:text-base font-medium">
-                            2 (Pobeda {formData.away_team})
-                          </Label>
-                          <Input
-                            id="odds_2"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={formData.odds_2}
-                            onChange={(e) =>
-                              setFormData({ ...formData, odds_2: e.target.value })
-                            }
-                            placeholder="npr. 1.40"
-                            className="h-11"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ) : null}
 
                   {/* Goals */}
                   <div className="space-y-4">

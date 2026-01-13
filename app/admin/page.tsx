@@ -700,13 +700,13 @@ export default function AdminPage() {
 
         {/* TerminBet Dialog */}
         <Dialog open={showTerminBetDialog} onOpenChange={setShowTerminBetDialog}>
-          <DialogContent className="max-w-2xl h-[80vh] flex flex-col w-[95%]">
+          <DialogContent className="max-w-2xl h-[80vh] sm:h-[85vh] flex flex-col w-[95%] sm:w-full max-h-[90vh]">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
+              <DialogTitle className="flex items-center gap-2 text-base sm:text-lg md:text-xl">
                 TerminBet
               </DialogTitle>
             </DialogHeader>
-            <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+            <div className="flex-1 overflow-y-auto space-y-4 pr-1 sm:pr-2">
               {loadingNextMatch ? (
                 <div className="text-center py-4 text-muted-foreground">Učitavanje...</div>
               ) : (
@@ -778,7 +778,7 @@ export default function AdminPage() {
                   </div>
                   <div className="space-y-4 pt-4 border-t">
                     <div>
-                      <h3 className="text-base font-semibold mb-3">Kvote (1 X 2)</h3>
+                      <h3 className="text-sm sm:text-base font-semibold mb-3">Kvote (1 X 2)</h3>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="next_odds_1">
@@ -833,8 +833,8 @@ export default function AdminPage() {
                   {/* Broj golova na terminu */}
                   <div className="space-y-4 pt-4 border-t">
                     <div>
-                      <div className="flex justify-between items-center mb-3">
-                        <h3 className="text-base font-semibold">Broj golova na terminu</h3>
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0 mb-3">
+                        <h3 className="text-sm sm:text-base font-semibold">Broj golova na terminu</h3>
                         <Button
                           type="button"
                           variant="outline"
@@ -848,6 +848,7 @@ export default function AdminPage() {
                               ],
                             })
                           }}
+                          className="w-full sm:w-auto"
                         >
                           <Plus className="w-4 h-4 mr-1" />
                           Dodaj
@@ -857,7 +858,7 @@ export default function AdminPage() {
                         {nextMatch.total_goals_odds.map((item, index) => (
                           <div
                             key={index}
-                            className="flex gap-2 items-end p-3 bg-muted rounded-lg"
+                            className="flex flex-col sm:flex-row gap-2 sm:items-end p-3 bg-muted rounded-lg"
                           >
                             <div className="flex-1 space-y-2">
                               <Label className="text-xs">Broj golova</Label>
@@ -896,6 +897,7 @@ export default function AdminPage() {
                                 const updated = nextMatch.total_goals_odds.filter((_, i) => i !== index)
                                 setNextMatch({ ...nextMatch, total_goals_odds: updated })
                               }}
+                              className="w-full sm:w-auto sm:self-end"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -913,8 +915,8 @@ export default function AdminPage() {
                   {/* Igrač sa termina i broj golova */}
                   <div className="space-y-4 pt-4 border-t">
                     <div>
-                      <div className="flex justify-between items-center mb-3">
-                        <h3 className="text-base font-semibold">Igrač sa termina i broj golova</h3>
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0 mb-3">
+                        <h3 className="text-sm sm:text-base font-semibold">Igrač sa termina i broj golova</h3>
                         <Button
                           type="button"
                           variant="outline"
@@ -928,6 +930,7 @@ export default function AdminPage() {
                               ],
                             })
                           }}
+                          className="w-full sm:w-auto"
                         >
                           <Plus className="w-4 h-4 mr-1" />
                           Dodaj
@@ -942,9 +945,9 @@ export default function AdminPage() {
                           return (
                             <div
                               key={index}
-                              className="flex gap-2 items-end p-3 bg-muted rounded-lg"
+                              className="flex flex-col sm:flex-row gap-2 sm:items-end p-3 bg-muted rounded-lg"
                             >
-                              <div className="flex-1 space-y-2">
+                              <div className="flex-1 space-y-2 min-w-0">
                                 <Label className="text-xs">Igrač</Label>
                                 <Select
                                   value={item.player_id}
@@ -954,7 +957,7 @@ export default function AdminPage() {
                                     setNextMatch({ ...nextMatch, player_goals_odds: updated })
                                   }}
                                 >
-                                  <SelectTrigger>
+                                  <SelectTrigger className="w-full">
                                     <SelectValue placeholder="Izaberi igrača" />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -966,7 +969,7 @@ export default function AdminPage() {
                                   </SelectContent>
                                 </Select>
                               </div>
-                              <div className="w-24 space-y-2">
+                              <div className="w-full sm:w-24 space-y-2">
                                 <Label className="text-xs">Broj golova</Label>
                                 <Input
                                   type="number"
@@ -978,9 +981,10 @@ export default function AdminPage() {
                                     setNextMatch({ ...nextMatch, player_goals_odds: updated })
                                   }}
                                   placeholder="npr. 2"
+                                  className="w-full"
                                 />
                               </div>
-                              <div className="flex-1 space-y-2">
+                              <div className="flex-1 space-y-2 min-w-0">
                                 <Label className="text-xs">Kvota</Label>
                                 <Input
                                   type="number"
@@ -993,6 +997,7 @@ export default function AdminPage() {
                                     setNextMatch({ ...nextMatch, player_goals_odds: updated })
                                   }}
                                   placeholder="npr. 4.20"
+                                  className="w-full"
                                 />
                               </div>
                               <Button
@@ -1003,6 +1008,7 @@ export default function AdminPage() {
                                   const updated = nextMatch.player_goals_odds.filter((_, i) => i !== index)
                                   setNextMatch({ ...nextMatch, player_goals_odds: updated })
                                 }}
+                                className="w-full sm:w-auto sm:self-end"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -1021,8 +1027,8 @@ export default function AdminPage() {
                   {/* Preko/Ispod broj golova */}
                   <div className="space-y-4 pt-4 border-t">
                     <div>
-                      <div className="flex justify-between items-center mb-3">
-                        <h3 className="text-base font-semibold">Preko/Ispod broj golova</h3>
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0 mb-3">
+                        <h3 className="text-sm sm:text-base font-semibold">Preko/Ispod broj golova</h3>
                         <Button
                           type="button"
                           variant="outline"
@@ -1036,6 +1042,7 @@ export default function AdminPage() {
                               ],
                             })
                           }}
+                          className="w-full sm:w-auto"
                         >
                           <Plus className="w-4 h-4 mr-1" />
                           Dodaj
@@ -1045,9 +1052,9 @@ export default function AdminPage() {
                         {nextMatch.over_under_odds.map((item, index) => (
                           <div
                             key={index}
-                            className="flex gap-2 items-end p-3 bg-muted rounded-lg"
+                            className="flex flex-col sm:flex-row gap-2 sm:items-end p-3 bg-muted rounded-lg"
                           >
-                            <div className="w-24 space-y-2">
+                            <div className="w-full sm:w-24 space-y-2">
                               <Label className="text-xs">Broj golova</Label>
                               <Input
                                 type="number"
@@ -1060,9 +1067,10 @@ export default function AdminPage() {
                                   setNextMatch({ ...nextMatch, over_under_odds: updated })
                                 }}
                                 placeholder="npr. 2.5"
+                                className="w-full"
                               />
                             </div>
-                            <div className="flex-1 space-y-2">
+                            <div className="flex-1 space-y-2 min-w-0">
                               <Label className="text-xs">Kvota Preko</Label>
                               <Input
                                 type="number"
@@ -1075,9 +1083,10 @@ export default function AdminPage() {
                                   setNextMatch({ ...nextMatch, over_under_odds: updated })
                                 }}
                                 placeholder="npr. 1.85"
+                                className="w-full"
                               />
                             </div>
-                            <div className="flex-1 space-y-2">
+                            <div className="flex-1 space-y-2 min-w-0">
                               <Label className="text-xs">Kvota Ispod</Label>
                               <Input
                                 type="number"
@@ -1090,6 +1099,7 @@ export default function AdminPage() {
                                   setNextMatch({ ...nextMatch, over_under_odds: updated })
                                 }}
                                 placeholder="npr. 1.95"
+                                className="w-full"
                               />
                             </div>
                             <Button
@@ -1100,6 +1110,7 @@ export default function AdminPage() {
                                 const updated = nextMatch.over_under_odds.filter((_, i) => i !== index)
                                 setNextMatch({ ...nextMatch, over_under_odds: updated })
                               }}
+                              className="w-full sm:w-auto sm:self-end"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
