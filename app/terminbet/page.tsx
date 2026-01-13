@@ -7,6 +7,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/header'
 import { X } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
 
 interface SelectedOdd {
   matchId: number
@@ -37,6 +38,7 @@ export default function TerminBetPage() {
   const [selectedOdds, setSelectedOdds] = useState<SelectedOdd[]>([])
   const [stake, setStake] = useState<string>('')
   const [loading, setLoading] = useState(true)
+  const { toast } = useToast()
 
   useEffect(() => {
     fetchMatches()
@@ -205,10 +207,16 @@ export default function TerminBetPage() {
     
     setSelectedOdds(prev => {
       const exists = prev.find(o => `${o.matchId}-${o.oddType}-${o.label}` === oddKey)
+      
+      // Ako kliknemo na istu kvotu koja je već izabrana, poništimo je
       if (exists) {
         return prev.filter(o => `${o.matchId}-${o.oddType}-${o.label}` !== oddKey)
-      } else {
-        return [...prev, {
+      }
+      
+      // Za "total_goals" - ukloni sve ostale total_goals kvote za isti meč
+      if (oddType === 'total_goals') {
+        const filtered = prev.filter(o => !(o.matchId === matchId && o.oddType === 'total_goals'))
+        return [...filtered, {
           matchId,
           matchName,
           oddType,
@@ -219,6 +227,18 @@ export default function TerminBetPage() {
           label
         }]
       }
+      
+      // Za ostale tipove kvota, dozvoli više izbora
+      return [...prev, {
+        matchId,
+        matchName,
+        oddType,
+        oddValue,
+        homeTeam,
+        awayTeam,
+        matchDate,
+        label
+      }]
     })
   }
 
@@ -238,6 +258,119 @@ export default function TerminBetPage() {
   const calculateCombinedOdd = () => {
     if (selectedOdds.length === 0) return 0
     return selectedOdds.reduce((acc, odd) => acc * odd.oddValue, 1)
+  }
+
+  const handleConfirmTicket = () => {
+    if (selectedOdds.length === 0 || !stake || parseFloat(stake) <= 0) {
+      return
+    }
+
+    // Kreiraj tiket objekat
+    const ticket = {
+      id: Date.now().toString(),
+      timestamp: new Date().toISOString(),
+      selectedOdds: selectedOdds,
+      stake: parseFloat(stake),
+      combinedOdd: calculateCombinedOdd(),
+      potentialWin: calculatePotentialWin(),
+    }
+
+    // Učitaj postojeće tikete iz localStorage
+    const existingTickets = localStorage.getItem('terminbet_tickets')
+    let tickets = []
+    
+    if (existingTickets) {
+      try {
+        tickets = JSON.parse(existingTickets)
+      } catch (error) {
+        console.error('Error parsing existing tickets:', error)
+        tickets = []
+      }
+    }
+
+    // Dodaj novi tiket
+    tickets.push(ticket)
+
+    // Sačuvaj u localStorage
+    try {
+      localStorage.setItem('terminbet_tickets', JSON.stringify(tickets))
+      
+      // Prikaži toast notifikaciju sa detaljima tiketa
+      toast({
+        title: (
+          <div className="flex items-center gap-2 pb-2 border-b border-white/10">
+            <div className="w-8 h-8 rounded-full bg-[#f9c14c] flex items-center justify-center">
+              <span className="text-[#280071] font-bold text-lg">✓</span>
+            </div>
+            <div>
+              <span className="text-base font-bold text-black">Uspješno odigran tiket</span>
+              <div className="text-xs text-black/60 mt-0.5">
+                {format(new Date(), 'd.M.yyyy • HH:mm')}
+              </div>
+            </div>
+          </div>
+        ) as any,
+        description: (
+          <div className="space-y-3 mt-3 w-full">
+            {/* Lista kvota */}
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+              {selectedOdds.map((odd, index) => (
+                <div key={index} className="bg-gradient-to-r from-slate-700/80 to-slate-800/80 rounded-lg p-3 border border-slate-600/50 shadow-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-white text-sm font-semibold mb-2">
+                        {odd.homeTeam} - {odd.awayTeam}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="bg-[#f9c14c] text-[#280071] px-3 py-1 rounded-md text-xs font-bold shadow-sm">
+                          {odd.oddType === '1' ? '1' : odd.oddType === 'X' ? 'X' : odd.oddType === '2' ? '2' : odd.label || odd.oddType}
+                        </span>
+                        <span className="text-white text-base font-bold">
+                          {odd.oddValue.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="text-white/50 text-xs mt-2">
+                        {format(new Date(odd.matchDate), 'd.M • HH:mm')}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {/* Detalji tiketa */}
+            <div className="bg-gradient-to-r from-slate-800/90 to-slate-900/90 rounded-lg p-4 border-2 border-[#f9c14c]/30 shadow-lg space-y-2.5">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-white/70 font-medium">Ulog:</span>
+                <span className="text-white font-bold text-base">{parseFloat(stake).toFixed(2)} BAM</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-white/70 font-medium">Kombinovana kvota:</span>
+                <span className="text-white font-bold text-base">{calculateCombinedOdd().toFixed(2)}</span>
+              </div>
+              <div className="border-t-2 border-[#f9c14c]/30 pt-3 mt-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-white font-semibold text-base">Potencijalni dobitak:</span>
+                  <span className="text-[#f9c14c] font-bold text-xl">{calculatePotentialWin().toFixed(2)} BAM</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ),
+        className: "max-w-[500px] w-full",
+      })
+
+      // Očisti formu
+      setSelectedOdds([])
+      setStake('')
+    } catch (error) {
+      console.error('Error saving ticket to localStorage:', error)
+      toast({
+        title: 'Greška',
+        description: 'Došlo je do greške pri čuvanju tiketa.',
+        variant: 'destructive',
+      })
+    }
   }
 
   // Kombinuj next_match i matches, izbegavajući duplikate
@@ -673,6 +806,7 @@ export default function TerminBetPage() {
                     </div>
 
                     <button
+                      onClick={handleConfirmTicket}
                       disabled={selectedOdds.length === 0 || !stake || parseFloat(stake) <= 0}
                       className="w-full bg-[#280071] hover:bg-[#320085] text-white font-bold py-3 px-4 rounded-lg transition-colors disabled:bg-slate-700/30 disabled:text-white/30 disabled:cursor-not-allowed"
                     >
