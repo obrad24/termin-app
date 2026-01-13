@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Star } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Player } from '@/lib/supabase'
@@ -29,7 +29,43 @@ export default function PlayerRatingDialog({
 }: PlayerRatingDialogProps) {
   const [hoveredRating, setHoveredRating] = useState<number | null>(null)
   const [selectedRating, setSelectedRating] = useState<number | null>(null)
+  const [userRating, setUserRating] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLoadingRating, setIsLoadingRating] = useState(false)
+
+  // Dohvati korisnikovu ocjenu kada se dialog otvori
+  useEffect(() => {
+    if (open && player) {
+      fetchUserRating()
+    } else {
+      // Resetuj kada se zatvori
+      setUserRating(null)
+      setSelectedRating(null)
+      setHoveredRating(null)
+    }
+  }, [open, player, matchId])
+
+  const fetchUserRating = async () => {
+    if (!player) return
+    
+    setIsLoadingRating(true)
+    try {
+      const response = await fetch(
+        `/api/match-ratings/user-rating?match_id=${matchId}&player_id=${player.id}`
+      )
+      if (response.ok) {
+        const data = await response.json()
+        if (data.rating !== null) {
+          setUserRating(data.rating)
+          setSelectedRating(data.rating)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching user rating:', error)
+    } finally {
+      setIsLoadingRating(false)
+    }
+  }
 
   if (!player) return null
 
@@ -52,14 +88,13 @@ export default function PlayerRatingDialog({
 
       if (response.ok) {
         setSelectedRating(rating)
+        setUserRating(rating)
         if (onRatingSubmitted) {
           onRatingSubmitted()
         }
         // Zatvori dialog nakon kratke pauze
         setTimeout(() => {
           onOpenChange(false)
-          setSelectedRating(null)
-          setHoveredRating(null)
         }, 1000)
       } else {
         const error = await response.json()
@@ -72,7 +107,7 @@ export default function PlayerRatingDialog({
     }
   }
 
-  const displayRating = hoveredRating !== null ? hoveredRating : (selectedRating || 0)
+  const displayRating = hoveredRating !== null ? hoveredRating : (selectedRating || userRating || 0)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -114,6 +149,11 @@ export default function PlayerRatingDialog({
 
           {/* Star Rating */}
           <div className="flex flex-col items-center gap-4">
+            {userRating && (
+              <p className="text-white/80 text-sm">
+                Tvoja ocjena: {userRating} {userRating === 1 ? 'zvjezdica' : 'zvjezdice'}
+              </p>
+            )}
             <div 
               className="flex items-center gap-2"
               onMouseLeave={() => setHoveredRating(null)}
