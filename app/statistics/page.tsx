@@ -170,7 +170,7 @@ export default function StatisticsPage() {
                       />
                     </div>
 
-                    {/* Player Info */}
+                    {/* Player Info test */}
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-white text-base sm:text-lg truncate">
                         {player.first_name} {player.last_name}
