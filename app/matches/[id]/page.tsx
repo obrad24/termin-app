@@ -2,14 +2,17 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Result, Player, MatchGoal, MatchPlayer, Team } from '@/lib/supabase'
+import { Result, Player, MatchGoal, MatchPlayer, Team, MatchComment } from '@/lib/supabase'
 import { format } from 'date-fns'
 import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/header'
-import { ArrowLeft, Star } from 'lucide-react'
+import { ArrowLeft, Star, MessageSquare, Send } from 'lucide-react'
 import { getPlayerImageUrl } from '@/lib/image-utils'
 import PlayerRatingDialog from '@/components/player-rating-dialog'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Button } from '@/components/ui/button'
 
 interface GoalWithPlayer extends MatchGoal {
   players: Player
@@ -33,11 +36,17 @@ export default function MatchDetailPage() {
   const [averageRatings, setAverageRatings] = useState<Record<number, { average: number; count: number }>>({})
   const [ratingDialogOpen, setRatingDialogOpen] = useState(false)
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
+  const [comments, setComments] = useState<MatchComment[]>([])
+  const [loadingComments, setLoadingComments] = useState(false)
+  const [submittingComment, setSubmittingComment] = useState(false)
+  const [commentNickname, setCommentNickname] = useState('')
+  const [commentText, setCommentText] = useState('')
 
   useEffect(() => {
     if (params.id) {
       fetchMatch()
       fetchTeams()
+      fetchComments()
     }
   }, [params.id])
 
@@ -130,6 +139,56 @@ export default function MatchDetailPage() {
       console.error('Error fetching match:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchComments = async () => {
+    if (!params.id) return
+    setLoadingComments(true)
+    try {
+      const response = await fetch(`/api/matches/${params.id}/comments`)
+      if (response.ok) {
+        const data = await response.json()
+        setComments(data || [])
+      }
+    } catch (error) {
+      console.error('Error fetching comments:', error)
+    } finally {
+      setLoadingComments(false)
+    }
+  }
+
+  const handleSubmitComment = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!match?.id || !commentNickname.trim() || !commentText.trim() || submittingComment) return
+
+    setSubmittingComment(true)
+    try {
+      const response = await fetch(`/api/matches/${match.id}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          nickname: commentNickname.trim(),
+          comment: commentText.trim(),
+        }),
+      })
+
+      if (response.ok) {
+        const newComment = await response.json()
+        setComments([newComment, ...comments])
+        setCommentNickname('')
+        setCommentText('')
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Greška pri dodavanju komentara')
+      }
+    } catch (error) {
+      console.error('Error submitting comment:', error)
+      alert('Greška pri dodavanju komentara')
+    } finally {
+      setSubmittingComment(false)
     }
   }
 
@@ -705,6 +764,83 @@ export default function MatchDetailPage() {
               </div>
             </div>
           )}
+
+          {/* Comments Section */}
+          <div className="bg-slate-800/50 border border-white/30 rounded-2xl sm:rounded-3xl p-4 sm:p-8 backdrop-blur-md shadow-2xl">
+            <div className="flex items-center gap-2 mb-6">
+              <MessageSquare className="w-5 h-5 text-white" />
+              <h2 className="text-xl sm:text-2xl font-bold text-white">Komentari</h2>
+            </div>
+
+            {/* Comment Form */}
+            <form onSubmit={handleSubmitComment} className="mb-8 space-y-4">
+              <div className="space-y-2">
+                <Input
+                  type="text"
+                  placeholder="Vaš nadimak"
+                  value={commentNickname}
+                  onChange={(e) => setCommentNickname(e.target.value)}
+                  maxLength={50}
+                  className="bg-slate-700/50 border-white/20 text-white placeholder:text-white/50"
+                  required
+                />
+                <Textarea
+                  placeholder="Ostavite komentar..."
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  maxLength={1000}
+                  rows={4}
+                  className="bg-slate-700/50 border-white/20 text-white placeholder:text-white/50 resize-none"
+                  required
+                />
+                <div className="flex justify-between items-center text-xs text-white/60">
+                  <span>{commentText.length}/1000</span>
+                  <Button
+                    type="submit"
+                    disabled={submittingComment || !commentNickname.trim() || !commentText.trim()}
+                    className="bg-yellow-500 hover:bg-yellow-600 text-white"
+                  >
+                    {submittingComment ? (
+                      'Šalje se...'
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4" />
+                        Pošalji
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </form>
+
+            {/* Comments List */}
+            {loadingComments ? (
+              <div className="text-center py-8 text-white/60">Učitavanje komentara...</div>
+            ) : comments.length === 0 ? (
+              <div className="text-center py-8 text-white/60">Nema komentara. Budite prvi koji će komentarisati!</div>
+            ) : (
+              <div className="space-y-4">
+                {comments.map((comment) => (
+                  <div
+                    key={comment.id}
+                    className="bg-slate-700/30 rounded-xl p-4 border border-white/10"
+                  >
+                    <div className="flex items-start justify-between gap-4 mb-2">
+                      <div className="flex-1">
+                        <div className="font-semibold text-white mb-1">{comment.nickname}</div>
+                        <p className="text-white/80 text-sm whitespace-pre-wrap break-words">
+                          {comment.comment}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-xs text-white/50 mt-2">
+                      {comment.created_at ? format(new Date(comment.created_at), 'dd MMM yyyy, HH:mm') : ''}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </section>
 

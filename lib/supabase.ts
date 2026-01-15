@@ -121,6 +121,15 @@ export interface MatchPlayer {
   created_at?: string
 }
 
+// Tipovi za komentare na utakmicama
+export interface MatchComment {
+  id: number
+  match_id: number
+  nickname: string
+  comment: string
+  created_at?: string
+}
+
 // Prošireni tip za rezultat sa strijelcima i igračima
 export interface ResultWithDetails extends Result {
   goals?: MatchGoal[]
