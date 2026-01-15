@@ -27,6 +27,10 @@ export async function GET(
       )
     }
 
+    // Dobijanje IP adrese korisnika (za provjeru korisnikovog lajka)
+    const forwarded = request.headers.get('x-forwarded-for')
+    const ip = forwarded ? forwarded.split(',')[0] : request.headers.get('x-real-ip') || 'unknown'
+
     // Dobijanje komentara sortiranih po datumu (najnoviji prvi)
     const { data: comments, error } = await supabase
       .from('match_comments')
@@ -42,7 +46,37 @@ export async function GET(
       )
     }
 
-    return NextResponse.json(comments || [], { status: 200 })
+    if (!comments || comments.length === 0) {
+      return NextResponse.json([], { status: 200 })
+    }
+
+    // Dobijanje lajkova/dislajkova za sve komentare
+    const commentIds = comments.map(c => c.id)
+    const { data: likes, error: likesError } = await supabase
+      .from('match_comment_likes')
+      .select('comment_id, like_type, user_ip')
+      .in('comment_id', commentIds)
+
+    if (likesError) {
+      console.error('Error fetching likes:', likesError)
+    }
+
+    // Grupisanje lajkova po komentarima i računanje broja
+    const commentsWithLikes = comments.map(comment => {
+      const commentLikes = likes?.filter(l => l.comment_id === comment.id) || []
+      const likesCount = commentLikes.filter(l => l.like_type === 'like').length
+      const dislikesCount = commentLikes.filter(l => l.like_type === 'dislike').length
+      const userLike = commentLikes.find(l => l.user_ip === ip)
+
+      return {
+        ...comment,
+        likes_count: likesCount,
+        dislikes_count: dislikesCount,
+        user_like_type: userLike?.like_type || null
+      }
+    })
+
+    return NextResponse.json(commentsWithLikes, { status: 200 })
   } catch (error: any) {
     console.error('Error:', error)
     return NextResponse.json(

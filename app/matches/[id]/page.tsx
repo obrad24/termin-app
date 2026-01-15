@@ -7,7 +7,7 @@ import { format } from 'date-fns'
 import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/header'
-import { ArrowLeft, Star, MessageSquare, Send } from 'lucide-react'
+import { ArrowLeft, Star, MessageSquare, Send, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { getPlayerImageUrl } from '@/lib/image-utils'
 import PlayerRatingDialog from '@/components/player-rating-dialog'
 import { Input } from '@/components/ui/input'
@@ -180,6 +180,8 @@ export default function MatchDetailPage() {
         setComments([newComment, ...comments])
         setCommentNickname('')
         setCommentText('')
+        // Refresh comments to get like counts
+        fetchComments()
       } else {
         const error = await response.json()
         alert(error.error || 'Greška pri dodavanju komentara')
@@ -189,6 +191,30 @@ export default function MatchDetailPage() {
       alert('Greška pri dodavanju komentara')
     } finally {
       setSubmittingComment(false)
+    }
+  }
+
+  const handleLikeComment = async (commentId: number, likeType: 'like' | 'dislike') => {
+    if (!match?.id) return
+
+    try {
+      const response = await fetch(`/api/matches/${match.id}/comments/${commentId}/like`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ like_type: likeType }),
+      })
+
+      if (response.ok) {
+        // Refresh comments to get updated like counts
+        fetchComments()
+      } else {
+        const error = await response.json()
+        console.error('Error liking comment:', error)
+      }
+    } catch (error) {
+      console.error('Error liking comment:', error)
     }
   }
 
@@ -827,14 +853,40 @@ export default function MatchDetailPage() {
                   >
                     <div className="flex items-start justify-between gap-4 mb-2">
                       <div className="flex-1">
-                        <div className="font-semibold text-white mb-1">{comment.nickname}</div>
-                        <p className="text-white/80 text-sm whitespace-pre-wrap break-words">
+                        <div className="text-xs text-white/60 mb-1">{comment.nickname}</div>
+                        <p className="text-white/80 text-base font-semibold whitespace-pre-wrap break-words">
                           {comment.comment}
                         </p>
                       </div>
                     </div>
-                    <div className="text-xs text-white/50 mt-2">
-                      {comment.created_at ? format(new Date(comment.created_at), 'dd MMM yyyy, HH:mm') : ''}
+                    <div className="flex items-center justify-between mt-3">
+                      <div className="text-xs text-white/50">
+                        {comment.created_at ? format(new Date(comment.created_at), 'dd MMM yyyy, HH:mm') : ''}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleLikeComment(comment.id, 'like')}
+                          className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors ${
+                            comment.user_like_type === 'like'
+                              ? 'bg-green-500/30 text-green-400 hover:bg-green-500/40'
+                              : 'bg-slate-600/30 text-white/70 hover:bg-slate-600/50'
+                          }`}
+                        >
+                          <ThumbsUp className="w-3.5 h-3.5" />
+                          <span>{comment.likes_count || 0}</span>
+                        </button>
+                        <button
+                          onClick={() => handleLikeComment(comment.id, 'dislike')}
+                          className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors ${
+                            comment.user_like_type === 'dislike'
+                              ? 'bg-red-500/30 text-red-400 hover:bg-red-500/40'
+                              : 'bg-slate-600/30 text-white/70 hover:bg-slate-600/50'
+                          }`}
+                        >
+                          <ThumbsDown className="w-3.5 h-3.5" />
+                          <span>{comment.dislikes_count || 0}</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}

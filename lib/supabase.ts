@@ -128,6 +128,18 @@ export interface MatchComment {
   nickname: string
   comment: string
   created_at?: string
+  likes_count?: number
+  dislikes_count?: number
+  user_like_type?: 'like' | 'dislike' | null
+}
+
+// Tipovi za lajkove/dislajkove komentara
+export interface MatchCommentLike {
+  id: number
+  comment_id: number
+  like_type: 'like' | 'dislike'
+  user_ip?: string | null
+  created_at?: string
 }
 
 // Prošireni tip za rezultat sa strijelcima i igračima
