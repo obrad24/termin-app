@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Menu, X, Users } from 'lucide-react'
+import { Menu, X, Users, Coins } from 'lucide-react'
 import Link from 'next/link'
 import {
   Sheet,
@@ -36,6 +36,10 @@ export default function Header() {
         </Link>
         <Link href="/statistics" className="text-white/60 hover:text-white transition text-sm lg:text-base">
           Statistika
+        </Link>
+        <Link href="/terminbet" className="flex items-center gap-2 text-white/60 hover:text-white transition text-sm lg:text-base">
+          <Coins className="w-4 h-4 lg:w-5 lg:h-5" />
+          <span>TerminBet</span>
         </Link>
         <Link href="/admin" className="text-white/60 hover:text-white transition text-sm lg:text-base">
           Admin
@@ -105,6 +109,14 @@ export default function Header() {
                 </Link>
 
                 <Link
+                  href="/terminbet"
+                  onClick={() => setOpen(false)}
+                  className="group flex items-center gap-4 px-4 py-4 rounded-xl text-white/90 hover:text-white transition-all duration-200 hover:bg-yellow-500/20 border border-transparent hover:border-yellow-400/30"
+                >
+                  <span className="flex-1 font-medium">TerminBet</span>
+                </Link>
+
+                <Link
                   href="/admin"
                   onClick={() => setOpen(false)}
                   className="group flex items-center gap-4 px-4 py-4 rounded-xl text-white/90 hover:text-white transition-all duration-200 hover:bg-amber-500/20 border border-transparent hover:border-amber-400/30"
@@ -171,6 +183,13 @@ export default function Header() {
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
+          </Link>
+
+          <Link
+            href="/terminbet"
+            className="flex flex-col items-center gap-1 px-2 py-2 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition-all active:scale-95 flex-1"
+          >
+            <Coins className="w-6 h-6" />
           </Link>
 
           <Link

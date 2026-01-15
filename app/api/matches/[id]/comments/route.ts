@@ -31,12 +31,24 @@ export async function GET(
     const forwarded = request.headers.get('x-forwarded-for')
     const ip = forwarded ? forwarded.split(',')[0] : request.headers.get('x-real-ip') || 'unknown'
 
-    // Dobijanje komentara sortiranih po datumu (najnoviji prvi)
+    // Dobijanje query parametara za paginaciju
+    const { searchParams } = new URL(request.url)
+    const limit = parseInt(searchParams.get('limit') || '8', 10)
+    const offset = parseInt(searchParams.get('offset') || '0', 10)
+
+    // Dobijanje ukupnog broja komentara
+    const { count: totalCount } = await supabase
+      .from('match_comments')
+      .select('*', { count: 'exact', head: true })
+      .eq('match_id', id)
+
+    // Dobijanje komentara sortiranih po datumu (najnoviji prvi) sa paginacijom
     const { data: comments, error } = await supabase
       .from('match_comments')
       .select('*')
       .eq('match_id', id)
       .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
 
     if (error) {
       console.error('Error fetching comments:', error)
@@ -47,7 +59,11 @@ export async function GET(
     }
 
     if (!comments || comments.length === 0) {
-      return NextResponse.json([], { status: 200 })
+      return NextResponse.json({
+        comments: [],
+        total: totalCount || 0,
+        hasMore: false
+      }, { status: 200 })
     }
 
     // Dobijanje lajkova/dislajkova za sve komentare
@@ -76,7 +92,11 @@ export async function GET(
       }
     })
 
-    return NextResponse.json(commentsWithLikes, { status: 200 })
+    return NextResponse.json({
+      comments: commentsWithLikes,
+      total: totalCount || 0,
+      hasMore: (totalCount || 0) > offset + limit
+    }, { status: 200 })
   } catch (error: any) {
     console.error('Error:', error)
     return NextResponse.json(

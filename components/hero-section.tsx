@@ -239,7 +239,6 @@ export default function HeroSection() {
                   <>
                     <span>{format(new Date(nextMatch.match_date), 'd.M')}.</span>
                     <span>{format(new Date(nextMatch.match_date), 'EEE')}</span>
-                    <span>{format(new Date(nextMatch.match_date), 'HH:mm')}</span>
                   </>
                 )}
               </div>

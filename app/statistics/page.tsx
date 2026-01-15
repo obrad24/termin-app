@@ -180,9 +180,6 @@ export default function StatisticsPage() {
                           {player.team}
                         </p>
                       )}
-                      <div className="flex items-center gap-4 mt-2 text-sm text-white/40">
-                        <span>{player.matches_played} utakmica</span>
-                      </div>
                     </div>
 
                     {/* Goals */}
