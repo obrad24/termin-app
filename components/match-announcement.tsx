@@ -127,7 +127,7 @@ export default function MatchAnnouncement() {
               <>
                 {/* Left player */}
                 {homePlayers[0] && (
-                  <div className="absolute left-0 bottom-0 w-16 h-20 sm:w-20 sm:h-26 md:w-24 md:h-30 overflow-hidden z-10">
+                  <div className="absolute left-0 bottom-0 w-18 h-[90px] sm:w-20 sm:h-26 md:w-24 md:h-30 overflow-hidden z-10">
                     <Image
                       src={getPlayerImageUrl(homePlayers[0].image_url)}
                       alt={`${homePlayers[0].first_name} ${homePlayers[0].last_name}`}
@@ -159,7 +159,7 @@ export default function MatchAnnouncement() {
                 )}
                 {/* Right player */}
                 {homePlayers[2] && (
-                  <div className="absolute right-0 bottom-0 w-16 h-20 sm:w-20 sm:h-26 md:w-24 md:h-30 overflow-hidden z-10">
+                  <div className="absolute right-0 bottom-0 w-18 h-[90px] sm:w-20 sm:h-26 md:w-24 md:h-30 overflow-hidden z-10">
                     <Image
                       src={getPlayerImageUrl(homePlayers[2].image_url)}
                       alt={`${homePlayers[2].first_name} ${homePlayers[2].last_name}`}
@@ -189,7 +189,7 @@ export default function MatchAnnouncement() {
               <>
                 {/* Left player */}
                 {awayPlayers[0] && (
-                  <div className="absolute left-0 bottom-0 w-16 h-20 sm:w-20 sm:h-26 md:w-24 md:h-30 overflow-hidden z-10">
+                  <div className="absolute left-0 bottom-0 w-18 h-[90px] sm:w-20 sm:h-26 md:w-24 md:h-30 overflow-hidden z-10">
                     <Image
                       src={getPlayerImageUrl(awayPlayers[0].image_url)}
                       alt={`${awayPlayers[0].first_name} ${awayPlayers[0].last_name}`}
@@ -221,7 +221,7 @@ export default function MatchAnnouncement() {
                 )}
                 {/* Right player */}
                 {awayPlayers[2] && (
-                  <div className="absolute right-0 bottom-0 w-16 h-20 sm:w-20 sm:h-26 md:w-24 md:h-30 overflow-hidden z-10">
+                  <div className="absolute right-0 bottom-0 w-18 h-[90px] sm:w-20 sm:h-26 md:w-24 md:h-30 overflow-hidden z-10">
                     <Image
                       src={getPlayerImageUrl(awayPlayers[2].image_url)}
                       alt={`${awayPlayers[2].first_name} ${awayPlayers[2].last_name}`}
