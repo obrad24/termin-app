@@ -138,6 +138,21 @@ export default function AdminPage() {
   })
   const [loadingNextMatch, setLoadingNextMatch] = useState(true)
   const [showTerminBetDialog, setShowTerminBetDialog] = useState(false)
+  const [showMatchAnnouncementDialog, setShowMatchAnnouncementDialog] = useState(false)
+  const [selectedMatchPlayers, setSelectedMatchPlayers] = useState<Set<string>>(new Set())
+  const [loadingMatchPlayers, setLoadingMatchPlayers] = useState(false)
+  const [existingMatchPlayers, setExistingMatchPlayers] = useState<Array<{
+    id: number
+    player_id: number
+    team_type: 'home' | 'away'
+    players: {
+      id: number
+      first_name: string
+      last_name: string
+      image_url: string | null
+      team: string | null
+    }
+  }>>([])
   const { toast } = useToast()
 
   const checkAuth = async () => {
@@ -287,6 +302,95 @@ export default function AdminPage() {
       console.error('Error fetching next match:', error)
     } finally {
       setLoadingNextMatch(false)
+    }
+  }
+
+  const fetchMatchPlayers = async () => {
+    setLoadingMatchPlayers(true)
+    try {
+      const response = await fetch('/api/next-match/players')
+      if (response.ok) {
+        const data = await response.json()
+        setExistingMatchPlayers(data || [])
+        // Postavi izabrane igrače
+        const selected = new Set<string>()
+        data.forEach((item: any) => {
+          selected.add(`${item.player_id}-${item.team_type}`)
+        })
+        setSelectedMatchPlayers(selected)
+      }
+    } catch (error) {
+      console.error('Error fetching match players:', error)
+    } finally {
+      setLoadingMatchPlayers(false)
+    }
+  }
+
+  const toggleMatchPlayerSelection = (playerId: string, teamType: 'home' | 'away') => {
+    const key = `${playerId}-${teamType}`
+    setSelectedMatchPlayers((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(key)) {
+        newSet.delete(key)
+      } else {
+        newSet.add(key)
+      }
+      return newSet
+    })
+  }
+
+  const isMatchPlayerSelected = (playerId: string, teamType: 'home' | 'away') => {
+    return selectedMatchPlayers.has(`${playerId}-${teamType}`)
+  }
+
+  const handleSaveMatchPlayers = async () => {
+    setLoading(true)
+    try {
+      if (!nextMatch.home_team || !nextMatch.away_team) {
+        toast({
+          title: 'Greška',
+          description: 'Morate prvo postaviti timove u TerminBet sekciji',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      const playerIds = Array.from(selectedMatchPlayers).map((key) => {
+        const [playerId, teamType] = key.split('-')
+        return {
+          player_id: parseInt(playerId),
+          team_type: teamType as 'home' | 'away',
+        }
+      })
+
+      const response = await fetch('/api/next-match/players', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ player_ids: playerIds }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Greška pri čuvanju igrača')
+      }
+
+      toast({
+        title: 'Uspešno!',
+        description: 'Igrači su sačuvani',
+      })
+
+      fetchMatchPlayers()
+      setShowMatchAnnouncementDialog(false)
+    } catch (error: any) {
+      toast({
+        title: 'Greška',
+        description: error.message || 'Nešto je pošlo po zlu',
+        variant: 'destructive',
+      })
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -682,8 +786,8 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* TerminBet Button */}
-        <div className="mb-6">
+        {/* TerminBet and Match Announcement Buttons */}
+        <div className="mb-6 flex flex-col sm:flex-row gap-4">
           <Button
             onClick={() => setShowTerminBetDialog(true)}
             className="w-full sm:w-auto relative overflow-hidden bg-[#280071]"
@@ -695,6 +799,18 @@ export default function AdminPage() {
             <span className='text-white text-2xl font-bold'>
               TerminBet
             </span>
+          </Button>
+          <Button
+            onClick={() => {
+              setShowMatchAnnouncementDialog(true)
+              fetchMatchPlayers()
+            }}
+            className="w-full sm:w-auto"
+            size="lg"
+            variant="default"
+          >
+            <Calendar className="w-5 h-5 mr-2" />
+            NAJAVA MECA
           </Button>
         </div>
 
@@ -1140,6 +1256,159 @@ export default function AdminPage() {
                   setShowTerminBetDialog(false)
                 }}
                 disabled={loading}
+              >
+                {loading ? 'Čuvanje...' : 'Sačuvaj'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Match Announcement Dialog */}
+        <Dialog open={showMatchAnnouncementDialog} onOpenChange={setShowMatchAnnouncementDialog}>
+          <DialogContent className="max-w-4xl h-[80vh] sm:h-[85vh] flex flex-col w-[95%] sm:w-full max-h-[90vh]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-base sm:text-lg md:text-xl">
+                <Calendar className="w-5 h-5" />
+                NAJAVA MECA
+              </DialogTitle>
+              <DialogDescription>
+                Izaberite igrače koji će igrati sledeći meč
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex-1 overflow-y-auto space-y-6 pr-1 sm:pr-2">
+              {loadingMatchPlayers ? (
+                <div className="text-center py-4 text-muted-foreground">Učitavanje...</div>
+              ) : !nextMatch.home_team || !nextMatch.away_team ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p className="mb-2">Morate prvo postaviti timove u TerminBet sekciji</p>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowMatchAnnouncementDialog(false)
+                      setShowTerminBetDialog(true)
+                    }}
+                  >
+                    Otvori TerminBet
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  {/* Home Team Players */}
+                  <div className="space-y-3">
+                    <h3 className="text-base sm:text-lg font-semibold">
+                      {nextMatch.home_team}
+                    </h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                      {players
+                        .filter((p) => p.team === nextMatch.home_team)
+                        .map((player) => (
+                          <div
+                            key={player.id}
+                            className={`flex flex-col items-center p-3 border rounded-lg cursor-pointer transition-colors ${
+                              isMatchPlayerSelected(player.id.toString(), 'home')
+                                ? 'bg-primary/10 border-primary'
+                                : 'hover:bg-muted/50'
+                            }`}
+                            onClick={() => toggleMatchPlayerSelection(player.id.toString(), 'home')}
+                          >
+                            <div className="relative w-20 h-24 rounded-b-2xl overflow-hidden mb-2">
+                              <Image
+                                src={getPlayerImageUrl(player.image_url)}
+                                alt={`${player.first_name} ${player.last_name}`}
+                                fill
+                                className="object-cover"
+                                unoptimized
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement
+                                  target.src = '/no-image-player.png'
+                                }}
+                              />
+                            </div>
+                            <div className="text-center">
+                              <div className="text-xs sm:text-sm font-medium truncate w-full">
+                                {player.first_name} {player.last_name}
+                              </div>
+                            </div>
+                            <Checkbox
+                              checked={isMatchPlayerSelected(player.id.toString(), 'home')}
+                              onCheckedChange={() => toggleMatchPlayerSelection(player.id.toString(), 'home')}
+                              className="mt-2"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                        ))}
+                    </div>
+                    {players.filter((p) => p.team === nextMatch.home_team).length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        Nema igrača u ovom timu
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Away Team Players */}
+                  <div className="space-y-3">
+                    <h3 className="text-base sm:text-lg font-semibold">
+                      {nextMatch.away_team}
+                    </h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                      {players
+                        .filter((p) => p.team === nextMatch.away_team)
+                        .map((player) => (
+                          <div
+                            key={player.id}
+                            className={`flex flex-col items-center p-3 border rounded-lg cursor-pointer transition-colors ${
+                              isMatchPlayerSelected(player.id.toString(), 'away')
+                                ? 'bg-primary/10 border-primary'
+                                : 'hover:bg-muted/50'
+                            }`}
+                            onClick={() => toggleMatchPlayerSelection(player.id.toString(), 'away')}
+                          >
+                            <div className="relative w-20 h-24 rounded-b-2xl overflow-hidden mb-2">
+                              <Image
+                                src={getPlayerImageUrl(player.image_url)}
+                                alt={`${player.first_name} ${player.last_name}`}
+                                fill
+                                className="object-cover"
+                                unoptimized
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement
+                                  target.src = '/no-image-player.png'
+                                }}
+                              />
+                            </div>
+                            <div className="text-center">
+                              <div className="text-xs sm:text-sm font-medium truncate w-full">
+                                {player.first_name} {player.last_name}
+                              </div>
+                            </div>
+                            <Checkbox
+                              checked={isMatchPlayerSelected(player.id.toString(), 'away')}
+                              onCheckedChange={() => toggleMatchPlayerSelection(player.id.toString(), 'away')}
+                              className="mt-2"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                        ))}
+                    </div>
+                    {players.filter((p) => p.team === nextMatch.away_team).length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        Nema igrača u ovom timu
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowMatchAnnouncementDialog(false)}
+              >
+                Otkaži
+              </Button>
+              <Button
+                onClick={handleSaveMatchPlayers}
+                disabled={loading || !nextMatch.home_team || !nextMatch.away_team}
               >
                 {loading ? 'Čuvanje...' : 'Sačuvaj'}
               </Button>
