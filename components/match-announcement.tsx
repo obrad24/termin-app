@@ -121,6 +121,7 @@ export default function MatchAnnouncement() {
         <div className='absolute bottom-[20%] left-0 w-full h-10 bg-gradient-to-t from-[rgba(10,13,26,0.95)] via-[rgba(15,21,37,0.6)] to-transparent z-20'></div>
         {/* Top Section - Date, Time, and Players */}
         <div className="relative flex items-center justify-between mb-1 px-2 sm:px-8">
+          <p className='absolute top-[50px] left-1/2 -translate-x-1/2 text-[10px] font-extrabold text-white shadow-2xl hero-bg/50 backdrop-blur-xl z-20'>SLEDEĆI TERMIN</p>
           {/* Left Team Players - One in center, two on sides */}
           <div className="relative min-w-[145px] max-w-[145px] h-28 sm:h-32 md:h-36 z-10">
             {homePlayers.length > 0 ? (

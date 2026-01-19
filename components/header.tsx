@@ -149,7 +149,7 @@ export default function Header() {
       </button>
 
       {/* Mobile Bottom Navigation - Fixed navigation buttons */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 hero-bg/50 backdrop-blur-xl border-t border-white/20 rounded-t-3xl">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-[100] hero-bg/50 backdrop-blur-xl border-t border-white/20 rounded-t-3xl">
         <div className="flex items-center justify-around px-2 py-2">
           <Link
             href="/"
