@@ -201,7 +201,7 @@ export default function HeroSection() {
         </div>
       </div>
       <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-[rgba(10,13,26,0.95)] via-[rgba(15,21,37,0.6)] to-transparent"></div>
-      <Link href="/terminbet" className='absolute bottom-[12%] left-0 bg-[#280071] w-full h-8 flex items-center overflow-hidden hover:bg-[#320085] transition-colors cursor-pointer z-50'>
+      <Link href="/terminbet" className='absolute bottom-[12%] left-0 bg-[#280071] w-full h-8 flex items-center overflow-hidden hover:bg-[#320085] transition-colors cursor-pointer z-40'>
         <div className='terminbet-scroll flex items-center font-bold text-2xl'>
           <div className='flex items-center justify-center px-2'>
             <span className='text-white'>TERMIN</span><span className='text-[#f9c14c]'>BET</span>
