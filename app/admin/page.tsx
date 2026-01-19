@@ -23,6 +23,7 @@ import {
   UserPlus,
   Users,
   Pencil,
+  Sparkles,
 } from 'lucide-react'
 import {
   Dialog,
@@ -40,6 +41,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Textarea } from '@/components/ui/textarea'
+import { Newspaper } from 'lucide-react'
 
 export default function AdminPage() {
   const [password, setPassword] = useState('')
@@ -153,6 +156,8 @@ export default function AdminPage() {
       team: string | null
     }
   }>>([])
+  const [terminNews, setTerminNews] = useState<string>('')
+  const [loadingTerminNews, setLoadingTerminNews] = useState(true)
   const { toast } = useToast()
 
   const checkAuth = async () => {
@@ -166,6 +171,7 @@ export default function AdminPage() {
           fetchPlayers()
           fetchTeams()
           fetchNextMatch()
+          fetchTerminNews()
         }
       }
     } catch (error) {
@@ -193,6 +199,7 @@ export default function AdminPage() {
         fetchPlayers()
         fetchTeams()
         fetchNextMatch()
+        fetchTerminNews()
         toast({
           title: 'Uspešno prijavljivanje',
           description: 'Dobrodošli u admin dashboard',
@@ -302,6 +309,94 @@ export default function AdminPage() {
       console.error('Error fetching next match:', error)
     } finally {
       setLoadingNextMatch(false)
+    }
+  }
+
+  const fetchTerminNews = async () => {
+    setLoadingTerminNews(true)
+    try {
+      const response = await fetch('/api/termin-news')
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Admin - TerminNews data:', data) // Debug log
+        setTerminNews(data.content || '')
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('Admin - Error fetching termin news:', response.status, errorData)
+      }
+    } catch (error) {
+      console.error('Admin - Error fetching termin news:', error)
+    } finally {
+      setLoadingTerminNews(false)
+    }
+  }
+
+  const handleSaveTerminNews = async () => {
+    setLoading(true)
+    try {
+      const response = await fetch('/api/termin-news', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content: terminNews }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Greška pri čuvanju TerminNews')
+      }
+
+      toast({
+        title: 'Uspešno!',
+        description: 'TerminNews je sačuvan',
+      })
+
+      fetchTerminNews()
+    } catch (error: any) {
+      toast({
+        title: 'Greška',
+        description: error.message || 'Nešto je pošlo po zlu',
+        variant: 'destructive',
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGenerateTerminNews = async () => {
+    setLoading(true)
+    try {
+      const response = await fetch('/api/termin-news/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Greška pri generisanju teksta')
+      }
+
+      const data = await response.json()
+
+      toast({
+        title: 'Uspešno!',
+        description: 'Tekst je generisan i sačuvan',
+      })
+
+      // Ažuriraj tekst u formi
+      setTerminNews(data.content || '')
+      fetchTerminNews()
+    } catch (error: any) {
+      toast({
+        title: 'Greška',
+        description: error.message || 'Nešto je pošlo po zlu',
+        variant: 'destructive',
+      })
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -1500,6 +1595,70 @@ export default function AdminPage() {
             </Card>
           </div>
         </div>
+
+        {/* TerminNews Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+              <Newspaper className="w-5 h-5" />
+              TerminNews - Izvještaj o poslednjem terminu
+            </CardTitle>
+            <CardDescription>
+              Unesite tekst koji će se prikazati na TerminNews stranici kao izvještaj o poslednjem terminu
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingTerminNews ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Učitavanje...
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="termin_news">Tekst izvještaja</Label>
+                  <Textarea
+                    id="termin_news"
+                    value={terminNews}
+                    onChange={(e) => setTerminNews(e.target.value)}
+                    placeholder="Unesite tekst izvještaja o poslednjem terminu..."
+                    className="min-h-[200px] resize-y"
+                  />
+                </div>
+                <div className="space-y-3">
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button
+                      onClick={handleGenerateTerminNews}
+                      disabled={loading}
+                      className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                    >
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      {loading ? 'Generisanje...' : 'Generiši tekst'}
+                    </Button>
+                    <Button
+                      onClick={handleSaveTerminNews}
+                      disabled={loading}
+                      className="w-full sm:w-auto"
+                    >
+                      {loading ? 'Čuvanje...' : 'Sačuvaj izvještaj'}
+                    </Button>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Link href="/terminnews" className="w-full sm:w-auto">
+                      <Button variant="outline" className="w-full sm:w-auto">
+                        Pregledaj stranicu
+                      </Button>
+                    </Link>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Kliknite na "Generiši tekst" da automatski kreira izvještaj o poslednjem meču. 
+                    Sistem će generisati tekst od 10 rečenica na osnovu podataka o meču, rezultatu i strijelcima.
+                    Tekst će biti automatski sačuvan nakon generisanja.
+                  </p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Add Result Card */}

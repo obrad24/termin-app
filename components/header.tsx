@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Menu, X, Users, Coins } from 'lucide-react'
+import { Menu, X, Users, Coins, Newspaper } from 'lucide-react'
 import Link from 'next/link'
 import {
   Sheet,
@@ -40,6 +40,10 @@ export default function Header() {
         <Link href="/terminbet" className="flex items-center gap-2 text-white/60 hover:text-white transition text-sm lg:text-base">
           <Coins className="w-4 h-4 lg:w-5 lg:h-5" />
           <span>TerminBet</span>
+        </Link>
+        <Link href="/terminnews" className="flex items-center gap-2 text-white/60 hover:text-white transition text-sm lg:text-base">
+          <Newspaper className="w-4 h-4 lg:w-5 lg:h-5" />
+          <span>TerminNews</span>
         </Link>
         <Link href="/admin" className="text-white/60 hover:text-white transition text-sm lg:text-base">
           Admin
@@ -114,6 +118,14 @@ export default function Header() {
                   className="group flex items-center gap-4 px-4 py-4 rounded-xl text-white/90 hover:text-white transition-all duration-200 hover:bg-yellow-500/20 border border-transparent hover:border-yellow-400/30"
                 >
                   <span className="flex-1 font-medium">TerminBet</span>
+                </Link>
+
+                <Link
+                  href="/terminnews"
+                  onClick={() => setOpen(false)}
+                  className="group flex items-center gap-4 px-4 py-4 rounded-xl text-white/90 hover:text-white transition-all duration-200 hover:bg-blue-500/20 border border-transparent hover:border-blue-400/30"
+                >
+                  <span className="flex-1 font-medium">TerminNews</span>
                 </Link>
 
                 <Link

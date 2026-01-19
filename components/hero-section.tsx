@@ -230,6 +230,7 @@ export default function HeroSection() {
         </div>
       </Link>
       <MatchAnnouncement />
+      <div className='rajko bottom-[14%] h-[50px] absolute left-0 w-full bg-[rgba(10,13,26,0.95)]'></div>
       <div className='absolute bottom-0 left-0 w-full bg-[rgba(10,13,26,0.95)] flex'>
         {nextMatch && nextMatch.home_team && nextMatch.away_team ? (
           <div className="w-full max-w-7xl mx-auto flex py-2 border-t border-amber-400 border-b border-amber-400 h-auto">
