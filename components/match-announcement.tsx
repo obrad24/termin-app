@@ -122,67 +122,7 @@ export default function MatchAnnouncement() {
         {/* Top Section - Date, Time, and Players */}
         <div className="relative flex items-center justify-between mb-1 px-2 sm:px-8">
           <p className='absolute top-[50px] left-1/2 -translate-x-1/2 text-[10px] font-extrabold text-white shadow-2xl hero-bg/50 backdrop-blur-xl z-20'>SLEDEĆI TERMIN</p>
-          {/* Left Team Players - One in center, two on sides */}
-          <div className="relative min-w-[145px] max-w-[145px] h-28 sm:h-32 md:h-36 z-10">
-            {homePlayers.length > 0 ? (
-              <>
-                {/* Left player */}
-                {homePlayers[0] && (
-                  <div className="absolute left-0 bottom-0 w-18 h-[90px] sm:w-20 sm:h-26 md:w-24 md:h-30 overflow-hidden z-10">
-                    <Image
-                      src={getPlayerImageUrl(homePlayers[0].image_url)}
-                      alt={`${homePlayers[0].first_name} ${homePlayers[0].last_name}`}
-                      fill
-                      className="object-contain"
-                      unoptimized
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement
-                        target.src = '/no-image-player.png'
-                      }}
-                    />
-                  </div>
-                )}
-                {/* Center player (taller) */}
-                {homePlayers[1] && (
-                  <div className="absolute left-1/2 -translate-x-1/2 bottom-0 w-20 h-26 sm:w-24 sm:h-32 md:w-28 md:h-36 overflow-hidden z-20">
-                    <Image
-                      src={getPlayerImageUrl(homePlayers[1].image_url)}
-                      alt={`${homePlayers[1].first_name} ${homePlayers[1].last_name}`}
-                      fill
-                      className="object-contain"
-                      unoptimized
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement
-                        target.src = '/no-image-player.png'
-                      }}
-                    />
-                  </div>
-                )}
-                {/* Right player */}
-                {homePlayers[2] && (
-                  <div className="absolute right-0 bottom-0 w-18 h-[90px] sm:w-20 sm:h-26 md:w-24 md:h-30 overflow-hidden z-10">
-                    <Image
-                      src={getPlayerImageUrl(homePlayers[2].image_url)}
-                      alt={`${homePlayers[2].first_name} ${homePlayers[2].last_name}`}
-                      fill
-                      className="object-contain"
-                      unoptimized
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement
-                        target.src = '/no-image-player.png'
-                      }}
-                    />
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <div className="absolute left-0 bottom-0 w-16 h-20 sm:w-20 sm:h-26 md:w-24 md:h-30 overflow-hidden bg-gray-300 z-10" />
-                <div className="absolute left-1/2 -translate-x-1/2 bottom-0 w-20 h-26 sm:w-24 sm:h-32 md:w-28 md:h-36 overflow-hidden bg-gray-300 z-20" />
-                <div className="absolute right-0 bottom-0 w-16 h-20 sm:w-20 sm:h-26 md:w-24 md:h-30 overflow-hidden bg-gray-300 z-10" />
-              </>
-            )}
-          </div>
+          
 
           {/* Right Team Players - One in center, two on sides */}
           <div className="relative min-w-[145px] max-w-[145px] h-28 sm:h-32 md:h-36 z-10">
@@ -226,6 +166,67 @@ export default function MatchAnnouncement() {
                     <Image
                       src={getPlayerImageUrl(awayPlayers[2].image_url)}
                       alt={`${awayPlayers[2].first_name} ${awayPlayers[2].last_name}`}
+                      fill
+                      className="object-contain"
+                      unoptimized
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement
+                        target.src = '/no-image-player.png'
+                      }}
+                    />
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="absolute left-0 bottom-0 w-16 h-20 sm:w-20 sm:h-26 md:w-24 md:h-30 overflow-hidden bg-gray-300 z-10" />
+                <div className="absolute left-1/2 -translate-x-1/2 bottom-0 w-20 h-26 sm:w-24 sm:h-32 md:w-28 md:h-36 overflow-hidden bg-gray-300 z-20" />
+                <div className="absolute right-0 bottom-0 w-16 h-20 sm:w-20 sm:h-26 md:w-24 md:h-30 overflow-hidden bg-gray-300 z-10" />
+              </>
+            )}
+          </div>
+          {/* Left Team Players - One in center, two on sides */}
+          <div className="relative min-w-[145px] max-w-[145px] h-28 sm:h-32 md:h-36 z-10">
+            {homePlayers.length > 0 ? (
+              <>
+                {/* Left player */}
+                {homePlayers[0] && (
+                  <div className="absolute left-0 bottom-0 w-18 h-[90px] sm:w-20 sm:h-26 md:w-24 md:h-30 overflow-hidden z-10">
+                    <Image
+                      src={getPlayerImageUrl(homePlayers[0].image_url)}
+                      alt={`${homePlayers[0].first_name} ${homePlayers[0].last_name}`}
+                      fill
+                      className="object-contain"
+                      unoptimized
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement
+                        target.src = '/no-image-player.png'
+                      }}
+                    />
+                  </div>
+                )}
+                {/* Center player (taller) */}
+                {homePlayers[1] && (
+                  <div className="absolute left-1/2 -translate-x-1/2 bottom-0 w-20 h-26 sm:w-24 sm:h-32 md:w-28 md:h-36 overflow-hidden z-20">
+                    <Image
+                      src={getPlayerImageUrl(homePlayers[1].image_url)}
+                      alt={`${homePlayers[1].first_name} ${homePlayers[1].last_name}`}
+                      fill
+                      className="object-contain"
+                      unoptimized
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement
+                        target.src = '/no-image-player.png'
+                      }}
+                    />
+                  </div>
+                )}
+                {/* Right player */}
+                {homePlayers[2] && (
+                  <div className="absolute right-0 bottom-0 w-18 h-[90px] sm:w-20 sm:h-26 md:w-24 md:h-30 overflow-hidden z-10">
+                    <Image
+                      src={getPlayerImageUrl(homePlayers[2].image_url)}
+                      alt={`${homePlayers[2].first_name} ${homePlayers[2].last_name}`}
                       fill
                       className="object-contain"
                       unoptimized
