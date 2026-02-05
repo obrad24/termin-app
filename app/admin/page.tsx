@@ -299,9 +299,20 @@ export default function AdminPage() {
             away_score: data.away_score?.toString() || '',
             total_goals: data.total_goals?.toString() || '',
             goals: data.goals || [],
-            total_goals_odds: data.total_goals_odds || [],
-            player_goals_odds: data.player_goals_odds || [],
-            over_under_odds: data.over_under_odds || [],
+            total_goals_odds: (data.total_goals_odds || []).map((item: any) => ({
+              goals: item.goals?.toString() || '',
+              odd: item.odd?.toString() || '',
+            })),
+            player_goals_odds: (data.player_goals_odds || []).map((item: any) => ({
+              player_id: item.player_id?.toString() || '',
+              goals: item.goals?.toString() || '',
+              odd: item.odd?.toString() || '',
+            })),
+            over_under_odds: (data.over_under_odds || []).map((item: any) => ({
+              goals: item.goals?.toString() || '',
+              over_odd: item.over_odd?.toString() || '',
+              under_odd: item.under_odd?.toString() || '',
+            })),
           })
         }
       }
@@ -801,6 +812,14 @@ export default function AdminPage() {
     checkAuth()
   }, [])
 
+  // Osveži podatke kada se otvori TerminBet dijalog
+  useEffect(() => {
+    if (showTerminBetDialog) {
+      fetchNextMatch()
+      fetchPlayers()
+    }
+  }, [showTerminBetDialog])
+
   if (checkingAuth) {
     return (
       <div className="min-h-screen hero-bg flex items-center justify-center px-4">
@@ -1152,6 +1171,11 @@ export default function AdminPage() {
                           const allPlayers = players.filter(
                             (p) => p.team === nextMatch.home_team || p.team === nextMatch.away_team
                           )
+                          
+                          // Pronađi trenutno izabranog igrača (može biti iz bilo kog tima)
+                          const selectedPlayer = players.find(
+                            (p) => p.id.toString() === item.player_id
+                          )
 
                           return (
                             <div
@@ -1172,6 +1196,12 @@ export default function AdminPage() {
                                     <SelectValue placeholder="Izaberi igrača" />
                                   </SelectTrigger>
                                   <SelectContent>
+                                    {/* Ako je izabran igrač koji nije u allPlayers, dodaj ga na vrh liste */}
+                                    {selectedPlayer && !allPlayers.find(p => p.id === selectedPlayer.id) && (
+                                      <SelectItem key={selectedPlayer.id} value={selectedPlayer.id.toString()}>
+                                        {selectedPlayer.first_name} {selectedPlayer.last_name} ({selectedPlayer.team})
+                                      </SelectItem>
+                                    )}
                                     {allPlayers.map((player) => (
                                       <SelectItem key={player.id} value={player.id.toString()}>
                                         {player.first_name} {player.last_name} ({player.team})

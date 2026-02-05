@@ -191,11 +191,11 @@ export default function HeroSection() {
             : 'fixed left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 z-50 opacity-100 blur-0'
             }`}
         >
-          <span className="text-[160px] sm:text-7xl md:text-[160px] lg:text-9xl font-bold text-white drop-shadow-lg">
+          <span className="text-[145px] sm:text-7xl md:text-[160px] lg:text-9xl font-bold text-white drop-shadow-lg">
             {stats.team1Wins}
           </span>
           <span className="text-[100px] sm:text-5xl md:text-6xl text-white/80 font-light">-</span>
-          <span className="text-[160px] sm:text-7xl md:text-[160px] lg:text-9xl font-bold text-white drop-shadow-lg">
+          <span className="text-[145px] sm:text-7xl md:text-[160px] lg:text-9xl font-bold text-white drop-shadow-lg">
             {stats.team2Wins}
           </span>
         </div>
