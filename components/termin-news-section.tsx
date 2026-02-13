@@ -55,7 +55,7 @@ export default function TerminNewsSection() {
   const truncatedPreview = previewText.length > 200 ? previewText.substring(0, 200) + '...' : previewText
 
   return (
-    <section className="relative px-4 sm:px-6 lg:px-8 py-12 sm:py-16 max-w-7xl mx-auto">
+    <section className="relative px-4 sm:px-6 lg:px-8 py-12 sm:py-16 max-w-7xl mx-auto hidden">
       <div className="flex items-center justify-between mb-6 sm:mb-8">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-amber-400/20 rounded-lg">

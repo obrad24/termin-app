@@ -872,9 +872,9 @@ export default function MatchDetailPage() {
                       className="bg-slate-700/30 rounded-xl p-4 border border-white/10"
                     >
                       <div className="flex items-start justify-between gap-4 mb-2">
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <div className="text-xs text-white/60 mb-1">{comment.nickname}</div>
-                          <p className="text-white/80 text-base font-semibold whitespace-pre-wrap break-words">
+                          <p className="text-white/80 text-base font-semibold whitespace-pre-wrap break-words" style={{ overflowWrap: 'anywhere' }}>
                             {comment.comment}
                           </p>
                         </div>

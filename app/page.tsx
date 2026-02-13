@@ -3,7 +3,6 @@ import LatestResult from "@/components/latest-result"
 import ResultsSection from "@/components/results-section"
 import HeroSection from "@/components/hero-section"
 import TeamsSection from "@/components/teams-section"
-import TerminNewsSection from "@/components/termin-news-section"
 
 export default function Home() {
   return (
@@ -12,7 +11,6 @@ export default function Home() {
       <HeroSection />
       {/* <LatestResult /> */}
       <ResultsSection />
-      <TerminNewsSection />
     </main>
   )
 }
