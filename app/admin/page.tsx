@@ -44,6 +44,20 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
 import { Newspaper } from 'lucide-react'
 
+type FriendlyTeamType = 'home' | 'away'
+
+interface FriendlyGoal {
+  id: string
+  player_id: string
+  team_type: FriendlyTeamType
+}
+
+interface FriendlyMatchPlayer {
+  id: string
+  player_id: string
+  team_type: FriendlyTeamType
+}
+
 export default function AdminPage() {
   const [password, setPassword] = useState('')
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -156,9 +170,52 @@ export default function AdminPage() {
       team: string | null
     }
   }>>([])
-  const [terminNews, setTerminNews] = useState<string>('')
-  const [loadingTerminNews, setLoadingTerminNews] = useState(true)
+  // TerminNews je uklonjen iz admin panela
+  const [showFriendlyMatchDialog, setShowFriendlyMatchDialog] = useState(false)
+  const [friendlyMatchForm, setFriendlyMatchForm] = useState({
+    home_team: '',
+    away_team: '',
+    home_score: '',
+    away_score: '',
+    date: new Date().toISOString().split('T')[0],
+  })
+  const [friendlyStep, setFriendlyStep] = useState<'teams' | 'players' | 'results'>('teams')
+  const [friendlySelectedPlayers, setFriendlySelectedPlayers] = useState<Set<string>>(new Set())
+  const [friendlyGoals, setFriendlyGoals] = useState<FriendlyGoal[]>([])
   const { toast } = useToast()
+
+  const toggleFriendlyPlayerSelection = (playerId: string, teamType: FriendlyTeamType) => {
+    const key = `${playerId}-${teamType}`
+    setFriendlySelectedPlayers((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(key)) {
+        newSet.delete(key)
+      } else {
+        // Ako je igrač već izabran za drugi tim, ukloni tu vezu
+        const otherKey = `${playerId}-${teamType === 'home' ? 'away' : 'home'}`
+        newSet.delete(otherKey)
+        newSet.add(key)
+      }
+      return newSet
+    })
+  }
+
+  const isFriendlyPlayerSelected = (playerId: string, teamType: FriendlyTeamType) => {
+    return friendlySelectedPlayers.has(`${playerId}-${teamType}`)
+  }
+
+  const getFriendlySelectedPlayers = (): FriendlyMatchPlayer[] => {
+    const selected: FriendlyMatchPlayer[] = []
+    friendlySelectedPlayers.forEach((key) => {
+      const [playerId, teamType] = key.split('-')
+      selected.push({
+        id: key,
+        player_id: playerId,
+        team_type: teamType as FriendlyTeamType,
+      })
+    })
+    return selected
+  }
 
   const checkAuth = async () => {
     try {
@@ -171,7 +228,6 @@ export default function AdminPage() {
           fetchPlayers()
           fetchTeams()
           fetchNextMatch()
-          fetchTerminNews()
         }
       }
     } catch (error) {
@@ -199,7 +255,6 @@ export default function AdminPage() {
         fetchPlayers()
         fetchTeams()
         fetchNextMatch()
-        fetchTerminNews()
         toast({
           title: 'Uspešno prijavljivanje',
           description: 'Dobrodošli u admin dashboard',
@@ -320,94 +375,6 @@ export default function AdminPage() {
       console.error('Error fetching next match:', error)
     } finally {
       setLoadingNextMatch(false)
-    }
-  }
-
-  const fetchTerminNews = async () => {
-    setLoadingTerminNews(true)
-    try {
-      const response = await fetch('/api/termin-news')
-      if (response.ok) {
-        const data = await response.json()
-        console.log('Admin - TerminNews data:', data) // Debug log
-        setTerminNews(data.content || '')
-      } else {
-        const errorData = await response.json().catch(() => ({}))
-        console.error('Admin - Error fetching termin news:', response.status, errorData)
-      }
-    } catch (error) {
-      console.error('Admin - Error fetching termin news:', error)
-    } finally {
-      setLoadingTerminNews(false)
-    }
-  }
-
-  const handleSaveTerminNews = async () => {
-    setLoading(true)
-    try {
-      const response = await fetch('/api/termin-news', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ content: terminNews }),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Greška pri čuvanju TerminNews')
-      }
-
-      toast({
-        title: 'Uspešno!',
-        description: 'TerminNews je sačuvan',
-      })
-
-      fetchTerminNews()
-    } catch (error: any) {
-      toast({
-        title: 'Greška',
-        description: error.message || 'Nešto je pošlo po zlu',
-        variant: 'destructive',
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleGenerateTerminNews = async () => {
-    setLoading(true)
-    try {
-      const response = await fetch('/api/termin-news/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Greška pri generisanju teksta')
-      }
-
-      const data = await response.json()
-
-      toast({
-        title: 'Uspešno!',
-        description: 'Tekst je generisan i sačuvan',
-      })
-
-      // Ažuriraj tekst u formi
-      setTerminNews(data.content || '')
-      fetchTerminNews()
-    } catch (error: any) {
-      toast({
-        title: 'Greška',
-        description: error.message || 'Nešto je pošlo po zlu',
-        variant: 'destructive',
-      })
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -926,6 +893,26 @@ export default function AdminPage() {
             <Calendar className="w-5 h-5 mr-2" />
             NAJAVA MECA
           </Button>
+          <Button
+            onClick={() => {
+              setShowFriendlyMatchDialog(true)
+              setFriendlyStep('teams')
+              setFriendlySelectedPlayers(new Set())
+              setFriendlyGoals([])
+              setFriendlyMatchForm({
+                home_team: '',
+                away_team: '',
+                home_score: '',
+                away_score: '',
+                date: new Date().toISOString().split('T')[0],
+              })
+            }}
+            className="w-full sm:w-auto"
+            size="lg"
+            variant="secondary"
+          >
+            PRIJATELJSKA
+          </Button>
         </div>
 
         {/* TerminBet Dialog */}
@@ -1388,6 +1375,498 @@ export default function AdminPage() {
           </DialogContent>
         </Dialog>
 
+        {/* Friendly Match Dialog */}
+        <Dialog
+          open={showFriendlyMatchDialog}
+          onOpenChange={(open) => {
+            setShowFriendlyMatchDialog(open)
+            if (!open) {
+              setFriendlyStep('teams')
+              setFriendlySelectedPlayers(new Set())
+              setFriendlyGoals([])
+            }
+          }}
+        >
+          <DialogContent className="max-w-md w-[95%] sm:w-full">
+            <DialogHeader>
+              <DialogTitle className="text-base sm:text-lg md:text-xl">
+                Dodaj prijateljsku utakmicu
+              </DialogTitle>
+              <DialogDescription>
+                Unesite timove, izaberite igrače i dodajte rezultat za prijateljsku utakmicu. Timovi se unose ručno i ne moraju postojati u listi timova.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              {/* Step indicator */}
+              <div className="flex items-center justify-center gap-2 text-xs sm:text-sm mb-2">
+                <span className={friendlyStep === 'teams' ? 'font-semibold' : 'text-muted-foreground'}>
+                  1. Timovi
+                </span>
+                <span>›</span>
+                <span className={friendlyStep === 'players' ? 'font-semibold' : 'text-muted-foreground'}>
+                  2. Igrači
+                </span>
+                <span>›</span>
+                <span className={friendlyStep === 'results' ? 'font-semibold' : 'text-muted-foreground'}>
+                  3. Rezultat
+                </span>
+              </div>
+
+              {/* Step 1: Teams */}
+              {friendlyStep === 'teams' && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="friendly_home_team">Domaći tim</Label>
+                      <Input
+                        id="friendly_home_team"
+                        placeholder="Unesite naziv tima"
+                        value={friendlyMatchForm.home_team}
+                        onChange={(e) =>
+                          setFriendlyMatchForm({ ...friendlyMatchForm, home_team: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="friendly_away_team">Gostujući tim</Label>
+                      <Input
+                        id="friendly_away_team"
+                        placeholder="Unesite naziv tima"
+                        value={friendlyMatchForm.away_team}
+                        onChange={(e) =>
+                          setFriendlyMatchForm({ ...friendlyMatchForm, away_team: e.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="friendly_date">Datum</Label>
+                    <Input
+                      id="friendly_date"
+                      type="date"
+                      value={friendlyMatchForm.date}
+                      onChange={(e) =>
+                        setFriendlyMatchForm({ ...friendlyMatchForm, date: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: Players */}
+              {friendlyStep === 'players' && (
+                <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+                  <p className="text-xs text-muted-foreground">
+                    Izaberite koje postojeće igrače stavljate u domaći i gostujući tim. Igrač može biti samo u jednom timu.
+                  </p>
+                  <div className="space-y-2">
+                    {players.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        Nema igrača u bazi.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {players.map((player) => (
+                          <div
+                            key={player.id}
+                            className="flex items-center justify-between p-2 border rounded-lg text-xs sm:text-sm"
+                          >
+                            <div className="flex-1 truncate mr-2">
+                              {player.first_name} {player.last_name}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                type="button"
+                                variant={isFriendlyPlayerSelected(player.id.toString(), 'home') ? 'default' : 'outline'}
+                                size="xs"
+                                onClick={() => toggleFriendlyPlayerSelection(player.id.toString(), 'home')}
+                              >
+                                Domaći
+                              </Button>
+                              <Button
+                                type="button"
+                                variant={isFriendlyPlayerSelected(player.id.toString(), 'away') ? 'default' : 'outline'}
+                                size="xs"
+                                onClick={() => toggleFriendlyPlayerSelection(player.id.toString(), 'away')}
+                              >
+                                Gosti
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Results and goals */}
+              {friendlyStep === 'results' && (
+                <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="friendly_home_score">Golovi domaćeg tima</Label>
+                      <Input
+                        id="friendly_home_score"
+                        type="number"
+                        min="0"
+                        value={friendlyMatchForm.home_score}
+                        onChange={(e) =>
+                          setFriendlyMatchForm({ ...friendlyMatchForm, home_score: e.target.value })
+                        }
+                        placeholder="npr. 3"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="friendly_away_score">Golovi gostujućeg tima</Label>
+                      <Input
+                        id="friendly_away_score"
+                        type="number"
+                        min="0"
+                        value={friendlyMatchForm.away_score}
+                        onChange={(e) =>
+                          setFriendlyMatchForm({ ...friendlyMatchForm, away_score: e.target.value })
+                        }
+                        placeholder="npr. 2"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <p className="text-xs text-muted-foreground">
+                      Kliknite na igrača da dodate gol za njegov tim. Ponovnim klikom dodajete još jedan gol; koristite ikonicu kante da uklonite poslednji gol.
+                    </p>
+
+                    {getFriendlySelectedPlayers().length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        Prvo izaberite igrače u prethodnom koraku.
+                      </p>
+                    ) : (
+                      <div className="space-y-4">
+                        {/* Home team scorers */}
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-semibold">
+                            {friendlyMatchForm.home_team || 'Domaći tim'}
+                          </h4>
+                          <div className="space-y-2">
+                            {getFriendlySelectedPlayers()
+                              .filter((p) => p.team_type === 'home')
+                              .map((matchPlayer) => {
+                                const player = players.find(
+                                  (pl) => pl.id.toString() === matchPlayer.player_id
+                                )
+                                if (!player) return null
+                                const goalCount = friendlyGoals.filter(
+                                  (g) =>
+                                    g.player_id === matchPlayer.player_id &&
+                                    g.team_type === 'home'
+                                ).length
+                                return (
+                                  <div
+                                    key={matchPlayer.id}
+                                    className={`flex items-center justify-between p-2 border rounded-lg text-xs sm:text-sm ${
+                                      goalCount > 0 ? 'bg-primary/10 border-primary' : ''
+                                    }`}
+                                  >
+                                    <button
+                                      type="button"
+                                      className="flex-1 text-left"
+                                      onClick={() => {
+                                        const newGoal: FriendlyGoal = {
+                                          id: Date.now().toString(),
+                                          player_id: matchPlayer.player_id,
+                                          team_type: 'home',
+                                        }
+                                        setFriendlyGoals([...friendlyGoals, newGoal])
+                                      }}
+                                    >
+                                      {player.first_name} {player.last_name}
+                                    </button>
+                                    <div className="flex items-center gap-2">
+                                      {goalCount > 0 && (
+                                        <>
+                                          <span className="font-bold min-w-[1.5rem] text-center">
+                                            {goalCount}
+                                          </span>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => {
+                                              const goalToRemove = friendlyGoals
+                                                .filter(
+                                                  (g) =>
+                                                    g.player_id === matchPlayer.player_id &&
+                                                    g.team_type === 'home'
+                                                )
+                                                .pop()
+                                              if (goalToRemove) {
+                                                setFriendlyGoals(
+                                                  friendlyGoals.filter((g) => g.id !== goalToRemove.id)
+                                                )
+                                              }
+                                            }}
+                                          >
+                                            <Trash2 className="w-3 h-3" />
+                                          </Button>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                          </div>
+                        </div>
+
+                        {/* Away team scorers */}
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-semibold">
+                            {friendlyMatchForm.away_team || 'Gostujući tim'}
+                          </h4>
+                          <div className="space-y-2">
+                            {getFriendlySelectedPlayers()
+                              .filter((p) => p.team_type === 'away')
+                              .map((matchPlayer) => {
+                                const player = players.find(
+                                  (pl) => pl.id.toString() === matchPlayer.player_id
+                                )
+                                if (!player) return null
+                                const goalCount = friendlyGoals.filter(
+                                  (g) =>
+                                    g.player_id === matchPlayer.player_id &&
+                                    g.team_type === 'away'
+                                ).length
+                                return (
+                                  <div
+                                    key={matchPlayer.id}
+                                    className={`flex items-center justify-between p-2 border rounded-lg text-xs sm:text-sm ${
+                                      goalCount > 0 ? 'bg-primary/10 border-primary' : ''
+                                    }`}
+                                  >
+                                    <button
+                                      type="button"
+                                      className="flex-1 text-left"
+                                      onClick={() => {
+                                        const newGoal: FriendlyGoal = {
+                                          id: Date.now().toString(),
+                                          player_id: matchPlayer.player_id,
+                                          team_type: 'away',
+                                        }
+                                        setFriendlyGoals([...friendlyGoals, newGoal])
+                                      }}
+                                    >
+                                      {player.first_name} {player.last_name}
+                                    </button>
+                                    <div className="flex items-center gap-2">
+                                      {goalCount > 0 && (
+                                        <>
+                                          <span className="font-bold min-w-[1.5rem] text-center">
+                                            {goalCount}
+                                          </span>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => {
+                                              const goalToRemove = friendlyGoals
+                                                .filter(
+                                                  (g) =>
+                                                    g.player_id === matchPlayer.player_id &&
+                                                    g.team_type === 'away'
+                                                )
+                                                .pop()
+                                              if (goalToRemove) {
+                                                setFriendlyGoals(
+                                                  friendlyGoals.filter((g) => g.id !== goalToRemove.id)
+                                                )
+                                              }
+                                            }}
+                                          >
+                                            <Trash2 className="w-3 h-3" />
+                                          </Button>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowFriendlyMatchDialog(false)}
+                disabled={loading}
+              >
+                Otkaži
+              </Button>
+              <div className="flex-1 flex justify-end gap-2">
+                {friendlyStep !== 'teams' && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      if (friendlyStep === 'players') setFriendlyStep('teams')
+                      else if (friendlyStep === 'results') setFriendlyStep('players')
+                    }}
+                    disabled={loading}
+                  >
+                    Nazad
+                  </Button>
+                )}
+                {friendlyStep !== 'results' && (
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      if (friendlyStep === 'teams') {
+                        if (!friendlyMatchForm.home_team || !friendlyMatchForm.away_team) {
+                          toast({
+                            title: 'Greška',
+                            description: 'Morate uneti oba tima',
+                            variant: 'destructive',
+                          })
+                          return
+                        }
+                        if (friendlyMatchForm.home_team === friendlyMatchForm.away_team) {
+                          toast({
+                            title: 'Greška',
+                            description: 'Timovi ne mogu biti isti',
+                            variant: 'destructive',
+                          })
+                          return
+                        }
+                        if (!friendlyMatchForm.date) {
+                          toast({
+                            title: 'Greška',
+                            description: 'Morate uneti datum',
+                            variant: 'destructive',
+                          })
+                          return
+                        }
+                        setFriendlyStep('players')
+                      } else if (friendlyStep === 'players') {
+                        if (getFriendlySelectedPlayers().length === 0) {
+                          toast({
+                            title: 'Greška',
+                            description: 'Morate izabrati bar jednog igrača',
+                            variant: 'destructive',
+                          })
+                          return
+                        }
+                        setFriendlyStep('results')
+                      }
+                    }}
+                    disabled={loading}
+                  >
+                    Sledeći korak
+                  </Button>
+                )}
+                {friendlyStep === 'results' && (
+                  <Button
+                    type="button"
+                    onClick={async () => {
+                      if (!friendlyMatchForm.home_score || !friendlyMatchForm.away_score) {
+                        toast({
+                          title: 'Greška',
+                          description: 'Morate uneti rezultat',
+                          variant: 'destructive',
+                        })
+                        return
+                      }
+
+                      const selectedPlayers = getFriendlySelectedPlayers()
+
+                      // Validacija golova vs rezultata
+                      const homeGoals = friendlyGoals.filter((g) => g.team_type === 'home').length
+                      const awayGoals = friendlyGoals.filter((g) => g.team_type === 'away').length
+                      const homeScore = parseInt(friendlyMatchForm.home_score)
+                      const awayScore = parseInt(friendlyMatchForm.away_score)
+
+                      if (
+                        (homeGoals > 0 && homeGoals !== homeScore) ||
+                        (awayGoals > 0 && awayGoals !== awayScore)
+                      ) {
+                        const confirmMismatch = window.confirm(
+                          `Broj unetih golova (${homeGoals}:${awayGoals}) ne odgovara rezultatu (${homeScore}:${awayScore}). Da li želite da nastavite?`
+                        )
+                        if (!confirmMismatch) {
+                          return
+                        }
+                      }
+
+                      setLoading(true)
+                      try {
+                        const response = await fetch('/api/results', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify({
+                            home_team: friendlyMatchForm.home_team,
+                            away_team: friendlyMatchForm.away_team,
+                            home_score: homeScore,
+                            away_score: awayScore,
+                            date: friendlyMatchForm.date,
+                            goals: friendlyGoals.map((g) => ({
+                              player_id: parseInt(g.player_id),
+                              team_type: g.team_type,
+                              goal_minute: null,
+                            })),
+                            players: selectedPlayers.map((p) => ({
+                              player_id: parseInt(p.player_id),
+                              team_type: p.team_type,
+                            })),
+                          }),
+                        })
+
+                        if (!response.ok) {
+                          const error = await response.json().catch(() => ({}))
+                          throw new Error(error.error || 'Greška pri dodavanju prijateljske utakmice')
+                        }
+
+                        toast({
+                          title: 'Uspešno!',
+                          description: 'Prijateljska utakmica je dodata',
+                        })
+
+                        setFriendlyMatchForm({
+                          home_team: '',
+                          away_team: '',
+                          home_score: '',
+                          away_score: '',
+                          date: new Date().toISOString().split('T')[0],
+                        })
+                        setFriendlySelectedPlayers(new Set())
+                        setFriendlyGoals([])
+                        setFriendlyStep('teams')
+                        setShowFriendlyMatchDialog(false)
+                        fetchResults()
+                      } catch (error: any) {
+                        toast({
+                          title: 'Greška',
+                          description: error.message || 'Nešto je pošlo po zlu',
+                          variant: 'destructive',
+                        })
+                      } finally {
+                        setLoading(false)
+                      }
+                    }}
+                    disabled={loading}
+                  >
+                    {loading ? 'Čuvanje...' : 'Sačuvaj utakmicu'}
+                  </Button>
+                )}
+              </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Match Announcement Dialog */}
         <Dialog open={showMatchAnnouncementDialog} onOpenChange={setShowMatchAnnouncementDialog}>
           <DialogContent className="max-w-4xl h-[80vh] sm:h-[85vh] flex flex-col w-[95%] sm:w-full max-h-[90vh]">
@@ -1625,70 +2104,6 @@ export default function AdminPage() {
             </Card>
           </div>
         </div>
-
-        {/* TerminNews Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-              <Newspaper className="w-5 h-5" />
-              TerminNews - Izvještaj o poslednjem terminu
-            </CardTitle>
-            <CardDescription>
-              Unesite tekst koji će se prikazati na TerminNews stranici kao izvještaj o poslednjem terminu
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loadingTerminNews ? (
-              <div className="text-center py-8 text-muted-foreground">
-                Učitavanje...
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="termin_news">Tekst izvještaja</Label>
-                  <Textarea
-                    id="termin_news"
-                    value={terminNews}
-                    onChange={(e) => setTerminNews(e.target.value)}
-                    placeholder="Unesite tekst izvještaja o poslednjem terminu..."
-                    className="min-h-[200px] resize-y"
-                  />
-                </div>
-                <div className="space-y-3">
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Button
-                      onClick={handleGenerateTerminNews}
-                      disabled={loading}
-                      className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                    >
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      {loading ? 'Generisanje...' : 'Generiši tekst'}
-                    </Button>
-                    <Button
-                      onClick={handleSaveTerminNews}
-                      disabled={loading}
-                      className="w-full sm:w-auto"
-                    >
-                      {loading ? 'Čuvanje...' : 'Sačuvaj izvještaj'}
-                    </Button>
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Link href="/terminnews" className="w-full sm:w-auto">
-                      <Button variant="outline" className="w-full sm:w-auto">
-                        Pregledaj stranicu
-                      </Button>
-                    </Link>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Kliknite na "Generiši tekst" da automatski kreira izvještaj o poslednjem meču. 
-                    Sistem će generisati tekst od 10 rečenica na osnovu podataka o meču, rezultatu i strijelcima.
-                    Tekst će biti automatski sačuvan nakon generisanja.
-                  </p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Add Result Card */}
