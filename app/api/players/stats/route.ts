@@ -5,8 +5,8 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-// GET - Statistike za sve igrače (golovi i odigrani mečevi)
-export async function GET() {
+// GET - Statistike za sve igrače (golovi i odigrani mečevi), opcionalno po sezoni
+export async function GET(request: Request) {
   try {
     if (!isSupabaseConfigured()) {
       return NextResponse.json(
@@ -36,10 +36,20 @@ export async function GET() {
       return NextResponse.json([])
     }
 
-    // Prvo dobijamo sve postojeće rezultate (mečeve)
-    const { data: existingResults, error: resultsError } = await supabase
+    // Prvo dobijamo sve postojeće rezultate (mečeve), opcionalno filtrirano po sezoni
+    const { searchParams } = new URL(request.url)
+    const seasonIdParam = searchParams.get('season_id')
+    const seasonId = seasonIdParam ? parseInt(seasonIdParam, 10) : null
+
+    let resultsQuery = supabase
       .from('results')
-      .select('id')
+      .select('id, season_id')
+
+    if (seasonId && !isNaN(seasonId)) {
+      resultsQuery = resultsQuery.eq('season_id', seasonId)
+    }
+
+    const { data: existingResults, error: resultsError } = await resultsQuery
 
     if (resultsError) {
       console.error('Error fetching results:', resultsError)
@@ -49,13 +59,34 @@ export async function GET() {
     const existingResultIds = new Set<number>()
     if (existingResults) {
       existingResults.forEach((result: any) => {
-        const resultId = typeof result.id === 'string' 
-          ? parseInt(result.id, 10) 
+        const resultId = typeof result.id === 'string'
+          ? parseInt(result.id, 10)
           : result.id
         if (resultId != null && !isNaN(resultId) && typeof resultId === 'number') {
           existingResultIds.add(resultId)
         }
       })
+    }
+
+    // Sezonski timovi (ako tabela postoji)
+    let seasonalTeamByPlayer: Record<number, string | null> = {}
+    if (seasonId && !isNaN(seasonId)) {
+      const { data: seasonalTeams, error: seasonalTeamsError } = await supabase
+        .from('player_season_teams')
+        .select('player_id, team')
+        .eq('season_id', seasonId)
+
+      if (seasonalTeamsError) {
+        console.warn('Failed to load player_season_teams, using players.team fallback:', seasonalTeamsError.message)
+      } else if (seasonalTeams) {
+        seasonalTeamByPlayer = seasonalTeams.reduce((acc: Record<number, string | null>, row: any) => {
+          const playerId = typeof row.player_id === 'string' ? parseInt(row.player_id, 10) : row.player_id
+          if (typeof playerId === 'number' && !isNaN(playerId)) {
+            acc[playerId] = row.team || null
+          }
+          return acc
+        }, {})
+      }
     }
 
     // Dobijanje svih golova samo za postojeće mečeve
@@ -159,6 +190,10 @@ export async function GET() {
 
       return {
         ...player,
+        team:
+          seasonId && !isNaN(seasonId) && Object.prototype.hasOwnProperty.call(seasonalTeamByPlayer, player.id)
+            ? seasonalTeamByPlayer[player.id]
+            : player.team,
         injury: player.injury === true || player.injury === 'true' ? true : (player.injury === false || player.injury === 'false' ? false : null),
         goals: goalsByPlayer[player.id] || 0,
         matches_played: matchesByPlayer[player.id]?.size || 0,

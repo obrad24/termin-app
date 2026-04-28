@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useToast } from '@/hooks/use-toast'
-import { Result, Player, Team } from '@/lib/supabase'
+import { Result, Player, Team, Season } from '@/lib/supabase'
 import { format } from 'date-fns'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -43,6 +43,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
 import { Newspaper } from 'lucide-react'
+import { useSeason } from '@/components/season-provider'
 
 type FriendlyTeamType = 'home' | 'away'
 
@@ -69,6 +70,9 @@ export default function AdminPage() {
   const [loadingPlayers, setLoadingPlayers] = useState(true)
   const [teams, setTeams] = useState<Team[]>([])
   const [loadingTeams, setLoadingTeams] = useState(true)
+  const [seasons, setSeasons] = useState<Season[]>([])
+  const [loadingSeasons, setLoadingSeasons] = useState(true)
+  const [newSeasonName, setNewSeasonName] = useState('')
   const [playerForm, setPlayerForm] = useState({
     first_name: '',
     last_name: '',
@@ -183,6 +187,7 @@ export default function AdminPage() {
   const [friendlySelectedPlayers, setFriendlySelectedPlayers] = useState<Set<string>>(new Set())
   const [friendlyGoals, setFriendlyGoals] = useState<FriendlyGoal[]>([])
   const { toast } = useToast()
+  const { currentSeason, setCurrentSeasonId, refreshSeasons } = useSeason()
 
   const toggleFriendlyPlayerSelection = (playerId: string, teamType: FriendlyTeamType) => {
     const key = `${playerId}-${teamType}`
@@ -228,6 +233,7 @@ export default function AdminPage() {
           fetchPlayers()
           fetchTeams()
           fetchNextMatch()
+          fetchSeasons()
         }
       }
     } catch (error) {
@@ -255,6 +261,7 @@ export default function AdminPage() {
         fetchPlayers()
         fetchTeams()
         fetchNextMatch()
+        fetchSeasons()
         toast({
           title: 'Uspešno prijavljivanje',
           description: 'Dobrodošli u admin dashboard',
@@ -293,7 +300,8 @@ export default function AdminPage() {
   const fetchResults = async () => {
     setLoadingResults(true)
     try {
-      const response = await fetch('/api/results')
+      const seasonQuery = currentSeason ? `?season_id=${currentSeason.id}` : ''
+      const response = await fetch(`/api/results${seasonQuery}`)
       if (response.ok) {
         const data = await response.json()
         setResults(data || [])
@@ -308,7 +316,8 @@ export default function AdminPage() {
   const fetchPlayers = async () => {
     setLoadingPlayers(true)
     try {
-      const response = await fetch('/api/players')
+      const seasonQuery = currentSeason ? `?season_id=${currentSeason.id}` : ''
+      const response = await fetch(`/api/players${seasonQuery}`)
       if (response.ok) {
         const data = await response.json()
         setPlayers(data || [])
@@ -323,7 +332,8 @@ export default function AdminPage() {
   const fetchTeams = async () => {
     setLoadingTeams(true)
     try {
-      const response = await fetch('/api/teams')
+      const seasonQuery = currentSeason ? `?season_id=${currentSeason.id}` : ''
+      const response = await fetch(`/api/teams${seasonQuery}`)
       if (response.ok) {
         const data = await response.json()
         setTeams(data || [])
@@ -375,6 +385,22 @@ export default function AdminPage() {
       console.error('Error fetching next match:', error)
     } finally {
       setLoadingNextMatch(false)
+    }
+  }
+
+  const fetchSeasons = async () => {
+    setLoadingSeasons(true)
+    try {
+      const response = await fetch('/api/seasons', { cache: 'no-store' })
+      if (response.ok) {
+        const data = await response.json()
+        setSeasons(data || [])
+        await refreshSeasons()
+      }
+    } catch (error) {
+      console.error('Error fetching seasons:', error)
+    } finally {
+      setLoadingSeasons(false)
     }
   }
 
@@ -678,6 +704,7 @@ export default function AdminPage() {
           last_name: updatedPlayer.last_name,
           birth_year: updatedPlayer.birth_year,
           team: updatedPlayer.team || '',
+          season_id: currentSeason?.id ?? null,
           image_url: imageUrl || '',
           pace: editPlayerRatings.pace || null,
           shooting: editPlayerRatings.shooting || null,
@@ -786,6 +813,13 @@ export default function AdminPage() {
       fetchPlayers()
     }
   }, [showTerminBetDialog])
+
+  useEffect(() => {
+    if (!isAuthenticated) return
+    fetchPlayers()
+    fetchTeams()
+    fetchResults()
+  }, [currentSeason?.id, isAuthenticated])
 
   if (checkingAuth) {
     return (
@@ -2037,6 +2071,103 @@ export default function AdminPage() {
               </CardContent>
             </Card>
 
+            {/* Sezone */}
+            <Card className='p-4 sm:p-6'>
+              <CardHeader className="flex flex-col items-center justify-center space-y-0 pb-4 px-0">
+                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 mb-3">
+                  <Calendar className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <CardTitle className="text-sm font-medium text-center text-muted-foreground">
+                  Sezone
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-0 pb-0 space-y-3">
+                <div className="text-sm text-center">
+                  {loadingSeasons ? (
+                    <span className="text-muted-foreground">Učitavanje...</span>
+                  ) : seasons.length === 0 ? (
+                    <span className="text-muted-foreground">Nema sezona</span>
+                  ) : (
+                    <span className="font-semibold">
+                      Aktivna: {currentSeason ? currentSeason.name : seasons[0].name}
+                    </span>
+                  )}
+                </div>
+                <form
+                  className="flex flex-col gap-2"
+                  onSubmit={async (e) => {
+                    e.preventDefault()
+                    if (!newSeasonName.trim()) {
+                      toast({
+                        title: 'Greška',
+                        description: 'Unesite naziv sezone',
+                        variant: 'destructive',
+                      })
+                      return
+                    }
+                    setLoading(true)
+                    try {
+                      const response = await fetch('/api/seasons', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ name: newSeasonName.trim() }),
+                      })
+                      if (!response.ok) {
+                        const error = await response.json()
+                        throw new Error(error.error || 'Greška pri kreiranju sezone')
+                      }
+                      setNewSeasonName('')
+                      await fetchSeasons()
+                      toast({
+                        title: 'Uspešno',
+                        description: 'Sezona je kreirana',
+                      })
+                    } catch (error: any) {
+                      toast({
+                        title: 'Greška',
+                        description: error.message || 'Nešto je pošlo po zlu',
+                        variant: 'destructive',
+                      })
+                    } finally {
+                      setLoading(false)
+                    }
+                  }}
+                >
+                  <Input
+                    placeholder="Naziv sezone (npr. 2024/25)"
+                    value={newSeasonName}
+                    onChange={(e) => setNewSeasonName(e.target.value)}
+                  />
+                  <Button type="submit" size="sm" disabled={loading}>
+                    <Plus className="w-4 h-4 mr-1" />
+                    Dodaj sezonu
+                  </Button>
+                </form>
+                {seasons.length > 0 && (
+                  <div className="max-h-32 overflow-y-auto text-xs space-y-1 mt-2">
+                    {seasons.map((season) => (
+                      <div
+                        key={season.id}
+                        className="flex items-center justify-between gap-2 px-2 py-1 rounded-md bg-muted/40"
+                      >
+                        <button
+                          type="button"
+                          className={`text-left flex-1 truncate ${
+                            currentSeason?.id === season.id ? 'font-semibold' : ''
+                          }`}
+                          onClick={() => setCurrentSeasonId(season.id)}
+                        >
+                          {season.name}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             <Card className='p-4 sm:p-6'>
               <CardHeader className="flex flex-col items-center justify-center space-y-0 pb-4 px-0">
                 <div className="flex items-center justify-center w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/30 mb-3">
@@ -2255,6 +2386,7 @@ export default function AdminPage() {
                       },
                       body: JSON.stringify({
                         ...playerForm,
+                        season_id: currentSeason?.id ?? null,
                         image_url: imageUrl || playerForm.image_url || null,
                       }),
                     })
@@ -2511,14 +2643,14 @@ export default function AdminPage() {
 
         {/* Teams Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Add/Edit Team Form - Only Murinjo and Lalat */}
+          {/* Add/Edit Team Form */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Plus className="w-5 h-5" />
                 Dodaj/Uredi tim
               </CardTitle>
-              <CardDescription>Dostupni su samo timovi: Murinjo i Lalat</CardDescription>
+              <CardDescription>Dodaj novi klub za aktivnu sezonu ili ažuriraj postojeći</CardDescription>
             </CardHeader>
             <CardContent>
               <form
@@ -2574,6 +2706,7 @@ export default function AdminPage() {
                         name: teamForm.name,
                         short_name: teamForm.short_name,
                         logo_url: logoUrl,
+                        season_id: currentSeason?.id ?? null,
                       }),
                     })
 
@@ -2614,19 +2747,13 @@ export default function AdminPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="team_name">Naziv tima</Label>
-                    <Select
+                    <Input
+                      id="team_name"
                       value={teamForm.name}
-                      onValueChange={(value) => setTeamForm({ ...teamForm, name: value })}
+                      onChange={(e) => setTeamForm({ ...teamForm, name: e.target.value })}
+                      placeholder="Unesi naziv kluba"
                       required
-                    >
-                      <SelectTrigger id="team_name">
-                        <SelectValue placeholder="Izaberi tim" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Murinjo">Murinjo</SelectItem>
-                        <SelectItem value="Lalat">Lalat</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    />
                   </div>
                   <div>
                     <Label htmlFor="short_name">Skraćenica</Label>
@@ -2634,7 +2761,7 @@ export default function AdminPage() {
                       id="short_name"
                       value={teamForm.short_name}
                       onChange={(e) => setTeamForm({ ...teamForm, short_name: e.target.value })}
-                      placeholder={teamForm.name === 'Murinjo' ? 'MUR' : teamForm.name === 'Lalat' ? 'LAL' : 'npr. RM'}
+                      placeholder="npr. RM"
                     />
                   </div>
                 </div>

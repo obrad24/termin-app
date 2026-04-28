@@ -7,6 +7,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Trophy } from 'lucide-react'
 import { getPlayerImageUrl } from '@/lib/image-utils'
+import { useSeason } from '@/components/season-provider'
 
 interface PlayerWithStats extends Player {
   goals: number
@@ -16,14 +17,16 @@ interface PlayerWithStats extends Player {
 export default function StatisticsPage() {
   const [players, setPlayers] = useState<PlayerWithStats[]>([])
   const [loading, setLoading] = useState(true)
+  const { currentSeason } = useSeason()
 
   useEffect(() => {
     fetchPlayers()
-  }, [])
+  }, [currentSeason])
 
   const fetchPlayers = async () => {
     try {
-      const response = await fetch('/api/players/stats')
+      const seasonQuery = currentSeason ? `?season_id=${currentSeason.id}` : ''
+      const response = await fetch(`/api/players/stats${seasonQuery}`)
       const contentType = response.headers.get('content-type')
 
       if (response.ok) {

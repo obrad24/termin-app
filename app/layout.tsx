@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { Toaster } from '@/components/ui/toaster'
+import { SeasonProvider } from '@/components/season-provider'
 
 export const metadata: Metadata = {
   title: 'Termin',
@@ -34,9 +35,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`font-sans antialiased`} suppressHydrationWarning>
-        {children}
-        <Toaster />
-        <Analytics />
+        <SeasonProvider>
+          {children}
+          <Toaster />
+          <Analytics />
+        </SeasonProvider>
       </body>
     </html>
   )

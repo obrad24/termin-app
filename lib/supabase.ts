@@ -59,6 +59,13 @@ export const supabase: SupabaseClient = isSupabaseConfigured()
     })
   : createClient('https://placeholder.supabase.co', 'placeholder-key')
 
+// Tip za sezonu
+export interface Season {
+  id: number
+  name: string
+  created_at?: string
+}
+
 // Tipovi za rezultate
 export interface Result {
   id: number
@@ -67,6 +74,8 @@ export interface Result {
   home_score: number
   away_score: number
   date: string
+   // ID sezone (opciono za starije podatke)
+  season_id?: number | null
   odds_1?: number | null
   odds_x?: number | null
   odds_2?: number | null

@@ -10,20 +10,44 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useSeason } from '@/components/season-provider'
 
 export default function Header() {
   const [open, setOpen] = useState(false)
+  const { seasons, currentSeason, setCurrentSeasonId } = useSeason()
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 flex items-center border-none justify-end sm:justify-between px-4 sm:px-6 lg:px-8 py-2 sm:py-6  border-b sm:border-blue-400/20">
-      <div className="hidden md:flex items-center gap-2 justify-center">
+      <div className="hidden md:flex items-center gap-4 justify-start flex-1">
         <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">
           TERMIN
         </p>
+        {seasons.length > 0 && (
+          <div className="ml-4">
+            <Select
+              value={currentSeason ? String(currentSeason.id) : undefined}
+              onValueChange={(value) => setCurrentSeasonId(parseInt(value, 10))}
+            >
+              <SelectTrigger className="h-9 w-[140px] bg-white/10 border-white/30 text-white text-xs sm:text-sm">
+                <SelectValue placeholder="Sezona">
+                  {currentSeason ? currentSeason.name : 'Sezona'}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {seasons.map((season) => (
+                  <SelectItem key={season.id} value={String(season.id)}>
+                    {season.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
       
       {/* Desktop Navigation */}
-      <nav className="hidden md:flex items-center gap-6 lg:gap-8">
+      <nav className="hidden md:flex items-center gap-6 lg:gap-8 justify-end flex-1">
         <Link href="/" className="text-white/60 hover:text-white transition text-sm lg:text-base">
           Početna
         </Link>
@@ -80,6 +104,30 @@ export default function Header() {
 
               {/* Navigation Menu */}
               <nav className="flex flex-col gap-2 px-4 pb-4 flex-1">
+                {/* Season selector - mobile */}
+                {seasons.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs text-white/60 mb-1">Sezona</p>
+                    <Select
+                      value={currentSeason ? String(currentSeason.id) : undefined}
+                      onValueChange={(value) => setCurrentSeasonId(parseInt(value, 10))}
+                    >
+                      <SelectTrigger className="h-10 w-full bg-white/10 border-white/30 text-white text-sm">
+                        <SelectValue placeholder="Sezona">
+                          {currentSeason ? currentSeason.name : 'Sezona'}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {seasons.map((season) => (
+                          <SelectItem key={season.id} value={String(season.id)}>
+                            {season.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 <Link
                   href="/"
                   onClick={() => setOpen(false)}

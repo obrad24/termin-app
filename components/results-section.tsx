@@ -6,6 +6,7 @@ import { format } from 'date-fns'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
+import { useSeason } from '@/components/season-provider'
 
 interface GoalWithPlayer extends MatchGoal {
   players: Player | null
@@ -16,11 +17,15 @@ export default function ResultsSection() {
   const [teams, setTeams] = useState<Team[]>([])
   const [goalsByMatch, setGoalsByMatch] = useState<Record<number, GoalWithPlayer[]>>({})
   const [loading, setLoading] = useState(true)
+  const { currentSeason } = useSeason()
+
+  useEffect(() => {
+    fetchTeams()
+  }, [])
 
   useEffect(() => {
     fetchResults()
-    fetchTeams()
-  }, [])
+  }, [currentSeason])
 
   const fetchTeams = async () => {
     try {
@@ -66,7 +71,8 @@ export default function ResultsSection() {
 
   const fetchResults = async () => {
     try {
-      const response = await fetch('/api/results')
+      const seasonQuery = currentSeason ? `?season_id=${currentSeason.id}` : ''
+      const response = await fetch(`/api/results${seasonQuery}`)
       const contentType = response.headers.get('content-type')
 
       if (response.ok) {

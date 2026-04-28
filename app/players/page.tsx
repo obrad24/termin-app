@@ -7,6 +7,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { getPlayerImageUrl } from '@/lib/image-utils'
 import { Star, Ambulance } from 'lucide-react'
+import { useSeason } from '@/components/season-provider'
 
 interface PlayerWithStats extends Player {
   goals: number
@@ -19,10 +20,11 @@ export default function PlayersPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedPlayers, setSelectedPlayers] = useState<number[]>([])
+  const { currentSeason } = useSeason()
 
   useEffect(() => {
     fetchPlayers()
-  }, [])
+  }, [currentSeason])
 
   // Osveži podatke kada se stranica fokusira (korisnik se vratio na tab)
   useEffect(() => {
@@ -35,7 +37,8 @@ export default function PlayersPage() {
 
   const fetchPlayers = async () => {
     try {
-      const response = await fetch('/api/players/stats', {
+      const seasonQuery = currentSeason ? `?season_id=${currentSeason.id}` : ''
+      const response = await fetch(`/api/players/stats${seasonQuery}`, {
         cache: 'no-store',
         headers: {
           'Cache-Control': 'no-cache',

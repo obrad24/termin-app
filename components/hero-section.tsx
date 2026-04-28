@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { format } from 'date-fns'
 import Link from 'next/link'
 import MatchAnnouncement from './match-announcement'
+import { useSeason } from '@/components/season-provider'
 
 interface HeadToHeadStats {
   team1Wins: number
@@ -15,6 +16,7 @@ interface HeadToHeadStats {
 }
 
 export default function HeroSection() {
+  const { currentSeason } = useSeason()
   const [team1, setTeam1] = useState<Team | null>(null)
   const [team2, setTeam2] = useState<Team | null>(null)
   const [stats, setStats] = useState<HeadToHeadStats>({
@@ -38,7 +40,7 @@ export default function HeroSection() {
   useEffect(() => {
     fetchHeadToHead()
     fetchNextMatch()
-  }, [])
+  }, [currentSeason?.id])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -56,7 +58,8 @@ export default function HeroSection() {
   const fetchHeadToHead = async () => {
     try {
       // Uzmi sve timove
-      const teamsResponse = await fetch('/api/teams')
+      const seasonTeamsQuery = currentSeason ? `?season_id=${currentSeason.id}` : ''
+      const teamsResponse = await fetch(`/api/teams${seasonTeamsQuery}`)
       if (!teamsResponse.ok) return
 
       const teams: Team[] = await teamsResponse.json()
@@ -74,7 +77,8 @@ export default function HeroSection() {
       setTeam2(secondTeam)
 
       // Uzmi sve rezultate
-      const resultsResponse = await fetch('/api/results')
+      const seasonQuery = currentSeason ? `?season_id=${currentSeason.id}` : ''
+      const resultsResponse = await fetch(`/api/results${seasonQuery}`)
       if (!resultsResponse.ok) return
 
       const results: Result[] = await resultsResponse.json()

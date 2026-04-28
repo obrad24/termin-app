@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { requireAuth } from '@/lib/auth'
 
-// GET - Prikaz svih rezultata
-export async function GET() {
+// GET - Prikaz svih rezultata (opciono filtrirano po sezoni)
+export async function GET(request: Request) {
   try {
     // Provera da li je Supabase konfigurisan
     if (!isSupabaseConfigured()) {
@@ -16,10 +16,19 @@ export async function GET() {
       )
     }
 
-    const { data, error } = await supabase
+    const { searchParams } = new URL(request.url)
+    const seasonIdParam = searchParams.get('season_id')
+    const seasonId = seasonIdParam ? parseInt(seasonIdParam, 10) : null
+
+    let query = supabase
       .from('results')
       .select('*')
-      .order('id', { ascending: false })
+
+    if (seasonId && !isNaN(seasonId)) {
+      query = query.eq('season_id', seasonId)
+    }
+
+    const { data, error } = await query.order('id', { ascending: false })
 
     if (error) {
       console.error('Error fetching results:', error)
@@ -84,7 +93,8 @@ export async function POST(request: Request) {
       odds_x,
       odds_2,
       goals = [],
-      players = []
+      players = [],
+      season_id,
     } = body
 
     // Validacija podataka
@@ -104,6 +114,14 @@ export async function POST(request: Request) {
       home_score: parseInt(home_score),
       away_score: parseInt(away_score),
       date,
+    }
+
+    // Veži rezultat za sezonu ako je prosleđeno
+    if (season_id !== undefined && season_id !== null && season_id !== '') {
+      const parsedSeasonId = parseInt(season_id, 10)
+      if (!isNaN(parsedSeasonId)) {
+        insertData.season_id = parsedSeasonId
+      }
     }
 
     // Dodaj odds polja samo ako su uneta

@@ -5,6 +5,7 @@ import { Result, Team, MatchGoal, Player } from '@/lib/supabase'
 import { format } from 'date-fns'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useSeason } from '@/components/season-provider'
 
 interface GoalWithPlayer extends MatchGoal {
   players: Player | null
@@ -15,11 +16,15 @@ export default function LatestResult() {
   const [teams, setTeams] = useState<Team[]>([])
   const [goals, setGoals] = useState<GoalWithPlayer[]>([])
   const [loading, setLoading] = useState(true)
+  const { currentSeason } = useSeason()
+
+  useEffect(() => {
+    fetchTeams()
+  }, [])
 
   useEffect(() => {
     fetchLatestResult()
-    fetchTeams()
-  }, [])
+  }, [currentSeason])
 
   const fetchTeams = async () => {
     try {
@@ -40,7 +45,8 @@ export default function LatestResult() {
 
   const fetchLatestResult = async () => {
     try {
-      const response = await fetch('/api/results')
+      const seasonQuery = currentSeason ? `?season_id=${currentSeason.id}` : ''
+      const response = await fetch(`/api/results${seasonQuery}`)
       const contentType = response.headers.get('content-type')
 
       if (response.ok) {

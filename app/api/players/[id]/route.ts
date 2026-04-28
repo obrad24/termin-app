@@ -6,6 +6,14 @@ import { requireAuth } from '@/lib/auth'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
+const parseSeasonId = (request: Request): number | null => {
+  const { searchParams } = new URL(request.url)
+  const seasonIdParam = searchParams.get('season_id')
+  if (!seasonIdParam) return null
+  const seasonId = parseInt(seasonIdParam, 10)
+  return Number.isNaN(seasonId) ? null : seasonId
+}
+
 // GET - Dobijanje podataka o igraču sa statistikama
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -25,6 +33,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 })
     }
 
+    const seasonId = parseSeasonId(request)
+
     // Dobijanje podataka o igraču
     const { data: player, error: playerError } = await supabase
       .from('players')
@@ -34,6 +44,20 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
     if (playerError || !player) {
       return NextResponse.json({ error: 'Player not found' }, { status: 404 })
+    }
+
+    // Ako je tražena sezona, pokušaj da učitaš sezonski tim
+    if (seasonId) {
+      const { data: seasonTeamData, error: seasonTeamError } = await supabase
+        .from('player_season_teams')
+        .select('team')
+        .eq('player_id', id)
+        .eq('season_id', seasonId)
+        .maybeSingle()
+
+      if (!seasonTeamError && seasonTeamData) {
+        player.team = seasonTeamData.team || null
+      }
     }
 
     // Prvo dobijamo sve postojeće rezultate (mečeve)
@@ -225,13 +249,16 @@ export async function PUT(
       physical,
       stamina,
       injury,
-      rating_bonus
+      rating_bonus,
+      season_id
     } = body
 
     const id = parseInt(idParam, 10)
     if (isNaN(id)) {
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 })
     }
+
+    const parsedSeasonId = season_id ? parseInt(String(season_id), 10) : null
 
     if (!first_name || !last_name || !birth_year) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -286,6 +313,25 @@ export async function PUT(
         { error: 'Failed to update player', details: error.message },
         { status: 500 }
       )
+    }
+
+    if (parsedSeasonId && !Number.isNaN(parsedSeasonId)) {
+      const { error: seasonTeamError } = await supabase
+        .from('player_season_teams')
+        .upsert(
+          [
+            {
+              player_id: id,
+              season_id: parsedSeasonId,
+              team: team || null,
+            },
+          ],
+          { onConflict: 'player_id,season_id' },
+        )
+
+      if (seasonTeamError) {
+        console.warn('Failed to save seasonal player team:', seasonTeamError.message)
+      }
     }
 
     return NextResponse.json(data, { status: 200 })

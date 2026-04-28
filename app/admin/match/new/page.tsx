@@ -27,6 +27,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { useSeason } from '@/components/season-provider'
 
 interface Goal {
   id: string
@@ -47,6 +48,7 @@ export default function NewMatchPage() {
   const [teams, setTeams] = useState<Team[]>([])
   const [players, setPlayers] = useState<Player[]>([])
   const [loadingData, setLoadingData] = useState(true)
+  const { currentSeason } = useSeason()
 
   const [formData, setFormData] = useState({
     home_team: '',
@@ -72,13 +74,13 @@ export default function NewMatchPage() {
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [currentSeason?.id])
 
   const fetchData = async () => {
     try {
       const [teamsRes, playersRes] = await Promise.all([
-        fetch('/api/teams'),
-        fetch('/api/players'),
+        fetch(`/api/teams${currentSeason ? `?season_id=${currentSeason.id}` : ''}`),
+        fetch(`/api/players${currentSeason ? `?season_id=${currentSeason.id}` : ''}`),
       ])
 
       if (teamsRes.ok) {
@@ -179,6 +181,7 @@ export default function NewMatchPage() {
           last_name: newPlayerForm.last_name,
           birth_year: parseInt(newPlayerForm.birth_year),
           team: teamName,
+          season_id: currentSeason?.id ?? null,
         }),
       })
 
@@ -292,6 +295,7 @@ export default function NewMatchPage() {
             player_id: parseInt(p.player_id),
             team_type: p.team_type,
           })),
+          season_id: currentSeason?.id ?? null,
         }),
       })
 

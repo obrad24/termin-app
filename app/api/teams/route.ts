@@ -2,8 +2,16 @@ import { NextResponse } from 'next/server'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { requireAuth } from '@/lib/auth'
 
-// GET - svi timovi
-export async function GET() {
+const parseSeasonId = (request: Request): number | null => {
+  const { searchParams } = new URL(request.url)
+  const seasonIdParam = searchParams.get('season_id')
+  if (!seasonIdParam) return null
+  const seasonId = parseInt(seasonIdParam, 10)
+  return Number.isNaN(seasonId) ? null : seasonId
+}
+
+// GET - svi timovi (opciono filtrirano po sezoni)
+export async function GET(request: Request) {
   try {
     if (!isSupabaseConfigured()) {
       return NextResponse.json(
@@ -15,12 +23,43 @@ export async function GET() {
       )
     }
 
-    // Vrati samo timove Murinjo i Lalat
-    const { data, error } = await supabase
-      .from('teams')
-      .select('*')
-      .in('name', ['Murinjo', 'Lalat'])
-      .order('name', { ascending: true })
+    const seasonId = parseSeasonId(request)
+
+    let data: any[] | null = null
+    let error: any = null
+
+    if (seasonId) {
+      const seasonTeamsResult = await supabase
+        .from('season_teams')
+        .select(`
+          team_id,
+          teams (*)
+        `)
+        .eq('season_id', seasonId)
+
+      if (seasonTeamsResult.error) {
+        // Fallback kada tabela season_teams još ne postoji
+        console.warn('season_teams lookup failed, returning all teams fallback:', seasonTeamsResult.error.message)
+        const fallback = await supabase
+          .from('teams')
+          .select('*')
+          .order('name', { ascending: true })
+        data = fallback.data
+        error = fallback.error
+      } else {
+        data = (seasonTeamsResult.data || [])
+          .map((row: any) => row.teams)
+          .filter(Boolean)
+          .sort((a: any, b: any) => String(a.name).localeCompare(String(b.name)))
+      }
+    } else {
+      const allTeamsResult = await supabase
+        .from('teams')
+        .select('*')
+        .order('name', { ascending: true })
+      data = allTeamsResult.data
+      error = allTeamsResult.error
+    }
 
     if (error) {
       console.error('Error fetching teams:', error)
@@ -68,19 +107,10 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { name, short_name, logo_url } = body
+    const { name, short_name, logo_url, season_id } = body
 
     if (!name) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
-    }
-
-    // Dozvoli samo dva tima: Murinjo i Lalat
-    const allowedTeams = ['Murinjo', 'Lalat']
-    if (!allowedTeams.includes(name)) {
-      return NextResponse.json(
-        { error: `Dozvoljeni su samo timovi: ${allowedTeams.join(', ')}` },
-        { status: 400 }
-      )
     }
 
     // Proveri da li tim već postoji
@@ -107,6 +137,21 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Failed to update team', details: error.message }, { status: 500 })
       }
 
+      const parsedSeasonIdRaw = season_id ? parseInt(String(season_id), 10) : null
+      const parsedSeasonId = parsedSeasonIdRaw && !Number.isNaN(parsedSeasonIdRaw) ? parsedSeasonIdRaw : null
+
+      if (parsedSeasonId) {
+        const { error: seasonTeamError } = await supabase
+          .from('season_teams')
+          .upsert(
+            [{ season_id: parsedSeasonId, team_id: data.id }],
+            { onConflict: 'season_id,team_id' },
+          )
+        if (seasonTeamError) {
+          console.warn('Failed to upsert season_teams relation:', seasonTeamError.message)
+        }
+      }
+
       return NextResponse.json(data, { status: 200 })
     }
 
@@ -125,6 +170,21 @@ export async function POST(request: Request) {
     if (error) {
       console.error('Error creating team:', error)
       return NextResponse.json({ error: 'Failed to create team', details: error.message }, { status: 500 })
+    }
+
+    const parsedSeasonIdRaw = season_id ? parseInt(String(season_id), 10) : null
+    const parsedSeasonId = parsedSeasonIdRaw && !Number.isNaN(parsedSeasonIdRaw) ? parsedSeasonIdRaw : null
+
+    if (parsedSeasonId) {
+      const { error: seasonTeamError } = await supabase
+        .from('season_teams')
+        .upsert(
+          [{ season_id: parsedSeasonId, team_id: data.id }],
+          { onConflict: 'season_id,team_id' },
+        )
+      if (seasonTeamError) {
+        console.warn('Failed to upsert season_teams relation:', seasonTeamError.message)
+      }
     }
 
     return NextResponse.json(data, { status: 201 })
