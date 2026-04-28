@@ -60,10 +60,15 @@ export function SeasonProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const setCurrentSeasonId = (id: number | null) => {
+    const previousSeasonId = currentSeason?.id ?? null
+
     if (!id) {
       setCurrentSeason(null)
       if (typeof window !== 'undefined') {
         window.localStorage.removeItem(STORAGE_KEY)
+        if (previousSeasonId !== null) {
+          window.location.reload()
+        }
       }
       return
     }
@@ -72,6 +77,9 @@ export function SeasonProvider({ children }: { children: React.ReactNode }) {
     setCurrentSeason(found)
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(STORAGE_KEY, String(id))
+      if (previousSeasonId !== id) {
+        window.location.reload()
+      }
     }
   }
 
