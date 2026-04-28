@@ -17,6 +17,7 @@ SELECT s.id, t.id
 FROM seasons s
 CROSS JOIN teams t
 WHERE s.name = 'Sezona 1'
+ORDER BY t.created_at ASC, t.id ASC
 ON CONFLICT (season_id, team_id) DO NOTHING;
 
 ALTER TABLE IF EXISTS season_teams ENABLE ROW LEVEL SECURITY;

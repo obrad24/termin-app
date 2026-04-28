@@ -68,10 +68,10 @@ export default function HeroSection() {
         return
       }
 
-      // Sortiraj po ID-ju i uzmi prva dva
-      const sortedTeams = [...teams].sort((a, b) => a.id - b.id)
-      const firstTeam = sortedTeams[0]
-      const secondTeam = sortedTeams[1]
+      // Uzmi prve dve ekipe za izabranu sezonu
+      // (API za sezonu vraća timove redom kojim su dodati u sezoni)
+      const firstTeam = teams[0]
+      const secondTeam = teams[1]
 
       setTeam1(firstTeam)
       setTeam2(secondTeam)
@@ -161,6 +161,10 @@ export default function HeroSection() {
     )
   }
 
+  const isSecondSeason = currentSeason?.id === 2
+  const leftWins = isSecondSeason ? stats.team2Wins : stats.team1Wins
+  const rightWins = isSecondSeason ? stats.team1Wins : stats.team2Wins
+
   return (
     <section ref={heroRef} className="relative min-h-screen flex items-center justify-center px-0 py-8 overflow-hidden h-screen">
       <div className="relative w-full h-screen max-w-7xl mx-auto flex items-center justify-between gap-4 sm:gap-8 min-h-[60vh]">
@@ -196,11 +200,11 @@ export default function HeroSection() {
             }`}
         >
           <span className="text-[145px] sm:text-7xl md:text-[160px] lg:text-9xl font-bold text-white drop-shadow-lg">
-            {stats.team1Wins}
+            {leftWins}
           </span>
           <span className="text-[100px] sm:text-5xl md:text-6xl text-white/80 font-light">-</span>
           <span className="text-[145px] sm:text-7xl md:text-[160px] lg:text-9xl font-bold text-white drop-shadow-lg">
-            {stats.team2Wins}
+            {rightWins}
           </span>
         </div>
       </div>

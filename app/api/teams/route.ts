@@ -33,9 +33,12 @@ export async function GET(request: Request) {
         .from('season_teams')
         .select(`
           team_id,
+          created_at,
           teams (*)
         `)
         .eq('season_id', seasonId)
+        .order('created_at', { ascending: true })
+        .order('id', { ascending: true })
 
       if (seasonTeamsResult.error) {
         // Fallback kada tabela season_teams još ne postoji
@@ -50,7 +53,12 @@ export async function GET(request: Request) {
         data = (seasonTeamsResult.data || [])
           .map((row: any) => row.teams)
           .filter(Boolean)
-          .sort((a: any, b: any) => String(a.name).localeCompare(String(b.name)))
+          .sort((a: any, b: any) => {
+            const aCreated = a.created_at ? new Date(a.created_at).getTime() : 0
+            const bCreated = b.created_at ? new Date(b.created_at).getTime() : 0
+            if (aCreated !== bCreated) return aCreated - bCreated
+            return (a.id || 0) - (b.id || 0)
+          })
       }
     } else {
       const allTeamsResult = await supabase
