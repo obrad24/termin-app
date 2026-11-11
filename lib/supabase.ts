@@ -1,63 +1,10 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-
-// Helper funkcija za proveru da li je Supabase konfigurisan
-export const isSupabaseConfigured = () => {
-  return !!(supabaseUrl && supabaseAnonKey && 
-           supabaseUrl !== 'your-project.supabase.co' && 
-           !supabaseUrl.includes('your-project') &&
-           supabaseUrl.startsWith('https://') &&
-           supabaseAnonKey.length > 20 &&
-           supabaseAnonKey !== 'your-anon-key-here')
-}
-
-// Helper funkcija za kreiranje fetch sa timeout-om
-const createFetchWithTimeout = (timeoutMs: number = 8000) => {
-  return (url: RequestInfo | URL, options: RequestInit = {}) => {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
-    
-    return fetch(url, {
-      ...options,
-      signal: options.signal 
-        ? (() => {
-            // Kombinuj postojeći signal sa timeout signalom
-            const combinedController = new AbortController()
-            const originalSignal = options.signal
-            
-            originalSignal.addEventListener('abort', () => {
-              combinedController.abort()
-            })
-            
-            controller.signal.addEventListener('abort', () => {
-              combinedController.abort()
-            })
-            
-            return combinedController.signal
-          })()
-        : controller.signal,
-    }).finally(() => {
-      clearTimeout(timeoutId)
-    })
-  }
-}
-
-// Kreiraj klijent - API routes će proveriti pre korišćenja
-export const supabase: SupabaseClient = isSupabaseConfigured()
-  ? createClient(supabaseUrl, supabaseAnonKey, {
-      db: {
-        schema: 'public',
-      },
-      auth: {
-        persistSession: false,
-      },
-      global: {
-        fetch: createFetchWithTimeout(8000),
-      },
-    })
-  : createClient('https://placeholder.supabase.co', 'placeholder-key')
+// Neon-backed database client (Supabase-compatible API surface used by this app)
+export {
+  db as supabase,
+  isDatabaseConfigured as isSupabaseConfigured,
+  isDatabaseConfigured,
+  getSql,
+} from '@/lib/db'
 
 // Tip za sezonu
 export interface Season {
@@ -74,7 +21,7 @@ export interface Result {
   home_score: number
   away_score: number
   date: string
-   // ID sezone (opciono za starije podatke)
+  // ID sezone (opciono za starije podatke)
   season_id?: number | null
   odds_1?: number | null
   odds_x?: number | null
@@ -156,5 +103,3 @@ export interface ResultWithDetails extends Result {
   goals?: MatchGoal[]
   players?: MatchPlayer[]
 }
-
-

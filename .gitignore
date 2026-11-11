@@ -29,6 +29,10 @@ yarn-error.log*
 .env*.local
 .env
 
+# uploaded images (local Neon storage)
+/public/uploads/**
+!/public/uploads/.gitkeep
+
 # vercel
 .vercel
 
