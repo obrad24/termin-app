@@ -116,12 +116,11 @@ export default function MatchAnnouncement() {
   const timeLabel = getTimeLabel()
 
   return (
-    <section className="absolute bottom-[16%] left-0 w-full">
-      <div className="max-w-4xl mx-auto relative pb-6">
-        <div className='absolute bottom-[20%] left-0 w-full h-10 bg-gradient-to-t from-[rgba(10,13,26,0.95)] via-[rgba(15,21,37,0.6)] to-transparent z-20'></div>
+    <section className="relative w-full bg-[var(--fpl-p120)] border-t border-white/10">
+      <div className="max-w-4xl mx-auto relative h-[150px] sm:h-[170px]">
         {/* Top Section - Date, Time, and Players */}
         <div className="relative flex items-center justify-between mb-1 px-2 sm:px-8">
-          <p className='absolute top-[50px] left-1/2 -translate-x-1/2 text-[10px] font-extrabold text-white shadow-2xl hero-bg/50 backdrop-blur-xl z-20'>SLEDEĆI TERMIN</p>
+          <p className='absolute top-[50px] left-1/2 -translate-x-1/2 text-[10px] font-extrabold text-white shadow-2xl hero-bg/50 backdrop-blur-xl z-20'>NEXT FIXTURE</p>
           
 
           {/* Left (Home) Team Players - One in center, two on sides */}

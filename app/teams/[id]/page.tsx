@@ -73,7 +73,7 @@ export default function TeamProfilePage() {
       <main className="min-h-screen hero-bg pb-20 md:pb-0">
         <Header />
         <div className="flex items-center justify-center min-h-[60vh] px-4">
-          <div className="text-white text-center">Učitavanje...</div>
+          <div className="text-white text-center">Loading...</div>
         </div>
       </main>
     )
@@ -85,9 +85,9 @@ export default function TeamProfilePage() {
         <Header />
         <div className="flex items-center justify-center min-h-[60vh] px-4">
           <div className="text-white text-center">
-            <h1 className="text-2xl font-bold mb-4">Tim nije pronađen</h1>
+            <h1 className="text-2xl font-bold mb-4">Team not found</h1>
             <Link href="/">
-              <Button variant="outline">Nazad na početnu</Button>
+              <Button variant="outline">Back to home</Button>
             </Link>
           </div>
         </div>
@@ -106,7 +106,7 @@ export default function TeamProfilePage() {
           <Link href="/">
             <Button variant="outline" size="sm" className="mb-4">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Nazad
+              Back
             </Button>
           </Link>
 
@@ -136,11 +136,11 @@ export default function TeamProfilePage() {
               <div className="flex flex-wrap gap-4 justify-center sm:justify-start">
                 <div className="flex items-center gap-2 text-white/80">
                   <Users className="w-5 h-5" />
-                  <span>{players.length} igrača</span>
+                  <span>{players.length} players</span>
                 </div>
                 <div className="flex items-center gap-2 text-white/80">
                   <Trophy className="w-5 h-5" />
-                  <span>{matchesCount} utakmica</span>
+                  <span>{matchesCount} matches</span>
                 </div>
               </div>
             </div>
@@ -152,13 +152,13 @@ export default function TeamProfilePage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl">
                   <Users className="w-6 h-6" />
-                  Sastav tima
+                  Squad
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {players.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
-                    Nema igrača u timu
+                    No players in squad
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[600px] overflow-y-auto">
@@ -200,13 +200,13 @@ export default function TeamProfilePage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl">
                   <Target className="w-6 h-6" />
-                  Najbolji strijelci
+                  Top scorers
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {topScorers.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
-                    Nema strijelaca
+                    No scorers
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -241,7 +241,7 @@ export default function TeamProfilePage() {
                           <div className="font-semibold text-sm sm:text-base truncate">
                             {scorer.player
                               ? `${scorer.player.first_name} ${scorer.player.last_name}`
-                              : `Igrač #${scorer.player_id}`}
+                              : `Player #${scorer.player_id}`}
                           </div>
                         </div>
                         <div className="text-2xl font-bold text-blue-400 flex-shrink-0">

@@ -124,7 +124,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { first_name, last_name, birth_year, team, image_url, season_id } = body
+    const { first_name, last_name, birth_year, team, image_url, season_id, price } = body
 
     if (!first_name || !last_name || !birth_year) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -133,6 +133,13 @@ export async function POST(request: Request) {
     const year = parseInt(String(birth_year), 10)
     if (isNaN(year)) {
       return NextResponse.json({ error: 'Invalid birth year' }, { status: 400 })
+    }
+
+    const parsePrice = (value: unknown): number | null => {
+      if (value === null || value === undefined || value === '') return null
+      const n = typeof value === 'number' ? value : parseFloat(String(value))
+      if (Number.isNaN(n) || n < 0 || n > 99.9) return null
+      return Math.round(n * 10) / 10
     }
 
     const { data, error } = await supabase
@@ -144,6 +151,7 @@ export async function POST(request: Request) {
           birth_year: year,
           team: team || null,
           image_url: image_url || null,
+          price: parsePrice(price),
         },
       ])
       .select()
@@ -158,6 +166,13 @@ export async function POST(request: Request) {
     const parsedSeasonId =
       parsedSeasonIdRaw !== null && !Number.isNaN(parsedSeasonIdRaw) ? parsedSeasonIdRaw : null
     await upsertSeasonTeam(data.id, parsedSeasonId, team || null)
+
+    try {
+      const { ensureAccountForPlayer } = await import('@/lib/player-auth')
+      await ensureAccountForPlayer(data)
+    } catch (accountError) {
+      console.warn('Failed to create player account:', accountError)
+    }
 
     return NextResponse.json(data, { status: 201 })
   } catch (error: any) {

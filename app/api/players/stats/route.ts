@@ -166,6 +166,39 @@ export async function GET(request: Request) {
       }
     }
 
+    // Fantasy points total (season-scoped when season_id is set)
+    const fantasyPointsByPlayer: Record<number, number> = {}
+    {
+      let fantasyQuery = supabase
+        .from('fantasy_match_points')
+        .select('player_id, total_points, result_id')
+
+      if (seasonId && !isNaN(seasonId)) {
+        fantasyQuery = fantasyQuery.eq('season_id', seasonId)
+      }
+
+      const { data: fantasyRows, error: fantasyError } = await fantasyQuery
+      if (fantasyError) {
+        if (!fantasyError.message?.includes('fantasy_match_points')) {
+          console.warn('Failed to load fantasy points:', fantasyError.message)
+        }
+      } else if (fantasyRows) {
+        fantasyRows.forEach((row: any) => {
+          const resultId =
+            typeof row.result_id === 'string' ? parseInt(row.result_id, 10) : row.result_id
+          if (resultId != null && !isNaN(resultId) && !existingResultIds.has(resultId)) {
+            return
+          }
+          const playerId =
+            typeof row.player_id === 'string' ? parseInt(row.player_id, 10) : row.player_id
+          if (playerId != null && !isNaN(playerId) && typeof playerId === 'number') {
+            fantasyPointsByPlayer[playerId] =
+              (fantasyPointsByPlayer[playerId] || 0) + (row.total_points || 0)
+          }
+        })
+      }
+    }
+
     // Kombinovanje podataka sa ocenama
     const playersWithStats = players.map((player) => {
       // Izračunaj prosečnu ocenu
@@ -198,6 +231,7 @@ export async function GET(request: Request) {
         goals: goalsByPlayer[player.id] || 0,
         matches_played: matchesByPlayer[player.id]?.size || 0,
         average_rating: averageRating,
+        fantasy_points: fantasyPointsByPlayer[player.id] || 0,
       }
     })
 

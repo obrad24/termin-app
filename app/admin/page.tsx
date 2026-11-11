@@ -11,6 +11,8 @@ import { format } from 'date-fns'
 import Link from 'next/link'
 import Image from 'next/image'
 import { getPlayerImageUrl } from '@/lib/image-utils'
+import { SHOW_TERMINBET, SHOW_PLAYER_RATINGS } from '@/lib/features'
+import FantasyAdminPanel from '@/components/fantasy-admin-panel'
 import {
   Home,
   LogOut,
@@ -47,6 +49,15 @@ import { useSeason } from '@/components/season-provider'
 
 type FriendlyTeamType = 'home' | 'away'
 
+const adminPanel =
+  'bg-[var(--fpl-purple)] border-white/10 text-white shadow-none'
+const adminDialog =
+  'bg-[var(--fpl-purple)] border-white/10 text-white'
+const adminOutlineBtn =
+  'border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white'
+const adminPrimaryBtn =
+  'bg-[var(--fpl-green)] text-[var(--fpl-purple)] hover:bg-[var(--fpl-green)]/90'
+
 interface FriendlyGoal {
   id: string
   player_id: string
@@ -79,6 +90,7 @@ export default function AdminPage() {
     birth_year: '',
     team: '',
     image_url: '',
+    price: '',
   })
   const [teamForm, setTeamForm] = useState({
     name: '',
@@ -263,20 +275,20 @@ export default function AdminPage() {
         fetchNextMatch()
         fetchSeasons()
         toast({
-          title: 'Uspešno prijavljivanje',
-          description: 'Dobrodošli u admin dashboard',
+          title: 'Login successful',
+          description: 'Welcome to the admin dashboard',
         })
       } else {
         toast({
-          title: 'Pogrešna lozinka',
-          description: 'Pokušajte ponovo',
+          title: 'Incorrect password',
+          description: 'Please try again',
           variant: 'destructive',
         })
       }
     } catch (error) {
       toast({
-        title: 'Greška',
-        description: 'Nešto je pošlo po zlu',
+        title: 'Error',
+        description: 'Something went wrong',
         variant: 'destructive',
       })
     } finally {
@@ -289,8 +301,8 @@ export default function AdminPage() {
       await fetch('/api/admin/logout', { method: 'POST' })
       setIsAuthenticated(false)
       toast({
-        title: 'Uspešno odjavljivanje',
-        description: 'Uspešno ste se odjavili',
+        title: 'Logged out successfully',
+        description: 'You have been logged out successfully',
       })
     } catch (error) {
       console.error('Error logging out:', error)
@@ -447,8 +459,8 @@ export default function AdminPage() {
     try {
       if (!nextMatch.home_team || !nextMatch.away_team) {
         toast({
-          title: 'Greška',
-          description: 'Morate prvo postaviti timove u TerminBet sekciji',
+          title: 'Error',
+          description: 'You must first set the teams in the TerminBet section',
           variant: 'destructive',
         })
         return
@@ -472,20 +484,20 @@ export default function AdminPage() {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || 'Greška pri čuvanju igrača')
+        throw new Error(error.error || 'Error saving players')
       }
 
       toast({
-        title: 'Uspešno!',
-        description: 'Igrači su sačuvani',
+        title: 'Success!',
+        description: 'Players saved',
       })
 
       fetchMatchPlayers()
       setShowMatchAnnouncementDialog(false)
     } catch (error: any) {
       toast({
-        title: 'Greška',
-        description: error.message || 'Nešto je pošlo po zlu',
+        title: 'Error',
+        description: error.message || 'Something went wrong',
         variant: 'destructive',
       })
     } finally {
@@ -498,8 +510,8 @@ export default function AdminPage() {
     try {
       if (!nextMatch.home_team || !nextMatch.away_team) {
         toast({
-          title: 'Greška',
-          description: 'Morate izabrati oba tima',
+          title: 'Error',
+          description: 'You must select both teams',
           variant: 'destructive',
         })
         return
@@ -566,19 +578,19 @@ export default function AdminPage() {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || 'Greška pri čuvanju sledećeg meča')
+        throw new Error(error.error || 'Error saving next match')
       }
 
       toast({
-        title: 'Uspešno!',
-        description: 'Sledeći meč je sačuvan',
+        title: 'Success!',
+        description: 'Next match saved',
       })
 
       fetchNextMatch()
     } catch (error: any) {
       toast({
-        title: 'Greška',
-        description: error.message || 'Nešto je pošlo po zlu',
+        title: 'Error',
+        description: error.message || 'Something went wrong',
         variant: 'destructive',
       })
     } finally {
@@ -587,7 +599,7 @@ export default function AdminPage() {
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Da li ste sigurni da želite da obrišete ovaj rezultat?')) {
+    if (!confirm('Are you sure you want to delete this result?')) {
       return
     }
 
@@ -602,19 +614,19 @@ export default function AdminPage() {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || 'Greška pri brisanju rezultata')
+        throw new Error(error.error || 'Error deleting result')
       }
 
       toast({
-        title: 'Uspešno!',
-        description: 'Rezultat je obrisan',
+        title: 'Success!',
+        description: 'Result deleted',
       })
 
       fetchResults()
     } catch (error: any) {
       toast({
-        title: 'Greška',
-        description: error.message || 'Nešto je pošlo po zlu',
+        title: 'Error',
+        description: error.message || 'Something went wrong',
         variant: 'destructive',
       })
     }
@@ -639,12 +651,12 @@ export default function AdminPage() {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || 'Greška pri ažuriranju rezultata')
+        throw new Error(error.error || 'Error updating result')
       }
 
       toast({
-        title: 'Uspešno!',
-        description: 'Rezultat je ažuriran',
+        title: 'Success!',
+        description: 'Result updated',
       })
 
       setEditingResult(null)
@@ -658,8 +670,8 @@ export default function AdminPage() {
       fetchResults()
     } catch (error: any) {
       toast({
-        title: 'Greška',
-        description: error.message || 'Nešto je pošlo po zlu',
+        title: 'Error',
+        description: error.message || 'Something went wrong',
         variant: 'destructive',
       })
     } finally {
@@ -684,7 +696,7 @@ export default function AdminPage() {
 
         if (!uploadResponse.ok) {
           const error = await uploadResponse.json()
-          throw new Error(error.error || 'Greška pri uploadu slike')
+          throw new Error(error.error || 'Error uploading image')
         }
 
         const uploadData = await uploadResponse.json()
@@ -693,6 +705,28 @@ export default function AdminPage() {
 
       const ratingBonusValue = parseInt(ratingBonus, 10)
       const finalRatingBonus = isNaN(ratingBonusValue) ? null : ratingBonusValue
+
+      const ratingPayload = SHOW_PLAYER_RATINGS
+        ? {
+            pace: editPlayerRatings.pace || null,
+            shooting: editPlayerRatings.shooting || null,
+            passing: editPlayerRatings.passing || null,
+            dribbling: editPlayerRatings.dribbling || null,
+            defending: editPlayerRatings.defending || null,
+            physical: editPlayerRatings.physical || null,
+            stamina: editPlayerRatings.stamina || null,
+            rating_bonus: finalRatingBonus,
+          }
+        : {
+            pace: updatedPlayer.pace ?? null,
+            shooting: updatedPlayer.shooting ?? null,
+            passing: updatedPlayer.passing ?? null,
+            dribbling: updatedPlayer.dribbling ?? null,
+            defending: updatedPlayer.defending ?? null,
+            physical: updatedPlayer.physical ?? null,
+            stamina: updatedPlayer.stamina ?? null,
+            rating_bonus: updatedPlayer.rating_bonus ?? null,
+          }
 
       const response = await fetch(`/api/players/${updatedPlayer.id}`, {
         method: 'PUT',
@@ -706,26 +740,20 @@ export default function AdminPage() {
           team: updatedPlayer.team || '',
           season_id: currentSeason?.id ?? null,
           image_url: imageUrl || '',
-          pace: editPlayerRatings.pace || null,
-          shooting: editPlayerRatings.shooting || null,
-          passing: editPlayerRatings.passing || null,
-          dribbling: editPlayerRatings.dribbling || null,
-          defending: editPlayerRatings.defending || null,
-          physical: editPlayerRatings.physical || null,
-          stamina: editPlayerRatings.stamina || null,
+          price: updatedPlayer.price ?? null,
+          ...ratingPayload,
           injury: editPlayerInjury,
-          rating_bonus: finalRatingBonus,
         }),
       })
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || 'Greška pri ažuriranju igrača')
+        throw new Error(error.error || 'Error updating player')
       }
 
       toast({
-        title: 'Uspešno!',
-        description: 'Igrač je ažuriran',
+        title: 'Success!',
+        description: 'Player updated',
       })
 
       setEditingPlayer(null)
@@ -733,8 +761,8 @@ export default function AdminPage() {
       fetchPlayers()
     } catch (error: any) {
       toast({
-        title: 'Greška',
-        description: error.message || 'Nešto je pošlo po zlu',
+        title: 'Error',
+        description: error.message || 'Something went wrong',
         variant: 'destructive',
       })
     } finally {
@@ -759,7 +787,7 @@ export default function AdminPage() {
 
         if (!uploadResponse.ok) {
           const error = await uploadResponse.json()
-          throw new Error(error.error || 'Greška pri uploadu slike')
+          throw new Error(error.error || 'Error uploading image')
         }
 
         const uploadData = await uploadResponse.json()
@@ -780,12 +808,12 @@ export default function AdminPage() {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || 'Greška pri ažuriranju tima')
+        throw new Error(error.error || 'Error updating team')
       }
 
       toast({
-        title: 'Uspešno!',
-        description: 'Tim je ažuriran',
+        title: 'Success!',
+        description: 'Team updated',
       })
 
       setEditingTeam(null)
@@ -793,8 +821,8 @@ export default function AdminPage() {
       fetchTeams()
     } catch (error: any) {
       toast({
-        title: 'Greška',
-        description: error.message || 'Nešto je pošlo po zlu',
+        title: 'Error',
+        description: error.message || 'Something went wrong',
         variant: 'destructive',
       })
     } finally {
@@ -823,10 +851,10 @@ export default function AdminPage() {
 
   if (checkingAuth) {
     return (
-      <div className="min-h-screen hero-bg flex items-center justify-center px-4">
-        <Card className="w-full max-w-md">
+      <div className="min-h-screen bg-[var(--fpl-p120)] flex items-center justify-center px-4">
+        <Card className={`w-full max-w-md ${adminPanel}`}>
           <CardContent className="pt-6">
-            <div className="text-center text-white">Provera autentifikacije...</div>
+            <div className="text-center text-white/70 text-sm">Checking authentication...</div>
           </CardContent>
         </Card>
       </div>
@@ -835,28 +863,31 @@ export default function AdminPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen hero-bg flex items-center justify-center px-4">
-        <Card className="w-full max-w-md">
+      <div className="min-h-screen bg-[var(--fpl-p120)] flex items-center justify-center px-4">
+        <Card className={`w-full max-w-md ${adminPanel}`}>
           <CardHeader>
-            <CardTitle>Admin Login</CardTitle>
-            <CardDescription>Unesite lozinku za pristup admin dashboard-u</CardDescription>
+            <CardTitle className="text-white">Admin Login</CardTitle>
+            <CardDescription className="text-white/50">
+              Enter the password to access the admin dashboard
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="password">Lozinka</Label>
+                <Label htmlFor="password" className="text-white/80">Password</Label>
                 <Input
                   id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && !loading && handleLogin()}
-                  placeholder="Unesite lozinku"
+                  placeholder="Enter password"
                   disabled={loading}
+                  className="mt-1.5 bg-[var(--fpl-p90)] border-white/15 text-white placeholder:text-white/35"
                 />
               </div>
-              <Button onClick={handleLogin} className="w-full" disabled={loading}>
-                {loading ? 'Prijavljivanje...' : 'Prijavi se'}
+              <Button onClick={handleLogin} className={`w-full ${adminPrimaryBtn}`} disabled={loading}>
+                {loading ? 'Logging in...' : 'Login'}
               </Button>
             </div>
           </CardContent>
@@ -875,7 +906,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen hero-bg py-4 sm:py-8 px-4 sm:px-6">
+    <div className="min-h-screen bg-[var(--fpl-p120)] py-4 sm:py-8 px-4 sm:px-6">
       <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -884,49 +915,51 @@ export default function AdminPage() {
           </div>
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
             <Link href="/" className="w-full sm:w-auto">
-              <Button variant="outline" className="gap-2 w-full sm:w-auto">
+              <Button variant="outline" className={`gap-2 w-full sm:w-auto ${adminOutlineBtn}`}>
                 <Home className="w-4 h-4" />
-                <span className="hidden sm:inline">Glavni sajt</span>
-                <span className="sm:hidden">Početna</span>
+                <span className="hidden sm:inline">Main site</span>
+                <span className="sm:hidden">Home</span>
               </Button>
             </Link>
             <Button
               variant="outline"
               onClick={handleLogout}
-              className="gap-2 w-full sm:w-auto"
+              className={`gap-2 w-full sm:w-auto ${adminOutlineBtn}`}
             >
               <LogOut className="w-4 h-4" />
-              Odjavi se
+              Log out
             </Button>
           </div>
         </div>
 
-        {/* TerminBet and Match Announcement Buttons */}
         <div className="mb-6 flex flex-col sm:flex-row gap-4">
-          <Button
-            onClick={() => setShowTerminBetDialog(true)}
-            className="w-full sm:w-auto relative overflow-hidden bg-[#280071]"
-            size="lg"
-            variant="outline"
-          >
-            <div className="absolute top-0 left-0 w-[25%] h-full bg-amber-400 z-0"></div>
-            <div className="absolute top-0 right-0 w-[25%] h-full bg-amber-400 z-0"></div>
-            <span className='text-white text-2xl font-bold'>
-              TerminBet
-            </span>
-          </Button>
-          <Button
-            onClick={() => {
-              setShowMatchAnnouncementDialog(true)
-              fetchMatchPlayers()
-            }}
-            className="w-full sm:w-auto"
-            size="lg"
-            variant="default"
-          >
-            <Calendar className="w-5 h-5 mr-2" />
-            NAJAVA MECA
-          </Button>
+          {SHOW_TERMINBET && (
+            <>
+              <Button
+                onClick={() => setShowTerminBetDialog(true)}
+                className="w-full sm:w-auto relative overflow-hidden bg-[#280071] border-white/20"
+                size="lg"
+                variant="outline"
+              >
+                <div className="absolute top-0 left-0 w-[25%] h-full bg-amber-400 z-0"></div>
+                <div className="absolute top-0 right-0 w-[25%] h-full bg-amber-400 z-0"></div>
+                <span className='text-white text-2xl font-bold'>
+                  TerminBet
+                </span>
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowMatchAnnouncementDialog(true)
+                  fetchMatchPlayers()
+                }}
+                className={`w-full sm:w-auto ${adminPrimaryBtn}`}
+                size="lg"
+              >
+                <Calendar className="w-5 h-5 mr-2" />
+                MATCH ANNOUNCEMENT
+              </Button>
+            </>
+          )}
           <Button
             onClick={() => {
               setShowFriendlyMatchDialog(true)
@@ -941,33 +974,32 @@ export default function AdminPage() {
                 date: new Date().toISOString().split('T')[0],
               })
             }}
-            className="w-full sm:w-auto"
+            className={`w-full sm:w-auto ${adminPrimaryBtn}`}
             size="lg"
-            variant="secondary"
           >
-            PRIJATELJSKA
+            FRIENDLY
           </Button>
         </div>
 
         {/* TerminBet Dialog */}
         <Dialog open={showTerminBetDialog} onOpenChange={setShowTerminBetDialog}>
-          <DialogContent className="max-w-2xl h-[80vh] sm:h-[85vh] flex flex-col w-[95%] sm:w-full max-h-[90vh]">
+          <DialogContent className={`${adminDialog} max-w-2xl h-[80vh] sm:h-[85vh] flex flex-col w-[95%] sm:w-full max-h-[90vh]`}>
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-base sm:text-lg md:text-xl">
+              <DialogTitle className="flex items-center gap-2 text-base sm:text-lg md:text-xl text-white">
                 TerminBet
               </DialogTitle>
             </DialogHeader>
             <div className="flex-1 overflow-y-auto space-y-4 pr-1 sm:pr-2">
               {loadingNextMatch ? (
-                <div className="text-center py-4 text-muted-foreground">Učitavanje...</div>
+                <div className="text-center py-4 text-white/50">Loading...</div>
               ) : (
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="next_home_team">Domaći tim</Label>
+                      <Label htmlFor="next_home_team">Home team</Label>
                       {teams.length === 0 ? (
-                        <div className="text-sm text-muted-foreground py-2">
-                          Nema timova. Dodajte timove prvo.
+                        <div className="text-sm text-white/50 py-2">
+                          No teams. Add teams first.
                         </div>
                       ) : (
                         <Select
@@ -977,7 +1009,7 @@ export default function AdminPage() {
                           }
                         >
                           <SelectTrigger id="next_home_team">
-                            <SelectValue placeholder="Izaberi tim" />
+                            <SelectValue placeholder="Select team" />
                           </SelectTrigger>
                           <SelectContent>
                             {teams.map((team) => (
@@ -990,10 +1022,10 @@ export default function AdminPage() {
                       )}
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="next_away_team">Gostujući tim</Label>
+                      <Label htmlFor="next_away_team">Away team</Label>
                       {teams.length === 0 ? (
-                        <div className="text-sm text-muted-foreground py-2">
-                          Nema timova. Dodajte timove prvo.
+                        <div className="text-sm text-white/50 py-2">
+                          No teams. Add teams first.
                         </div>
                       ) : (
                         <Select
@@ -1003,7 +1035,7 @@ export default function AdminPage() {
                           }
                         >
                           <SelectTrigger id="next_away_team">
-                            <SelectValue placeholder="Izaberi tim" />
+                            <SelectValue placeholder="Select team" />
                           </SelectTrigger>
                           <SelectContent>
                             {teams.map((team) => (
@@ -1017,7 +1049,7 @@ export default function AdminPage() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="next_match_date">Datum meča</Label>
+                    <Label htmlFor="next_match_date">Match date</Label>
                     <Input
                       id="next_match_date"
                       type="date"
@@ -1029,11 +1061,11 @@ export default function AdminPage() {
                   </div>
                   <div className="space-y-4 pt-4 border-t">
                     <div>
-                      <h3 className="text-sm sm:text-base font-semibold mb-3">Kvote (1 X 2)</h3>
+                      <h3 className="text-sm sm:text-base font-semibold mb-3">Odds (1 X 2)</h3>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="next_odds_1">
-                            1 (Pobeda {nextMatch.home_team || 'domaćeg tima'})
+                            1 (Win {nextMatch.home_team || 'home team'})
                           </Label>
                           <Input
                             id="next_odds_1"
@@ -1044,11 +1076,11 @@ export default function AdminPage() {
                             onChange={(e) =>
                               setNextMatch({ ...nextMatch, odds_1: e.target.value })
                             }
-                            placeholder="npr. 7.75"
+                            placeholder="e.g. 7.75"
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="next_odds_x">X (Nerešeno)</Label>
+                          <Label htmlFor="next_odds_x">X (Draw)</Label>
                           <Input
                             id="next_odds_x"
                             type="number"
@@ -1058,12 +1090,12 @@ export default function AdminPage() {
                             onChange={(e) =>
                               setNextMatch({ ...nextMatch, odds_x: e.target.value })
                             }
-                            placeholder="npr. 4.80"
+                            placeholder="e.g. 4.80"
                           />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="next_odds_2">
-                            2 (Pobeda {nextMatch.away_team || 'gostujućeg tima'})
+                            2 (Win {nextMatch.away_team || 'away team'})
                           </Label>
                           <Input
                             id="next_odds_2"
@@ -1074,7 +1106,7 @@ export default function AdminPage() {
                             onChange={(e) =>
                               setNextMatch({ ...nextMatch, odds_2: e.target.value })
                             }
-                            placeholder="npr. 1.40"
+                            placeholder="e.g. 1.40"
                           />
                         </div>
                       </div>
@@ -1085,7 +1117,7 @@ export default function AdminPage() {
                   <div className="space-y-4 pt-4 border-t">
                     <div>
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0 mb-3">
-                        <h3 className="text-sm sm:text-base font-semibold">Broj golova na terminu</h3>
+                        <h3 className="text-sm sm:text-base font-semibold">Total goals on Termin</h3>
                         <Button
                           type="button"
                           variant="outline"
@@ -1099,20 +1131,19 @@ export default function AdminPage() {
                               ],
                             })
                           }}
-                          className="w-full sm:w-auto"
-                        >
+                          className={`w-full sm:w-auto ${adminOutlineBtn}`}>
                           <Plus className="w-4 h-4 mr-1" />
-                          Dodaj
+                          Add
                         </Button>
                       </div>
                       <div className="space-y-3">
                         {nextMatch.total_goals_odds.map((item, index) => (
                           <div
                             key={index}
-                            className="flex flex-col sm:flex-row gap-2 sm:items-end p-3 bg-muted rounded-lg"
+                            className="flex flex-col sm:flex-row gap-2 sm:items-end p-3 bg-[var(--fpl-p90)] border border-white/10 rounded-lg"
                           >
                             <div className="flex-1 space-y-2">
-                              <Label className="text-xs">Broj golova</Label>
+                              <Label className="text-xs">Number of goals</Label>
                               <Input
                                 type="number"
                                 min="0"
@@ -1122,11 +1153,11 @@ export default function AdminPage() {
                                   updated[index].goals = e.target.value
                                   setNextMatch({ ...nextMatch, total_goals_odds: updated })
                                 }}
-                                placeholder="npr. 2"
+                                placeholder="e.g. 2"
                               />
                             </div>
                             <div className="flex-1 space-y-2">
-                              <Label className="text-xs">Kvota</Label>
+                              <Label className="text-xs">Odds</Label>
                               <Input
                                 type="number"
                                 step="0.01"
@@ -1137,7 +1168,7 @@ export default function AdminPage() {
                                   updated[index].odd = e.target.value
                                   setNextMatch({ ...nextMatch, total_goals_odds: updated })
                                 }}
-                                placeholder="npr. 3.50"
+                                placeholder="e.g. 3.50"
                               />
                             </div>
                             <Button
@@ -1155,8 +1186,8 @@ export default function AdminPage() {
                           </div>
                         ))}
                         {nextMatch.total_goals_odds.length === 0 && (
-                          <p className="text-sm text-muted-foreground text-center py-4">
-                            Nema dodatih kvota. Kliknite "Dodaj" da dodate.
+                          <p className="text-sm text-white/50 text-center py-4">
+                            No odds added. Click "Add" to add some.
                           </p>
                         )}
                       </div>
@@ -1167,7 +1198,7 @@ export default function AdminPage() {
                   <div className="space-y-4 pt-4 border-t">
                     <div>
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0 mb-3">
-                        <h3 className="text-sm sm:text-base font-semibold">Igrač sa termina i broj golova</h3>
+                        <h3 className="text-sm sm:text-base font-semibold">Player goals on Termin</h3>
                         <Button
                           type="button"
                           variant="outline"
@@ -1181,10 +1212,9 @@ export default function AdminPage() {
                               ],
                             })
                           }}
-                          className="w-full sm:w-auto"
-                        >
+                          className={`w-full sm:w-auto ${adminOutlineBtn}`}>
                           <Plus className="w-4 h-4 mr-1" />
-                          Dodaj
+                          Add
                         </Button>
                       </div>
                       <div className="space-y-3">
@@ -1201,10 +1231,10 @@ export default function AdminPage() {
                           return (
                             <div
                               key={index}
-                              className="flex flex-col sm:flex-row gap-2 sm:items-end p-3 bg-muted rounded-lg"
+                              className="flex flex-col sm:flex-row gap-2 sm:items-end p-3 bg-[var(--fpl-p90)] border border-white/10 rounded-lg"
                             >
                               <div className="flex-1 space-y-2 min-w-0">
-                                <Label className="text-xs">Igrač</Label>
+                                <Label className="text-xs">Player</Label>
                                 <Select
                                   value={item.player_id}
                                   onValueChange={(value) => {
@@ -1214,7 +1244,7 @@ export default function AdminPage() {
                                   }}
                                 >
                                   <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Izaberi igrača" />
+                                    <SelectValue placeholder="Select player" />
                                   </SelectTrigger>
                                   <SelectContent>
                                     {/* Ako je izabran igrač koji nije u allPlayers, dodaj ga na vrh liste */}
@@ -1232,7 +1262,7 @@ export default function AdminPage() {
                                 </Select>
                               </div>
                               <div className="w-full sm:w-24 space-y-2">
-                                <Label className="text-xs">Broj golova</Label>
+                                <Label className="text-xs">Number of goals</Label>
                                 <Input
                                   type="number"
                                   min="0"
@@ -1242,12 +1272,12 @@ export default function AdminPage() {
                                     updated[index].goals = e.target.value
                                     setNextMatch({ ...nextMatch, player_goals_odds: updated })
                                   }}
-                                  placeholder="npr. 2"
+                                  placeholder="e.g. 2"
                                   className="w-full"
                                 />
                               </div>
                               <div className="flex-1 space-y-2 min-w-0">
-                                <Label className="text-xs">Kvota</Label>
+                                <Label className="text-xs">Odds</Label>
                                 <Input
                                   type="number"
                                   step="0.01"
@@ -1258,7 +1288,7 @@ export default function AdminPage() {
                                     updated[index].odd = e.target.value
                                     setNextMatch({ ...nextMatch, player_goals_odds: updated })
                                   }}
-                                  placeholder="npr. 4.20"
+                                  placeholder="e.g. 4.20"
                                   className="w-full"
                                 />
                               </div>
@@ -1278,8 +1308,8 @@ export default function AdminPage() {
                           )
                         })}
                         {nextMatch.player_goals_odds.length === 0 && (
-                          <p className="text-sm text-muted-foreground text-center py-4">
-                            Nema dodatih kvota. Kliknite "Dodaj" da dodate.
+                          <p className="text-sm text-white/50 text-center py-4">
+                            No odds added. Click "Add" to add some.
                           </p>
                         )}
                       </div>
@@ -1290,7 +1320,7 @@ export default function AdminPage() {
                   <div className="space-y-4 pt-4 border-t">
                     <div>
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0 mb-3">
-                        <h3 className="text-sm sm:text-base font-semibold">Preko/Ispod broj golova</h3>
+                        <h3 className="text-sm sm:text-base font-semibold">Over/Under goals</h3>
                         <Button
                           type="button"
                           variant="outline"
@@ -1304,20 +1334,19 @@ export default function AdminPage() {
                               ],
                             })
                           }}
-                          className="w-full sm:w-auto"
-                        >
+                          className={`w-full sm:w-auto ${adminOutlineBtn}`}>
                           <Plus className="w-4 h-4 mr-1" />
-                          Dodaj
+                          Add
                         </Button>
                       </div>
                       <div className="space-y-3">
                         {nextMatch.over_under_odds.map((item, index) => (
                           <div
                             key={index}
-                            className="flex flex-col sm:flex-row gap-2 sm:items-end p-3 bg-muted rounded-lg"
+                            className="flex flex-col sm:flex-row gap-2 sm:items-end p-3 bg-[var(--fpl-p90)] border border-white/10 rounded-lg"
                           >
                             <div className="w-full sm:w-24 space-y-2">
-                              <Label className="text-xs">Broj golova</Label>
+                              <Label className="text-xs">Number of goals</Label>
                               <Input
                                 type="number"
                                 min="0"
@@ -1328,12 +1357,12 @@ export default function AdminPage() {
                                   updated[index].goals = e.target.value
                                   setNextMatch({ ...nextMatch, over_under_odds: updated })
                                 }}
-                                placeholder="npr. 2.5"
+                                placeholder="e.g. 2.5"
                                 className="w-full"
                               />
                             </div>
                             <div className="flex-1 space-y-2 min-w-0">
-                              <Label className="text-xs">Kvota Preko</Label>
+                              <Label className="text-xs">Over odds</Label>
                               <Input
                                 type="number"
                                 step="0.01"
@@ -1344,12 +1373,12 @@ export default function AdminPage() {
                                   updated[index].over_odd = e.target.value
                                   setNextMatch({ ...nextMatch, over_under_odds: updated })
                                 }}
-                                placeholder="npr. 1.85"
+                                placeholder="e.g. 1.85"
                                 className="w-full"
                               />
                             </div>
                             <div className="flex-1 space-y-2 min-w-0">
-                              <Label className="text-xs">Kvota Ispod</Label>
+                              <Label className="text-xs">Under odds</Label>
                               <Input
                                 type="number"
                                 step="0.01"
@@ -1360,7 +1389,7 @@ export default function AdminPage() {
                                   updated[index].under_odd = e.target.value
                                   setNextMatch({ ...nextMatch, over_under_odds: updated })
                                 }}
-                                placeholder="npr. 1.95"
+                                placeholder="e.g. 1.95"
                                 className="w-full"
                               />
                             </div>
@@ -1379,8 +1408,8 @@ export default function AdminPage() {
                           </div>
                         ))}
                         {nextMatch.over_under_odds.length === 0 && (
-                          <p className="text-sm text-muted-foreground text-center py-4">
-                            Nema dodatih kvota. Kliknite "Dodaj" da dodate.
+                          <p className="text-sm text-white/50 text-center py-4">
+                            No odds added. Click "Add" to add some.
                           </p>
                         )}
                       </div>
@@ -1393,8 +1422,8 @@ export default function AdminPage() {
               <Button
                 variant="outline"
                 onClick={() => setShowTerminBetDialog(false)}
-              >
-                Otkaži
+               className={adminOutlineBtn}>
+                Cancel
               </Button>
               <Button
                 onClick={async () => {
@@ -1403,7 +1432,7 @@ export default function AdminPage() {
                 }}
                 disabled={loading}
               >
-                {loading ? 'Čuvanje...' : 'Sačuvaj'}
+                {loading ? 'Saving...' : 'Save'}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1421,28 +1450,28 @@ export default function AdminPage() {
             }
           }}
         >
-          <DialogContent className="max-w-md w-[95%] sm:w-full">
+          <DialogContent className={`${adminDialog} max-w-md w-[95%] sm:w-full`}>
             <DialogHeader>
-              <DialogTitle className="text-base sm:text-lg md:text-xl">
-                Dodaj prijateljsku utakmicu
+              <DialogTitle className="text-base sm:text-lg md:text-xl text-white">
+                Add friendly match
               </DialogTitle>
-              <DialogDescription>
-                Unesite timove, izaberite igrače i dodajte rezultat za prijateljsku utakmicu. Timovi se unose ručno i ne moraju postojati u listi timova.
+              <DialogDescription className="text-white/50">
+                Enter teams, select players, and add a result for the friendly match. Teams are entered manually and do not need to exist in the teams list.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-2">
               {/* Step indicator */}
               <div className="flex items-center justify-center gap-2 text-xs sm:text-sm mb-2">
-                <span className={friendlyStep === 'teams' ? 'font-semibold' : 'text-muted-foreground'}>
-                  1. Timovi
+                <span className={friendlyStep === 'teams' ? 'font-semibold' : 'text-white/50'}>
+                  1. Teams
                 </span>
                 <span>›</span>
-                <span className={friendlyStep === 'players' ? 'font-semibold' : 'text-muted-foreground'}>
-                  2. Igrači
+                <span className={friendlyStep === 'players' ? 'font-semibold' : 'text-white/50'}>
+                  2. Players
                 </span>
                 <span>›</span>
-                <span className={friendlyStep === 'results' ? 'font-semibold' : 'text-muted-foreground'}>
-                  3. Rezultat
+                <span className={friendlyStep === 'results' ? 'font-semibold' : 'text-white/50'}>
+                  3. Result
                 </span>
               </div>
 
@@ -1451,10 +1480,10 @@ export default function AdminPage() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="friendly_home_team">Domaći tim</Label>
+                      <Label htmlFor="friendly_home_team">Home team</Label>
                       <Input
                         id="friendly_home_team"
-                        placeholder="Unesite naziv tima"
+                        placeholder="Enter team name"
                         value={friendlyMatchForm.home_team}
                         onChange={(e) =>
                           setFriendlyMatchForm({ ...friendlyMatchForm, home_team: e.target.value })
@@ -1462,10 +1491,10 @@ export default function AdminPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="friendly_away_team">Gostujući tim</Label>
+                      <Label htmlFor="friendly_away_team">Away team</Label>
                       <Input
                         id="friendly_away_team"
-                        placeholder="Unesite naziv tima"
+                        placeholder="Enter team name"
                         value={friendlyMatchForm.away_team}
                         onChange={(e) =>
                           setFriendlyMatchForm({ ...friendlyMatchForm, away_team: e.target.value })
@@ -1474,7 +1503,7 @@ export default function AdminPage() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="friendly_date">Datum</Label>
+                    <Label htmlFor="friendly_date">Date</Label>
                     <Input
                       id="friendly_date"
                       type="date"
@@ -1490,20 +1519,20 @@ export default function AdminPage() {
               {/* Step 2: Players */}
               {friendlyStep === 'players' && (
                 <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
-                  <p className="text-xs text-muted-foreground">
-                    Izaberite koje postojeće igrače stavljate u domaći i gostujući tim. Igrač može biti samo u jednom timu.
+                  <p className="text-xs text-white/50">
+                    Select which existing players go into the home and away team. A player can only be on one team.
                   </p>
                   <div className="space-y-2">
                     {players.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-4">
-                        Nema igrača u bazi.
+                      <p className="text-sm text-white/50 text-center py-4">
+                        No players in the database.
                       </p>
                     ) : (
                       <div className="space-y-2">
                         {players.map((player) => (
                           <div
                             key={player.id}
-                            className="flex items-center justify-between p-2 border rounded-lg text-xs sm:text-sm"
+                            className="flex items-center justify-between p-2 border border-white/10 rounded-lg text-xs sm:text-sm"
                           >
                             <div className="flex-1 truncate mr-2">
                               {player.first_name} {player.last_name}
@@ -1512,18 +1541,20 @@ export default function AdminPage() {
                               <Button
                                 type="button"
                                 variant={isFriendlyPlayerSelected(player.id.toString(), 'home') ? 'default' : 'outline'}
-                                size="xs"
+                                size="sm"
                                 onClick={() => toggleFriendlyPlayerSelection(player.id.toString(), 'home')}
+                                className={isFriendlyPlayerSelected(player.id.toString(), 'home') ? adminPrimaryBtn : adminOutlineBtn}
                               >
-                                Domaći
+                                Home
                               </Button>
                               <Button
                                 type="button"
                                 variant={isFriendlyPlayerSelected(player.id.toString(), 'away') ? 'default' : 'outline'}
-                                size="xs"
+                                size="sm"
                                 onClick={() => toggleFriendlyPlayerSelection(player.id.toString(), 'away')}
+                                className={isFriendlyPlayerSelected(player.id.toString(), 'away') ? adminPrimaryBtn : adminOutlineBtn}
                               >
-                                Gosti
+                                Away
                               </Button>
                             </div>
                           </div>
@@ -1539,7 +1570,7 @@ export default function AdminPage() {
                 <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="friendly_home_score">Golovi domaćeg tima</Label>
+                      <Label htmlFor="friendly_home_score">Home team goals</Label>
                       <Input
                         id="friendly_home_score"
                         type="number"
@@ -1548,11 +1579,11 @@ export default function AdminPage() {
                         onChange={(e) =>
                           setFriendlyMatchForm({ ...friendlyMatchForm, home_score: e.target.value })
                         }
-                        placeholder="npr. 3"
+                        placeholder="e.g. 3"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="friendly_away_score">Golovi gostujućeg tima</Label>
+                      <Label htmlFor="friendly_away_score">Away team goals</Label>
                       <Input
                         id="friendly_away_score"
                         type="number"
@@ -1561,26 +1592,26 @@ export default function AdminPage() {
                         onChange={(e) =>
                           setFriendlyMatchForm({ ...friendlyMatchForm, away_score: e.target.value })
                         }
-                        placeholder="npr. 2"
+                        placeholder="e.g. 2"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-3">
-                    <p className="text-xs text-muted-foreground">
-                      Kliknite na igrača da dodate gol za njegov tim. Ponovnim klikom dodajete još jedan gol; koristite ikonicu kante da uklonite poslednji gol.
+                    <p className="text-xs text-white/50">
+                      Click a player to add a goal for their team. Click again to add another goal; use the trash icon to remove the last goal.
                     </p>
 
                     {getFriendlySelectedPlayers().length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-4">
-                        Prvo izaberite igrače u prethodnom koraku.
+                      <p className="text-sm text-white/50 text-center py-4">
+                        First select players in the previous step.
                       </p>
                     ) : (
                       <div className="space-y-4">
                         {/* Home team scorers */}
                         <div className="space-y-2">
                           <h4 className="text-sm font-semibold">
-                            {friendlyMatchForm.home_team || 'Domaći tim'}
+                            {friendlyMatchForm.home_team || 'Home team'}
                           </h4>
                           <div className="space-y-2">
                             {getFriendlySelectedPlayers()
@@ -1598,7 +1629,7 @@ export default function AdminPage() {
                                 return (
                                   <div
                                     key={matchPlayer.id}
-                                    className={`flex items-center justify-between p-2 border rounded-lg text-xs sm:text-sm ${
+                                    className={`flex items-center justify-between p-2 border border-white/10 rounded-lg text-xs sm:text-sm ${
                                       goalCount > 0 ? 'bg-primary/10 border-primary' : ''
                                     }`}
                                   >
@@ -1655,7 +1686,7 @@ export default function AdminPage() {
                         {/* Away team scorers */}
                         <div className="space-y-2">
                           <h4 className="text-sm font-semibold">
-                            {friendlyMatchForm.away_team || 'Gostujući tim'}
+                            {friendlyMatchForm.away_team || 'Away team'}
                           </h4>
                           <div className="space-y-2">
                             {getFriendlySelectedPlayers()
@@ -1673,7 +1704,7 @@ export default function AdminPage() {
                                 return (
                                   <div
                                     key={matchPlayer.id}
-                                    className={`flex items-center justify-between p-2 border rounded-lg text-xs sm:text-sm ${
+                                    className={`flex items-center justify-between p-2 border border-white/10 rounded-lg text-xs sm:text-sm ${
                                       goalCount > 0 ? 'bg-primary/10 border-primary' : ''
                                     }`}
                                   >
@@ -1737,8 +1768,8 @@ export default function AdminPage() {
                 variant="outline"
                 onClick={() => setShowFriendlyMatchDialog(false)}
                 disabled={loading}
-              >
-                Otkaži
+               className={adminOutlineBtn}>
+                Cancel
               </Button>
               <div className="flex-1 flex justify-end gap-2">
                 {friendlyStep !== 'teams' && (
@@ -1750,8 +1781,8 @@ export default function AdminPage() {
                       else if (friendlyStep === 'results') setFriendlyStep('players')
                     }}
                     disabled={loading}
-                  >
-                    Nazad
+                   className={adminOutlineBtn}>
+                    Back
                   </Button>
                 )}
                 {friendlyStep !== 'results' && (
@@ -1761,24 +1792,24 @@ export default function AdminPage() {
                       if (friendlyStep === 'teams') {
                         if (!friendlyMatchForm.home_team || !friendlyMatchForm.away_team) {
                           toast({
-                            title: 'Greška',
-                            description: 'Morate uneti oba tima',
+                            title: 'Error',
+                            description: 'You must enter both teams',
                             variant: 'destructive',
                           })
                           return
                         }
                         if (friendlyMatchForm.home_team === friendlyMatchForm.away_team) {
                           toast({
-                            title: 'Greška',
-                            description: 'Timovi ne mogu biti isti',
+                            title: 'Error',
+                            description: 'Teams cannot be the same',
                             variant: 'destructive',
                           })
                           return
                         }
                         if (!friendlyMatchForm.date) {
                           toast({
-                            title: 'Greška',
-                            description: 'Morate uneti datum',
+                            title: 'Error',
+                            description: 'You must enter a date',
                             variant: 'destructive',
                           })
                           return
@@ -1787,8 +1818,8 @@ export default function AdminPage() {
                       } else if (friendlyStep === 'players') {
                         if (getFriendlySelectedPlayers().length === 0) {
                           toast({
-                            title: 'Greška',
-                            description: 'Morate izabrati bar jednog igrača',
+                            title: 'Error',
+                            description: 'You must select at least one player',
                             variant: 'destructive',
                           })
                           return
@@ -1798,7 +1829,7 @@ export default function AdminPage() {
                     }}
                     disabled={loading}
                   >
-                    Sledeći korak
+                    Next step
                   </Button>
                 )}
                 {friendlyStep === 'results' && (
@@ -1807,8 +1838,8 @@ export default function AdminPage() {
                     onClick={async () => {
                       if (!friendlyMatchForm.home_score || !friendlyMatchForm.away_score) {
                         toast({
-                          title: 'Greška',
-                          description: 'Morate uneti rezultat',
+                          title: 'Error',
+                          description: 'You must enter the result',
                           variant: 'destructive',
                         })
                         return
@@ -1827,7 +1858,7 @@ export default function AdminPage() {
                         (awayGoals > 0 && awayGoals !== awayScore)
                       ) {
                         const confirmMismatch = window.confirm(
-                          `Broj unetih golova (${homeGoals}:${awayGoals}) ne odgovara rezultatu (${homeScore}:${awayScore}). Da li želite da nastavite?`
+                          `Number of entered goals (${homeGoals}:${awayGoals}) does not match the result (${homeScore}:${awayScore}). Do you want to continue?`
                         )
                         if (!confirmMismatch) {
                           return
@@ -1861,12 +1892,12 @@ export default function AdminPage() {
 
                         if (!response.ok) {
                           const error = await response.json().catch(() => ({}))
-                          throw new Error(error.error || 'Greška pri dodavanju prijateljske utakmice')
+                          throw new Error(error.error || 'Error adding friendly match')
                         }
 
                         toast({
-                          title: 'Uspešno!',
-                          description: 'Prijateljska utakmica je dodata',
+                          title: 'Success!',
+                          description: 'Friendly match added',
                         })
 
                         setFriendlyMatchForm({
@@ -1883,8 +1914,8 @@ export default function AdminPage() {
                         fetchResults()
                       } catch (error: any) {
                         toast({
-                          title: 'Greška',
-                          description: error.message || 'Nešto je pošlo po zlu',
+                          title: 'Error',
+                          description: error.message || 'Something went wrong',
                           variant: 'destructive',
                         })
                       } finally {
@@ -1893,7 +1924,7 @@ export default function AdminPage() {
                     }}
                     disabled={loading}
                   >
-                    {loading ? 'Čuvanje...' : 'Sačuvaj utakmicu'}
+                    {loading ? 'Saving...' : 'Save match'}
                   </Button>
                 )}
               </div>
@@ -1903,30 +1934,30 @@ export default function AdminPage() {
 
         {/* Match Announcement Dialog */}
         <Dialog open={showMatchAnnouncementDialog} onOpenChange={setShowMatchAnnouncementDialog}>
-          <DialogContent className="max-w-4xl h-[80vh] sm:h-[85vh] flex flex-col w-[95%] sm:w-full max-h-[90vh]">
+          <DialogContent className={`${adminDialog} max-w-4xl h-[80vh] sm:h-[85vh] flex flex-col w-[95%] sm:w-full max-h-[90vh]`}>
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-base sm:text-lg md:text-xl">
+              <DialogTitle className="flex items-center gap-2 text-base sm:text-lg md:text-xl text-white">
                 <Calendar className="w-5 h-5" />
-                NAJAVA MECA
+                MATCH ANNOUNCEMENT
               </DialogTitle>
-              <DialogDescription>
-                Izaberite igrače koji će igrati sledeći meč
+              <DialogDescription className="text-white/50">
+                Select the players who will play in the next match
               </DialogDescription>
             </DialogHeader>
             <div className="flex-1 overflow-y-auto space-y-6 pr-1 sm:pr-2">
               {loadingMatchPlayers ? (
-                <div className="text-center py-4 text-muted-foreground">Učitavanje...</div>
+                <div className="text-center py-4 text-white/50">Loading...</div>
               ) : !nextMatch.home_team || !nextMatch.away_team ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p className="mb-2">Morate prvo postaviti timove u TerminBet sekciji</p>
+                <div className="text-center py-8 text-white/50">
+                  <p className="mb-2">You must first set the teams in the TerminBet section</p>
                   <Button
                     variant="outline"
                     onClick={() => {
                       setShowMatchAnnouncementDialog(false)
                       setShowTerminBetDialog(true)
                     }}
-                  >
-                    Otvori TerminBet
+                   className={adminOutlineBtn}>
+                    Open TerminBet
                   </Button>
                 </div>
               ) : (
@@ -1942,10 +1973,10 @@ export default function AdminPage() {
                         .map((player) => (
                           <div
                             key={player.id}
-                            className={`flex flex-col items-center p-3 border rounded-lg cursor-pointer transition-colors ${
+                            className={`flex flex-col items-center p-3 border border-white/10 rounded-lg cursor-pointer transition-colors ${
                               isMatchPlayerSelected(player.id.toString(), 'home')
                                 ? 'bg-primary/10 border-primary'
-                                : 'hover:bg-muted/50'
+                                : 'hover:bg-white/5'
                             }`}
                             onClick={() => toggleMatchPlayerSelection(player.id.toString(), 'home')}
                           >
@@ -1977,8 +2008,8 @@ export default function AdminPage() {
                         ))}
                     </div>
                     {players.filter((p) => p.team === nextMatch.home_team).length === 0 && (
-                      <p className="text-sm text-muted-foreground text-center py-4">
-                        Nema igrača u ovom timu
+                      <p className="text-sm text-white/50 text-center py-4">
+                        No players on this team
                       </p>
                     )}
                   </div>
@@ -1994,10 +2025,10 @@ export default function AdminPage() {
                         .map((player) => (
                           <div
                             key={player.id}
-                            className={`flex flex-col items-center p-3 border rounded-lg cursor-pointer transition-colors ${
+                            className={`flex flex-col items-center p-3 border border-white/10 rounded-lg cursor-pointer transition-colors ${
                               isMatchPlayerSelected(player.id.toString(), 'away')
                                 ? 'bg-primary/10 border-primary'
-                                : 'hover:bg-muted/50'
+                                : 'hover:bg-white/5'
                             }`}
                             onClick={() => toggleMatchPlayerSelection(player.id.toString(), 'away')}
                           >
@@ -2029,8 +2060,8 @@ export default function AdminPage() {
                         ))}
                     </div>
                     {players.filter((p) => p.team === nextMatch.away_team).length === 0 && (
-                      <p className="text-sm text-muted-foreground text-center py-4">
-                        Nema igrača u ovom timu
+                      <p className="text-sm text-white/50 text-center py-4">
+                        No players on this team
                       </p>
                     )}
                   </div>
@@ -2041,14 +2072,14 @@ export default function AdminPage() {
               <Button
                 variant="outline"
                 onClick={() => setShowMatchAnnouncementDialog(false)}
-              >
-                Otkaži
+               className={adminOutlineBtn}>
+                Cancel
               </Button>
               <Button
                 onClick={handleSaveMatchPlayers}
                 disabled={loading || !nextMatch.home_team || !nextMatch.away_team}
               >
-                {loading ? 'Čuvanje...' : 'Sačuvaj'}
+                {loading ? 'Saving...' : 'Save'}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -2057,39 +2088,35 @@ export default function AdminPage() {
         {/* Statistics Cards */}
         <div className="flex flex-col gap-4">
           <div className='grid grid-cols-2 sm:grid-cols-4 gap-4'>
-            <Card className='p-4 sm:p-6'>
-              <CardHeader className="flex flex-col items-center justify-center space-y-0 pb-4 px-0">
-                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 mb-3">
-                  <Trophy className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                </div>
-                <CardTitle className="text-sm font-medium text-center text-muted-foreground">
-                  Ukupno rezultata
+            <Card className={`p-4 sm:p-6 ${adminPanel}`}>
+              <CardHeader className="flex flex-col items-center justify-center space-y-0 pb-3 px-0">
+                <Trophy className="h-5 w-5 text-[var(--fpl-green)] mb-2" />
+                <CardTitle className="text-sm font-medium text-center text-white/50">
+                  Total results
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-0 pb-0">
-                <div className="text-3xl font-bold text-center">{stats.totalResults}</div>
+                <div className="text-3xl font-bold text-center text-white">{stats.totalResults}</div>
               </CardContent>
             </Card>
 
             {/* Sezone */}
-            <Card className='p-4 sm:p-6'>
-              <CardHeader className="flex flex-col items-center justify-center space-y-0 pb-4 px-0">
-                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 mb-3">
-                  <Calendar className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                </div>
-                <CardTitle className="text-sm font-medium text-center text-muted-foreground">
-                  Sezone
+            <Card className={`p-4 sm:p-6 ${adminPanel}`}>
+              <CardHeader className="flex flex-col items-center justify-center space-y-0 pb-3 px-0">
+                <Calendar className="h-5 w-5 text-[var(--fpl-cyan)] mb-2" />
+                <CardTitle className="text-sm font-medium text-center text-white/50">
+                  Seasons
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-0 pb-0 space-y-3">
-                <div className="text-sm text-center">
+                <div className="text-sm text-center text-white">
                   {loadingSeasons ? (
-                    <span className="text-muted-foreground">Učitavanje...</span>
+                    <span className="text-white/50">Loading...</span>
                   ) : seasons.length === 0 ? (
-                    <span className="text-muted-foreground">Nema sezona</span>
+                    <span className="text-white/50">No seasons</span>
                   ) : (
                     <span className="font-semibold">
-                      Aktivna: {currentSeason ? currentSeason.name : seasons[0].name}
+                      Active: {currentSeason ? currentSeason.name : seasons[0].name}
                     </span>
                   )}
                 </div>
@@ -2099,8 +2126,8 @@ export default function AdminPage() {
                     e.preventDefault()
                     if (!newSeasonName.trim()) {
                       toast({
-                        title: 'Greška',
-                        description: 'Unesite naziv sezone',
+                        title: 'Error',
+                        description: 'Enter a season name',
                         variant: 'destructive',
                       })
                       return
@@ -2116,18 +2143,18 @@ export default function AdminPage() {
                       })
                       if (!response.ok) {
                         const error = await response.json()
-                        throw new Error(error.error || 'Greška pri kreiranju sezone')
+                        throw new Error(error.error || 'Error creating season')
                       }
                       setNewSeasonName('')
                       await fetchSeasons()
                       toast({
-                        title: 'Uspešno',
-                        description: 'Sezona je kreirana',
+                        title: 'Success',
+                        description: 'Season created',
                       })
                     } catch (error: any) {
                       toast({
-                        title: 'Greška',
-                        description: error.message || 'Nešto je pošlo po zlu',
+                        title: 'Error',
+                        description: error.message || 'Something went wrong',
                         variant: 'destructive',
                       })
                     } finally {
@@ -2136,13 +2163,14 @@ export default function AdminPage() {
                   }}
                 >
                   <Input
-                    placeholder="Naziv sezone (npr. 2024/25)"
+                    placeholder="Season name (e.g. 2024/25)"
                     value={newSeasonName}
                     onChange={(e) => setNewSeasonName(e.target.value)}
+                    className="bg-[var(--fpl-p90)] border-white/15 text-white placeholder:text-white/35"
                   />
-                  <Button type="submit" size="sm" disabled={loading}>
+                  <Button type="submit" size="sm" disabled={loading} className={adminPrimaryBtn}>
                     <Plus className="w-4 h-4 mr-1" />
-                    Dodaj sezonu
+                    Add season
                   </Button>
                 </form>
                 {seasons.length > 0 && (
@@ -2150,12 +2178,12 @@ export default function AdminPage() {
                     {seasons.map((season) => (
                       <div
                         key={season.id}
-                        className="flex items-center justify-between gap-2 px-2 py-1 rounded-md bg-muted/40"
+                        className="flex items-center justify-between gap-2 px-2 py-1 rounded-md bg-white/5"
                       >
                         <button
                           type="button"
-                          className={`text-left flex-1 truncate ${
-                            currentSeason?.id === season.id ? 'font-semibold' : ''
+                          className={`text-left flex-1 truncate text-white/80 ${
+                            currentSeason?.id === season.id ? 'font-semibold text-white' : ''
                           }`}
                           onClick={() => setCurrentSeasonId(season.id)}
                         >
@@ -2168,123 +2196,126 @@ export default function AdminPage() {
               </CardContent>
             </Card>
 
-            <Card className='p-4 sm:p-6'>
-              <CardHeader className="flex flex-col items-center justify-center space-y-0 pb-4 px-0">
-                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/30 mb-3">
-                  <Users className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-                </div>
-                <CardTitle className="text-sm font-medium text-center text-muted-foreground">
-                  Broj timova
+            <Card className={`p-4 sm:p-6 ${adminPanel}`}>
+              <CardHeader className="flex flex-col items-center justify-center space-y-0 pb-3 px-0">
+                <Users className="h-5 w-5 text-[var(--fpl-lilac)] mb-2" />
+                <CardTitle className="text-sm font-medium text-center text-white/50">
+                  Number of teams
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-0 pb-0">
-                <div className="text-3xl font-bold text-center">{teams.length}</div>
+                <div className="text-3xl font-bold text-center text-white">{teams.length}</div>
               </CardContent>
             </Card>
 
-            <Card className='p-4 sm:p-6'>
-              <CardHeader className="flex flex-col items-center justify-center space-y-0 pb-4 px-0">
-                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 mb-3">
-                  <Users className="h-6 w-6 text-green-600 dark:text-green-400" />
-                </div>
-                <CardTitle className="text-sm font-medium text-center text-muted-foreground">
-                  Broj igrača
+            <Card className={`p-4 sm:p-6 ${adminPanel}`}>
+              <CardHeader className="flex flex-col items-center justify-center space-y-0 pb-3 px-0">
+                <Users className="h-5 w-5 text-[var(--fpl-green)] mb-2" />
+                <CardTitle className="text-sm font-medium text-center text-white/50">
+                  Number of players
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-0 pb-0">
-                <div className="text-3xl font-bold text-center">{players.length}</div>
+                <div className="text-3xl font-bold text-center text-white">{players.length}</div>
               </CardContent>
             </Card>
 
-            <Card className='p-4 sm:p-6'>
-              <CardHeader className="flex flex-col items-center justify-center space-y-0 pb-4 px-0">
-                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-900/30 mb-3">
-                  <Calendar className="h-6 w-6 text-orange-600 dark:text-orange-400" />
-                </div>
-                <CardTitle className="text-sm font-medium text-center text-muted-foreground">
-                  Današnji rezultati
+            <Card className={`p-4 sm:p-6 ${adminPanel}`}>
+              <CardHeader className="flex flex-col items-center justify-center space-y-0 pb-3 px-0">
+                <Calendar className="h-5 w-5 text-[var(--fpl-pink)] mb-2" />
+                <CardTitle className="text-sm font-medium text-center text-white/50">
+                  Today's results
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-0 pb-0">
-                <div className="text-3xl font-bold text-center">{stats.todayResults}</div>
+                <div className="text-3xl font-bold text-center text-white">{stats.todayResults}</div>
               </CardContent>
             </Card>
           </div>
 
           <div>
-            <Card className='p-4 sm:p-6'>
-              <CardHeader className="flex flex-col items-center justify-center space-y-0 pb-4 px-0">
-                <CardTitle className="text-sm font-medium text-center text-muted-foreground">
-                  Najnoviji rezultat
+            <Card className={`p-4 sm:p-6 ${adminPanel}`}>
+              <CardHeader className="flex flex-col items-center justify-center space-y-0 pb-3 px-0">
+                <CardTitle className="text-sm font-medium text-center text-white/50">
+                  Latest result
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-0 pb-0">
                 {stats.latestResult ? (
                   <div className="text-center space-y-2">
-                    <div className="text-lg font-semibold">
+                    <div className="text-lg font-semibold text-white">
                       {stats.latestResult.home_team} vs {stats.latestResult.away_team}
                     </div>
-                    <div className="text-2xl font-bold text-muted-foreground">
+                    <div className="text-2xl font-bold text-[var(--fpl-green)]">
                       {stats.latestResult.home_score} - {stats.latestResult.away_score}
                     </div>
                   </div>
                 ) : (
-                  <div className="text-sm text-muted-foreground text-center">Nema rezultata</div>
+                  <div className="text-sm text-white/50 text-center">No results</div>
                 )}
               </CardContent>
             </Card>
           </div>
         </div>
 
+        <FantasyAdminPanel
+          seasonId={currentSeason?.id ?? null}
+          players={players.map((p) => ({
+            id: p.id,
+            first_name: p.first_name,
+            last_name: p.last_name,
+          }))}
+        />
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Add Result Card */}
-          <Card>
+          <Card className={adminPanel}>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+              <CardTitle className="flex items-center gap-2 text-lg sm:text-xl text-white">
                 <Plus className="w-5 h-5" />
-                Dodaj novu utakmicu
+                Add new match
               </CardTitle>
             </CardHeader>
             <CardContent>
               <Link href="/admin/match/new">
-                <Button className="w-full" size="lg">
+                <Button className={`w-full ${adminPrimaryBtn}`} size="lg">
                   <Plus className="w-4 h-4 mr-2" />
-                  <span className="hidden sm:inline">Dodaj novu utakmicu</span>
-                  <span className="sm:hidden">Dodaj utakmicu</span>
+                  <span className="hidden sm:inline">Add new match</span>
+                  <span className="sm:hidden">Add match</span>
                 </Button>
               </Link>
             </CardContent>
           </Card>
 
           {/* Results List */}
-          <Card>
+          <Card className={adminPanel}>
             <CardHeader>
-              <CardTitle>Svi rezultati</CardTitle>
-              <CardDescription>
-                {loadingResults ? 'Učitavanje...' : `${results.length} rezultata`}
+              <CardTitle className="text-white">All results</CardTitle>
+              <CardDescription className="text-white/50">
+                {loadingResults ? 'Loading...' : `${results.length} results`}
               </CardDescription>
             </CardHeader>
             <CardContent className='px-2 sm:px-6'>
               {loadingResults ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  Učitavanje rezultata...
+                <div className="text-center py-8 text-white/50">
+                  Loading results...
                 </div>
               ) : results.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  Nema rezultata. Dodajte prvi rezultat!
+                <div className="text-center py-8 text-white/50">
+                  No results. Add the first result!
                 </div>
               ) : (
                 <div className="space-y-3 max-h-[500px] overflow-y-auto">
                   {results.map((result) => (
                     <div
                       key={result.id}
-                      className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 border rounded-lg hover:bg-muted/50 transition gap-3"
+                      className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 border border-white/10 rounded-xl hover:bg-white/5 transition gap-3"
                     >
                       <div className="flex-1 min-w-0 w-full sm:w-auto">
-                        <div className="font-semibold text-sm sm:text-base truncate text-center sm:text-left">
+                        <div className="font-semibold text-sm sm:text-base truncate text-center sm:text-left text-white">
                           {result.home_team} vs {result.away_team}
                         </div>
-                        <div className="text-xs sm:text-sm text-muted-foreground mt-1 justify-center flex flex-col items-center">
+                        <div className="text-xs sm:text-sm text-white/50 mt-1 justify-center flex flex-col items-center">
                           <span className="font-bold text-xl">{result.home_score} - {result.away_score}</span>
                           <span className="mx-2">•</span>
                           {format(new Date(result.date), 'dd MMM yyyy')}
@@ -2304,7 +2335,7 @@ export default function AdminPage() {
                               date: result.date,
                             })
                           }}
-                          className="text-blue-500 hover:text-blue-600 flex-shrink-0"
+                          className="text-[var(--fpl-cyan)] hover:text-[var(--fpl-cyan)]/80 flex-shrink-0"
                         >
                           <Pencil className="w-4 h-4" />
                         </Button>
@@ -2328,11 +2359,11 @@ export default function AdminPage() {
         {/* Players Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Add Player Form */}
-          <Card>
+          <Card className={adminPanel}>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-white">
                 <UserPlus className="w-5 h-5" />
-                Dodaj igrača
+                Add player
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -2355,7 +2386,7 @@ export default function AdminPage() {
                         })
 
                         if (!uploadResponse.ok) {
-                          let errorMessage = 'Greška pri uploadu slike'
+                          let errorMessage = 'Error uploading image'
                           try {
                             const error = await uploadResponse.json()
                             errorMessage = error.error || error.message || errorMessage
@@ -2370,12 +2401,12 @@ export default function AdminPage() {
 
                         const uploadData = await uploadResponse.json()
                         if (!uploadData.url) {
-                          throw new Error('URL slike nije dobijen sa servera')
+                          throw new Error('Image URL was not returned from the server')
                         }
                         imageUrl = uploadData.url
                       } catch (uploadError: any) {
                         console.error('Upload error details:', uploadError)
-                        throw new Error(uploadError.message || 'Greška pri uploadu slike')
+                        throw new Error(uploadError.message || 'Error uploading image')
                       }
                     }
 
@@ -2393,12 +2424,12 @@ export default function AdminPage() {
 
                     if (!response.ok) {
                       const error = await response.json()
-                      throw new Error(error.error || 'Greška pri dodavanju igrača')
+                      throw new Error(error.error || 'Error adding player')
                     }
 
                     toast({
-                      title: 'Uspešno!',
-                      description: 'Igrač je dodat',
+                      title: 'Success!',
+                      description: 'Player added',
                     })
 
                     setPlayerForm({
@@ -2407,6 +2438,7 @@ export default function AdminPage() {
                       birth_year: '',
                       team: '',
                       image_url: '',
+                      price: '',
                     })
                     setPlayerImageFile(null)
                     // Reset file input
@@ -2417,8 +2449,8 @@ export default function AdminPage() {
                     fetchPlayers()
                   } catch (error: any) {
                     toast({
-                      title: 'Greška',
-                      description: error.message || 'Nešto je pošlo po zlu',
+                      title: 'Error',
+                      description: error.message || 'Something went wrong',
                       variant: 'destructive',
                     })
                   } finally {
@@ -2429,22 +2461,22 @@ export default function AdminPage() {
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="first_name">Ime</Label>
+                    <Label htmlFor="first_name">First name</Label>
                     <Input
                       id="first_name"
                       value={playerForm.first_name}
                       onChange={(e) => setPlayerForm({ ...playerForm, first_name: e.target.value })}
-                      placeholder="npr. Luka"
+                      placeholder="e.g. Luka"
                       required
                     />
                   </div>
                   <div>
-                    <Label htmlFor="last_name">Prezime</Label>
+                    <Label htmlFor="last_name">Last name</Label>
                     <Input
                       id="last_name"
                       value={playerForm.last_name}
                       onChange={(e) => setPlayerForm({ ...playerForm, last_name: e.target.value })}
-                      placeholder="npr. Modrić"
+                      placeholder="e.g. Modrić"
                       required
                     />
                   </div>
@@ -2452,10 +2484,10 @@ export default function AdminPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="team">Tim</Label>
+                    <Label htmlFor="team">Team</Label>
                     {teams.length === 0 ? (
-                      <div className="text-sm text-muted-foreground py-2">
-                        Nema timova. Dodajte timove prvo.
+                      <div className="text-sm text-white/50 py-2">
+                        No teams. Add teams first.
                       </div>
                     ) : (
                       <Select
@@ -2465,10 +2497,10 @@ export default function AdminPage() {
                         }
                       >
                         <SelectTrigger id="team" className="w-full">
-                          <SelectValue placeholder="Izaberi tim (opciono)" />
+                          <SelectValue placeholder="Select team (optional)" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">Bez tima</SelectItem>
+                          <SelectItem value="none">No team</SelectItem>
                           {teams.map((team) => (
                             <SelectItem key={team.id} value={team.name}>
                               {team.name}
@@ -2479,7 +2511,7 @@ export default function AdminPage() {
                     )}
                   </div>
                   <div>
-                    <Label htmlFor="player_image">Slika igrača</Label>
+                    <Label htmlFor="player_image">Player image</Label>
                     <Input
                       id="player_image"
                       type="file"
@@ -2489,59 +2521,74 @@ export default function AdminPage() {
                         setPlayerImageFile(file)
                       }}
                     />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Preporuka: kvadratna slika (npr. 512x512), PNG ili JPG
+                    <p className="text-xs text-white/50 mt-1">
+                      Recommended: square image (e.g. 512x512), PNG or JPG
                     </p>
                     {playerImageFile && (
-                      <p className="text-xs text-green-600 mt-1">
-                        Izabrana slika: {playerImageFile.name}
+                      <p className="text-xs text-[var(--fpl-green)] mt-1">
+                        Selected image: {playerImageFile.name}
                       </p>
                     )}
                   </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="birth_year">Godina rođenja</Label>
-                  <Input
-                    id="birth_year"
-                    type="number"
-                    min="1900"
-                    max={new Date().getFullYear()}
-                    value={playerForm.birth_year}
-                    onChange={(e) => setPlayerForm({ ...playerForm, birth_year: e.target.value })}
-                    placeholder="npr. 1985"
-                    required
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="birth_year">Year of birth</Label>
+                    <Input
+                      id="birth_year"
+                      type="number"
+                      min="1900"
+                      max={new Date().getFullYear()}
+                      value={playerForm.birth_year}
+                      onChange={(e) => setPlayerForm({ ...playerForm, birth_year: e.target.value })}
+                      placeholder="e.g. 1985"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="price">Fantasy price (£m)</Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      min="0"
+                      max="99.9"
+                      step="0.1"
+                      value={playerForm.price}
+                      onChange={(e) => setPlayerForm({ ...playerForm, price: e.target.value })}
+                      placeholder="e.g. 5.5"
+                    />
+                  </div>
                 </div>
 
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Dodavanje...' : 'Dodaj igrača'}
+                <Button type="submit" className={`w-full ${adminPrimaryBtn}`} disabled={loading}>
+                  {loading ? 'Adding...' : 'Add player'}
                 </Button>
               </form>
             </CardContent>
           </Card>
 
           {/* Players List */}
-          <Card>
+          <Card className={adminPanel}>
             <CardHeader>
-              <CardTitle>Svi igrači</CardTitle>
-              <CardDescription>
-                {loadingPlayers ? 'Učitavanje...' : `${players.length} igrača`}
+              <CardTitle className="text-white">All players</CardTitle>
+              <CardDescription className="text-white/50">
+                {loadingPlayers ? 'Loading...' : `${players.length} players`}
               </CardDescription>
             </CardHeader>
             <CardContent className='px-2 sm:px-6'>
               {loadingPlayers ? (
-                <div className="text-center py-8 text-muted-foreground">Učitavanje igrača...</div>
+                <div className="text-center py-8 text-white/50">Loading players...</div>
               ) : players.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  Nema igrača. Dodajte prvog igrača!
+                <div className="text-center py-8 text-white/50">
+                  No players. Add the first player!
                 </div>
               ) : (
                 <div className="space-y-3 max-h-[500px] overflow-y-auto">
                   {players.map((player) => (
                     <div
                       key={player.id}
-                      className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 border rounded-lg hover:bg-muted/50 transition gap-3"
+                      className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 border border-white/10 rounded-xl hover:bg-white/5 transition gap-3"
                     >
                       <div className="flex items-center gap-3 flex-1 min-w-0 w-full sm:w-auto justify-center sm:justify-start">
                         <div className="relative w-20 h-[100px] rounded-b-2xl overflow-hidden flex">
@@ -2558,16 +2605,21 @@ export default function AdminPage() {
                           />
                         </div>
                         <div className="min-w-0 flex-1 text-center sm:text-left">
-                          <div className="font-semibold text-sm sm:text-base truncate">
+                          <div className="font-semibold text-sm sm:text-base truncate text-white">
                             {player.first_name} {player.last_name}
                             {player.team && (
-                              <span className="text-xs text-muted-foreground ml-2">
+                              <span className="text-xs text-white/50 ml-2">
                                 ({player.team})
                               </span>
                             )}
                           </div>
-                          <div className="text-xs sm:text-sm text-muted-foreground">
-                            Godina rođenja: {player.birth_year}
+                          <div className="text-xs sm:text-sm text-white/50">
+                            Year of birth: {player.birth_year}
+                            {player.price != null && (
+                              <span className="ml-2 text-[var(--fpl-green)] font-semibold">
+                                £{Number(player.price)}m
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -2590,7 +2642,7 @@ export default function AdminPage() {
                             })
                             setRatingBonus(player.rating_bonus?.toString() || '0')
                           }}
-                          className="text-blue-500 hover:text-blue-600 flex-shrink-0"
+                          className="text-[var(--fpl-cyan)] hover:text-[var(--fpl-cyan)]/80 flex-shrink-0"
                         >
                           <Pencil className="w-4 h-4" />
                         </Button>
@@ -2598,7 +2650,7 @@ export default function AdminPage() {
                           variant="ghost"
                           size="icon"
                           onClick={async () => {
-                            if (!confirm('Da li ste sigurni da želite da obrišete ovog igrača?')) {
+                            if (!confirm('Are you sure you want to delete this player?')) {
                               return
                             }
                             try {
@@ -2612,18 +2664,18 @@ export default function AdminPage() {
 
                               if (!response.ok) {
                                 const error = await response.json()
-                                throw new Error(error.error || 'Greška pri brisanju igrača')
+                                throw new Error(error.error || 'Error deleting player')
                               }
 
                               toast({
-                                title: 'Uspešno!',
-                                description: 'Igrač je obrisan',
+                                title: 'Success!',
+                                description: 'Player deleted',
                               })
                               fetchPlayers()
                             } catch (error: any) {
                               toast({
-                                title: 'Greška',
-                                description: error.message || 'Nešto je pošlo po zlu',
+                                title: 'Error',
+                                description: error.message || 'Something went wrong',
                                 variant: 'destructive',
                               })
                             }
@@ -2644,13 +2696,13 @@ export default function AdminPage() {
         {/* Teams Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Add/Edit Team Form */}
-          <Card>
+          <Card className={adminPanel}>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-white">
                 <Plus className="w-5 h-5" />
-                Dodaj/Uredi tim
+                Add/Edit team
               </CardTitle>
-              <CardDescription>Dodaj novi klub za aktivnu sezonu ili ažuriraj postojeći</CardDescription>
+              <CardDescription className="text-white/50">Add a new club for the active season or update an existing one</CardDescription>
             </CardHeader>
             <CardContent>
               <form
@@ -2673,7 +2725,7 @@ export default function AdminPage() {
                         })
 
                         if (!uploadResponse.ok) {
-                          let errorMessage = 'Greška pri uploadu logoa'
+                          let errorMessage = 'Error uploading logo'
                           try {
                             const error = await uploadResponse.json()
                             errorMessage = error.error || error.message || errorMessage
@@ -2688,12 +2740,12 @@ export default function AdminPage() {
 
                         const uploadData = await uploadResponse.json()
                         if (!uploadData.url) {
-                          throw new Error('URL logoa nije dobijen sa servera')
+                          throw new Error('Logo URL was not returned from the server')
                         }
                         logoUrl = uploadData.url
                       } catch (uploadError: any) {
                         console.error('Upload error details:', uploadError)
-                        throw new Error(uploadError.message || 'Greška pri uploadu logoa')
+                        throw new Error(uploadError.message || 'Error uploading logo')
                       }
                     }
 
@@ -2712,12 +2764,12 @@ export default function AdminPage() {
 
                     if (!response.ok) {
                       const error = await response.json()
-                      throw new Error(error.error || 'Greška pri dodavanju/ažuriranju tima')
+                      throw new Error(error.error || 'Error adding/updating team')
                     }
 
                     toast({
-                      title: 'Uspešno!',
-                      description: 'Tim je dodat/ažuriran',
+                      title: 'Success!',
+                      description: 'Team added/updated',
                     })
 
                     setTeamForm({
@@ -2734,8 +2786,8 @@ export default function AdminPage() {
                   } catch (error: any) {
                     console.error('Error adding team:', error)
                     toast({
-                      title: 'Greška',
-                      description: error.message || 'Nešto je pošlo po zlu',
+                      title: 'Error',
+                      description: error.message || 'Something went wrong',
                       variant: 'destructive',
                     })
                   } finally {
@@ -2746,28 +2798,28 @@ export default function AdminPage() {
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="team_name">Naziv tima</Label>
+                    <Label htmlFor="team_name">Team name</Label>
                     <Input
                       id="team_name"
                       value={teamForm.name}
                       onChange={(e) => setTeamForm({ ...teamForm, name: e.target.value })}
-                      placeholder="Unesi naziv kluba"
+                      placeholder="Enter club name"
                       required
                     />
                   </div>
                   <div>
-                    <Label htmlFor="short_name">Skraćenica</Label>
+                    <Label htmlFor="short_name">Abbreviation</Label>
                     <Input
                       id="short_name"
                       value={teamForm.short_name}
                       onChange={(e) => setTeamForm({ ...teamForm, short_name: e.target.value })}
-                      placeholder="npr. RM"
+                      placeholder="e.g. RM"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="team_logo">Logo tima (slika)</Label>
+                  <Label htmlFor="team_logo">Team logo (image)</Label>
                   <Input
                     id="team_logo"
                     type="file"
@@ -2777,44 +2829,44 @@ export default function AdminPage() {
                       setTeamLogoFile(file)
                     }}
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Preporuka: kvadratna slika (npr. 512x512), PNG ili JPG
+                  <p className="text-xs text-white/50 mt-1">
+                    Recommended: square image (e.g. 512x512), PNG or JPG
                   </p>
                   {teamLogoFile && (
-                    <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                      Izabran logo: {teamLogoFile.name}
+                    <p className="text-xs text-[var(--fpl-green)] mt-1">
+                      Selected logo: {teamLogoFile.name}
                     </p>
                   )}
                 </div>
 
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Dodavanje...' : 'Dodaj tim'}
+                <Button type="submit" className={`w-full ${adminPrimaryBtn}`} disabled={loading}>
+                  {loading ? 'Adding...' : 'Add team'}
                 </Button>
               </form>
             </CardContent>
           </Card>
 
           {/* Teams List */}
-          <Card>
+          <Card className={adminPanel}>
             <CardHeader>
-              <CardTitle>Svi timovi</CardTitle>
-              <CardDescription>
-                {loadingTeams ? 'Učitavanje...' : `${teams.length} timova`}
+              <CardTitle className="text-white">All teams</CardTitle>
+              <CardDescription className="text-white/50">
+                {loadingTeams ? 'Loading...' : `${teams.length} teams`}
               </CardDescription>
             </CardHeader>
             <CardContent className='px-2 sm:px-6'>
               {loadingTeams ? (
-                <div className="text-center py-8 text-muted-foreground">Učitavanje timova...</div>
+                <div className="text-center py-8 text-white/50">Loading teams...</div>
               ) : teams.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  Nema timova. Dodajte prvi tim!
+                <div className="text-center py-8 text-white/50">
+                  No teams. Add the first team!
                 </div>
               ) : (
                 <div className="space-y-3 max-h-[500px] overflow-y-auto">
                   {teams.map((team) => (
                     <div
                       key={team.id}
-                      className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 border rounded-lg hover:bg-muted/50 transition gap-3"
+                      className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 border border-white/10 rounded-xl hover:bg-white/5 transition gap-3"
                     >
                       <div className="flex items-center gap-3 flex-1 min-w-0 w-full sm:w-auto justify-center sm:justify-start">
                         <div className="relative w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center">
@@ -2830,10 +2882,10 @@ export default function AdminPage() {
                           />
                         </div>
                         <div className="min-w-0 flex-1 text-center sm:text-left">
-                          <div className="font-semibold text-sm sm:text-base truncate">
+                          <div className="font-semibold text-sm sm:text-base truncate text-white">
                             {team.name}
                             {team.short_name && (
-                              <span className="text-xs text-muted-foreground ml-2">
+                              <span className="text-xs text-white/50 ml-2">
                                 ({team.short_name})
                               </span>
                             )}
@@ -2845,7 +2897,7 @@ export default function AdminPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => setEditingTeam(team)}
-                          className="text-blue-500 hover:text-blue-600 flex-shrink-0"
+                          className="text-[var(--fpl-cyan)] hover:text-[var(--fpl-cyan)]/80 flex-shrink-0"
                         >
                           <Pencil className="w-4 h-4" />
                         </Button>
@@ -2853,7 +2905,7 @@ export default function AdminPage() {
                           variant="ghost"
                           size="icon"
                           onClick={async () => {
-                            if (!confirm('Da li ste sigurni da želite da obrišete ovaj tim?')) {
+                            if (!confirm('Are you sure you want to delete this team?')) {
                               return
                             }
                             try {
@@ -2867,18 +2919,18 @@ export default function AdminPage() {
 
                               if (!response.ok) {
                                 const error = await response.json()
-                                throw new Error(error.error || 'Greška pri brisanju tima')
+                                throw new Error(error.error || 'Error deleting team')
                               }
 
                               toast({
-                                title: 'Uspešno!',
-                                description: 'Tim je obrisan',
+                                title: 'Success!',
+                                description: 'Team deleted',
                               })
                               fetchTeams()
                             } catch (error: any) {
                               toast({
-                                title: 'Greška',
-                                description: error.message || 'Nešto je pošlo po zlu',
+                                title: 'Error',
+                                description: error.message || 'Something went wrong',
                                 variant: 'destructive',
                               })
                             }
@@ -2899,10 +2951,10 @@ export default function AdminPage() {
         {/* Edit Dialogs */}
         {/* Edit Result Dialog */}
         <Dialog open={!!editingResult} onOpenChange={(open) => !open && setEditingResult(null)}>
-          <DialogContent>
+          <DialogContent className={adminDialog}>
             <DialogHeader>
-              <DialogTitle>Izmeni rezultat</DialogTitle>
-              <DialogDescription>Izmenite podatke o rezultatu utakmice</DialogDescription>
+              <DialogTitle className="text-white">Edit result</DialogTitle>
+              <DialogDescription className="text-white/50">Edit the match result details</DialogDescription>
             </DialogHeader>
             {editingResult && (
               <form
@@ -2922,10 +2974,10 @@ export default function AdminPage() {
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="edit_home_team">Domaći tim</Label>
+                    <Label htmlFor="edit_home_team">Home team</Label>
                     {teams.length === 0 ? (
-                      <div className="text-sm text-muted-foreground py-2">
-                        Nema timova. Dodajte timove prvo.
+                      <div className="text-sm text-white/50 py-2">
+                        No teams. Add teams first.
                       </div>
                     ) : (
                       <Select
@@ -2936,7 +2988,7 @@ export default function AdminPage() {
                         required
                       >
                         <SelectTrigger id="edit_home_team" className="w-full">
-                          <SelectValue placeholder="Izaberi tim" />
+                          <SelectValue placeholder="Select team" />
                         </SelectTrigger>
                         <SelectContent>
                           {teams.map((team) => (
@@ -2949,10 +3001,10 @@ export default function AdminPage() {
                     )}
                   </div>
                   <div>
-                    <Label htmlFor="edit_away_team">Gostujući tim</Label>
+                    <Label htmlFor="edit_away_team">Away team</Label>
                     {teams.length === 0 ? (
-                      <div className="text-sm text-muted-foreground py-2">
-                        Nema timova. Dodajte timove prvo.
+                      <div className="text-sm text-white/50 py-2">
+                        No teams. Add teams first.
                       </div>
                     ) : (
                       <Select
@@ -2963,7 +3015,7 @@ export default function AdminPage() {
                         required
                       >
                         <SelectTrigger id="edit_away_team" className="w-full">
-                          <SelectValue placeholder="Izaberi tim" />
+                          <SelectValue placeholder="Select team" />
                         </SelectTrigger>
                         <SelectContent>
                           {teams.map((team) => (
@@ -2978,7 +3030,7 @@ export default function AdminPage() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="edit_home_score">Golovi domaćeg tima</Label>
+                    <Label htmlFor="edit_home_score">Home team goals</Label>
                     <Input
                       id="edit_home_score"
                       type="number"
@@ -2990,7 +3042,7 @@ export default function AdminPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="edit_away_score">Golovi gostujućeg tima</Label>
+                    <Label htmlFor="edit_away_score">Away team goals</Label>
                     <Input
                       id="edit_away_score"
                       type="number"
@@ -3003,7 +3055,7 @@ export default function AdminPage() {
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="edit_date">Datum</Label>
+                  <Label htmlFor="edit_date">Date</Label>
                   <Input
                     id="edit_date"
                     type="date"
@@ -3028,11 +3080,11 @@ export default function AdminPage() {
                         date: '',
                       })
                     }}
-                  >
-                    Otkaži
+                   className={adminOutlineBtn}>
+                    Cancel
                   </Button>
-                  <Button type="submit" disabled={loading}>
-                    {loading ? 'Čuvanje...' : 'Sačuvaj'}
+                  <Button type="submit" disabled={loading} className={adminPrimaryBtn}>
+                    {loading ? 'Saving...' : 'Save'}
                   </Button>
                 </DialogFooter>
               </form>
@@ -3059,16 +3111,19 @@ export default function AdminPage() {
             setRatingBonus('0')
           }
         }}>
-          <DialogContent>
+          <DialogContent className={adminDialog}>
             <DialogHeader>
-              <DialogTitle>Izmeni igrača</DialogTitle>
-              <DialogDescription>Izmenite podatke o igraču</DialogDescription>
+              <DialogTitle className="text-white">Edit player</DialogTitle>
+              <DialogDescription className="text-white/50">Edit the player details</DialogDescription>
             </DialogHeader>
             {editingPlayer && (
               <form
                 onSubmit={async (e) => {
                   e.preventDefault()
                   const formData = new FormData(e.currentTarget)
+                  const priceRaw = formData.get('price') as string
+                  const priceParsed =
+                    priceRaw === '' || priceRaw == null ? null : parseFloat(priceRaw)
                   const updatedPlayer = {
                     ...editingPlayer,
                     first_name: formData.get('first_name') as string,
@@ -3076,6 +3131,8 @@ export default function AdminPage() {
                     birth_year: parseInt(formData.get('birth_year') as string),
                     team: editPlayerTeam === 'none' ? '' : editPlayerTeam,
                     image_url: editingPlayer.image_url || '',
+                    price:
+                      priceParsed != null && !Number.isNaN(priceParsed) ? priceParsed : null,
                   }
                   await handleEditPlayer(updatedPlayer)
                 }}
@@ -3083,7 +3140,7 @@ export default function AdminPage() {
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="edit_first_name">Ime</Label>
+                    <Label htmlFor="edit_first_name">First name</Label>
                     <Input
                       id="edit_first_name"
                       name="first_name"
@@ -3092,7 +3149,7 @@ export default function AdminPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="edit_last_name">Prezime</Label>
+                    <Label htmlFor="edit_last_name">Last name</Label>
                     <Input
                       id="edit_last_name"
                       name="last_name"
@@ -3103,10 +3160,10 @@ export default function AdminPage() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="edit_team">Tim</Label>
+                    <Label htmlFor="edit_team">Team</Label>
                     {teams.length === 0 ? (
-                      <div className="text-sm text-muted-foreground py-2">
-                        Nema timova. Dodajte timove prvo.
+                      <div className="text-sm text-white/50 py-2">
+                        No teams. Add teams first.
                       </div>
                     ) : (
                       <Select
@@ -3114,10 +3171,10 @@ export default function AdminPage() {
                         onValueChange={(value) => setEditPlayerTeam(value)}
                       >
                         <SelectTrigger id="edit_team" className="w-full">
-                          <SelectValue placeholder="Izaberi tim (opciono)" />
+                          <SelectValue placeholder="Select team (optional)" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">Bez tima</SelectItem>
+                          <SelectItem value="none">No team</SelectItem>
                           {teams.map((team) => (
                             <SelectItem key={team.id} value={team.name}>
                               {team.name}
@@ -3128,7 +3185,7 @@ export default function AdminPage() {
                     )}
                   </div>
                   <div>
-                    <Label htmlFor="edit_player_image">Nova slika (opciono)</Label>
+                    <Label htmlFor="edit_player_image">New image (optional)</Label>
                     <Input
                       id="edit_player_image"
                       type="file"
@@ -3139,20 +3196,20 @@ export default function AdminPage() {
                       }}
                     />
                     {editingPlayer.image_url && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Trenutna slika: <a href={editingPlayer.image_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Pogledaj</a>
+                      <p className="text-xs text-white/50 mt-1">
+                        Current image: <a href={editingPlayer.image_url} target="_blank" rel="noopener noreferrer" className="text-[var(--fpl-cyan)] hover:underline">View</a>
                       </p>
                     )}
                     {editPlayerImageFile && (
-                      <p className="text-xs text-green-600 mt-1">
-                        Nova slika: {editPlayerImageFile.name}
+                      <p className="text-xs text-[var(--fpl-green)] mt-1">
+                        New image: {editPlayerImageFile.name}
                       </p>
                     )}
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="edit_birth_year">Godina rođenja</Label>
+                    <Label htmlFor="edit_birth_year">Year of birth</Label>
                     <Input
                       id="edit_birth_year"
                       name="birth_year"
@@ -3161,24 +3218,38 @@ export default function AdminPage() {
                       required
                     />
                   </div>
-                  <div className="flex items-center space-x-2 pt-6">
-                    <Checkbox
-                      id="edit_injury"
-                      checked={editPlayerInjury}
-                      onCheckedChange={(checked) => setEditPlayerInjury(checked === true)}
+                  <div>
+                    <Label htmlFor="edit_price">Fantasy price (£m)</Label>
+                    <Input
+                      id="edit_price"
+                      name="price"
+                      type="number"
+                      min="0"
+                      max="99.9"
+                      step="0.1"
+                      defaultValue={editingPlayer.price ?? ''}
+                      placeholder="e.g. 5.5"
                     />
-                    <Label htmlFor="edit_injury" className="text-sm font-normal cursor-pointer">
-                      Povređen
-                    </Label>
                   </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="edit_injury"
+                    checked={editPlayerInjury}
+                    onCheckedChange={(checked) => setEditPlayerInjury(checked === true)}
+                  />
+                  <Label htmlFor="edit_injury" className="text-sm font-normal cursor-pointer">
+                    Injured
+                  </Label>
                 </div>
 
                 {/* Player Ratings Section */}
+                {SHOW_PLAYER_RATINGS && (
                 <div className="space-y-4 pt-4 border-t">
                   <div>
-                    <h3 className="text-lg font-semibold mb-2">Ocene igrača (FIFA stil)</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Unesite ocene od 0 do 100 za svaki atribut
+                    <h3 className="text-lg font-semibold mb-2">Player ratings (FIFA style)</h3>
+                    <p className="text-sm text-white/50 mb-4">
+                      Enter ratings from 0 to 100 for each attribute
                     </p>
                     {/* Trenutni i novi prosječni rating */}
                     {(() => {
@@ -3206,27 +3277,27 @@ export default function AdminPage() {
                       let newAvg = baseAvg !== null ? Math.max(0, Math.min(100, baseAvg + newBonus)) : null
 
                       return (
-                        <div className="mb-4 p-3 bg-muted rounded-lg space-y-1">
+                        <div className="mb-4 p-3 bg-[var(--fpl-p90)] border border-white/10 rounded-lg space-y-1">
                           {currentAvg !== null && (
                             <p className="text-sm font-medium">
-                              Trenutni prosječni rating: <span className="text-lg font-bold">{currentAvg}</span>
+                              Current average rating: <span className="text-lg font-bold">{currentAvg}</span>
                               {currentBonus !== 0 && (
-                                <span className="text-xs ml-2 text-muted-foreground">
-                                  (bazni: {baseAvg}, bonus: {currentBonus > 0 ? '+' : ''}{currentBonus})
+                                <span className="text-xs ml-2 text-white/50">
+                                  (base: {baseAvg}, bonus: {currentBonus > 0 ? '+' : ''}{currentBonus})
                                 </span>
                               )}
                             </p>
                           )}
                           {newAvg !== null && newAvg !== currentAvg && (
-                            <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                              Novi prosječni rating: <span className="text-lg font-bold">{newAvg}</span>
+                            <p className="text-sm font-medium text-[var(--fpl-cyan)]">
+                              New average rating: <span className="text-lg font-bold">{newAvg}</span>
                               {currentAvg !== null && (
                                 <span className="text-xs ml-2">
                                   ({newAvg > currentAvg ? '+' : ''}{newAvg - currentAvg})
                                 </span>
                               )}
                               {newBonus !== 0 && (
-                                <span className="text-xs ml-2 text-muted-foreground">
+                                <span className="text-xs ml-2 text-white/50">
                                   (bonus: {newBonus > 0 ? '+' : ''}{newBonus})
                                 </span>
                               )}
@@ -3236,9 +3307,9 @@ export default function AdminPage() {
                       )
                     })()}
                     {/* Bonus rating polje */}
-                    <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="mb-4 p-3 bg-[var(--fpl-p90)] rounded-lg border border-white/10">
                       <Label htmlFor="rating_bonus" className="text-sm font-medium mb-2 block">
-                        Bonus za prosječni rating
+                        Average rating bonus
                       </Label>
                       <div className="flex gap-2">
                         <Button
@@ -3250,8 +3321,7 @@ export default function AdminPage() {
                             const newBonus = currentBonus - 1
                             setRatingBonus(newBonus.toString())
                           }}
-                          className="shrink-0"
-                        >
+                          className={`shrink-0 ${adminOutlineBtn}`}>
                           <Minus className="w-4 h-4" />
                         </Button>
                         <Input
@@ -3271,13 +3341,12 @@ export default function AdminPage() {
                             const newBonus = currentBonus + 1
                             setRatingBonus(newBonus.toString())
                           }}
-                          className="shrink-0"
-                        >
+                          className={`shrink-0 ${adminOutlineBtn}`}>
                           <Plus className="w-4 h-4" />
                         </Button>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Koristite +/- dugmad ili unesite broj. Bonus će se dodati na prosječni rating (ne mijenja ocene atributa). Bonus se čuva kada sačuvate formu.
+                      <p className="text-xs text-white/50 mt-2">
+                        Use the +/- buttons or enter a number. The bonus will be added to the average rating (it does not change attribute ratings). The bonus is saved when you save the form.
                       </p>
                     </div>
                   </div>
@@ -3382,6 +3451,7 @@ export default function AdminPage() {
                     </div>
                   </div>
                 </div>
+                )}
                 <DialogFooter>
                   <Button
                     type="button"
@@ -3401,11 +3471,11 @@ export default function AdminPage() {
                       })
                       setRatingBonus('0')
                     }}
-                  >
-                    Otkaži
+                   className={adminOutlineBtn}>
+                    Cancel
                   </Button>
-                  <Button type="submit" disabled={loading}>
-                    {loading ? 'Čuvanje...' : 'Sačuvaj'}
+                  <Button type="submit" disabled={loading} className={adminPrimaryBtn}>
+                    {loading ? 'Saving...' : 'Save'}
                   </Button>
                 </DialogFooter>
               </form>
@@ -3415,10 +3485,10 @@ export default function AdminPage() {
 
         {/* Edit Team Dialog */}
         <Dialog open={!!editingTeam} onOpenChange={(open) => !open && setEditingTeam(null)}>
-          <DialogContent>
+          <DialogContent className={adminDialog}>
             <DialogHeader>
-              <DialogTitle>Izmeni tim</DialogTitle>
-              <DialogDescription>Izmenite podatke o timu</DialogDescription>
+              <DialogTitle className="text-white">Edit team</DialogTitle>
+              <DialogDescription className="text-white/50">Edit the team details</DialogDescription>
             </DialogHeader>
             {editingTeam && (
               <form
@@ -3436,7 +3506,7 @@ export default function AdminPage() {
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="edit_team_name">Naziv tima</Label>
+                    <Label htmlFor="edit_team_name">Team name</Label>
                     <Input
                       id="edit_team_name"
                       name="name"
@@ -3445,7 +3515,7 @@ export default function AdminPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="edit_short_name">Skraćenica</Label>
+                    <Label htmlFor="edit_short_name">Abbreviation</Label>
                     <Input
                       id="edit_short_name"
                       name="short_name"
@@ -3454,7 +3524,7 @@ export default function AdminPage() {
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="edit_team_logo">Novi logo (opciono)</Label>
+                  <Label htmlFor="edit_team_logo">New logo (optional)</Label>
                   <Input
                     id="edit_team_logo"
                     type="file"
@@ -3465,8 +3535,8 @@ export default function AdminPage() {
                     }}
                   />
                   {editingTeam.logo_url && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Trenutni logo: <a href={editingTeam.logo_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Pogledaj</a>
+                    <p className="text-xs text-white/50 mt-1">
+                      Current logo: <a href={editingTeam.logo_url} target="_blank" rel="noopener noreferrer" className="text-[var(--fpl-cyan)] hover:underline">View</a>
                     </p>
                   )}
                 </div>
@@ -3474,11 +3544,11 @@ export default function AdminPage() {
                   <Button type="button" variant="outline" onClick={() => {
                     setEditingTeam(null)
                     setEditTeamLogoFile(null)
-                  }}>
-                    Otkaži
+                  }} className={adminOutlineBtn}>
+                    Cancel
                   </Button>
-                  <Button type="submit" disabled={loading}>
-                    {loading ? 'Čuvanje...' : 'Sačuvaj'}
+                  <Button type="submit" disabled={loading} className={adminPrimaryBtn}>
+                    {loading ? 'Saving...' : 'Save'}
                   </Button>
                 </DialogFooter>
               </form>

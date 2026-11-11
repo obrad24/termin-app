@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { requireAuth } from '@/lib/auth'
+import { calculateFantasyForResult } from '@/lib/fantasy/calculate'
 
 // GET - Dobijanje jednog rezultata sa detaljima
 export async function GET(
@@ -195,7 +196,15 @@ export async function PUT(
 
     const { id: idParam } = await params
     const body = await request.json()
-    const { home_team, away_team, home_score, away_score, date } = body
+    const {
+      home_team,
+      away_team,
+      home_score,
+      away_score,
+      date,
+      summary_comment,
+      image_url,
+    } = body
 
     const id = parseInt(idParam, 10)
     if (isNaN(id)) {
@@ -212,15 +221,27 @@ export async function PUT(
       )
     }
 
+    const updateData: Record<string, unknown> = {
+      home_team,
+      away_team,
+      home_score: parseInt(home_score),
+      away_score: parseInt(away_score),
+      date,
+    }
+    if (summary_comment !== undefined) {
+      updateData.summary_comment =
+        typeof summary_comment === 'string' && summary_comment.trim() !== ''
+          ? summary_comment.trim()
+          : null
+    }
+    if (image_url !== undefined) {
+      updateData.image_url =
+        typeof image_url === 'string' && image_url.trim() !== '' ? image_url.trim() : null
+    }
+
     const { data, error } = await supabase
       .from('results')
-      .update({
-        home_team,
-        away_team,
-        home_score: parseInt(home_score),
-        away_score: parseInt(away_score),
-        date,
-      })
+      .update(updateData)
       .eq('id', id)
       .select()
       .single()
@@ -231,6 +252,15 @@ export async function PUT(
         { error: 'Failed to update result', details: error.message },
         { status: 500 }
       )
+    }
+
+    try {
+      await calculateFantasyForResult(id, {
+        action: 'recalculate',
+        message: `Auto-recalculated after updating match #${id}`,
+      })
+    } catch (fantasyError) {
+      console.error('Fantasy calculation error:', fantasyError)
     }
 
     return NextResponse.json(data, { status: 200 })

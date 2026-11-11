@@ -1,18 +1,19 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Result, Player, MatchGoal, MatchPlayer, Team, MatchComment } from '@/lib/supabase'
 import { format } from 'date-fns'
 import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/header'
-import { ArrowLeft, Star, MessageSquare, Send, ThumbsUp, ThumbsDown } from 'lucide-react'
+import { ArrowLeft, Star, MessageSquare, Send, ThumbsUp, ThumbsDown, Info } from 'lucide-react'
 import { getPlayerImageUrl } from '@/lib/image-utils'
 import PlayerRatingDialog from '@/components/player-rating-dialog'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
+import { SHOW_PLAYER_RATINGS } from '@/lib/features'
 
 interface GoalWithPlayer extends MatchGoal {
   players: Player
@@ -25,6 +26,91 @@ interface MatchPlayerWithPlayer extends MatchPlayer {
 interface ResultWithDetails extends Result {
   goals: GoalWithPlayer[]
   players: MatchPlayerWithPlayer[]
+}
+
+type MainTab = 'details' | 'stats'
+type TeamFilter = 'all' | 'home' | 'away'
+type StatsSort = 'player' | 'pts' | 'gs'
+
+function shortName(name: string, team?: Team | null) {
+  if (team?.short_name) return team.short_name.toUpperCase()
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 1) return parts[0].slice(0, 3).toUpperCase()
+  return parts.map((p) => p[0]).join('').slice(0, 3).toUpperCase()
+}
+
+function groupGoalsByPlayer(goals: GoalWithPlayer[]) {
+  const grouped = new Map<
+    string,
+    { name: string; count: number; playerId: number | null; player: Player | null }
+  >()
+
+  goals.forEach((goal) => {
+    const playerKey = goal.player_id?.toString() || 'unknown'
+    const playerName = goal.players
+      ? `${goal.players.first_name} ${goal.players.last_name}`
+      : `Player #${goal.player_id}`
+
+    if (grouped.has(playerKey)) {
+      grouped.get(playerKey)!.count++
+    } else {
+      grouped.set(playerKey, {
+        name: playerName,
+        count: 1,
+        playerId: goal.player_id || null,
+        player: goal.players || null,
+      })
+    }
+  })
+
+  return Array.from(grouped.values())
+}
+
+function SplitStatSection({
+  title,
+  homeItems,
+  awayItems,
+  onPlayerClick,
+}: {
+  title: string
+  homeItems: { label: string; player: Player | null }[]
+  awayItems: { label: string; player: Player | null }[]
+  onPlayerClick: (e: React.MouseEvent, player: Player | null) => void
+}) {
+  if (homeItems.length === 0 && awayItems.length === 0) return null
+
+  return (
+    <div className="py-4 border-t border-white/10">
+      <h3 className="text-center text-white font-bold text-base mb-3">{title}</h3>
+      <div className="relative grid grid-cols-2 gap-3 min-h-[28px]">
+        <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/15 -translate-x-1/2" />
+        <div className="pr-3 text-right space-y-1.5">
+          {homeItems.map((item, i) => (
+            <button
+              key={`h-${i}`}
+              type="button"
+              onClick={(e) => onPlayerClick(e, item.player)}
+              className="block w-full text-right text-sm text-white/90 hover:text-[var(--fpl-cyan)] transition"
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        <div className="pl-3 text-left space-y-1.5">
+          {awayItems.map((item, i) => (
+            <button
+              key={`a-${i}`}
+              type="button"
+              onClick={(e) => onPlayerClick(e, item.player)}
+              className="block w-full text-left text-sm text-white/90 hover:text-[var(--fpl-cyan)] transition"
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function MatchDetailPage() {
@@ -44,6 +130,10 @@ export default function MatchDetailPage() {
   const [commentsOffset, setCommentsOffset] = useState(0)
   const [hasMoreComments, setHasMoreComments] = useState(false)
   const [loadingMoreComments, setLoadingMoreComments] = useState(false)
+  const [mainTab, setMainTab] = useState<MainTab>('details')
+  const [teamFilter, setTeamFilter] = useState<TeamFilter>('all')
+  const [statsSort, setStatsSort] = useState<StatsSort>('pts')
+  const [statsSortDir, setStatsSortDir] = useState<'asc' | 'desc'>('desc')
 
   useEffect(() => {
     if (params.id) {
@@ -54,17 +144,20 @@ export default function MatchDetailPage() {
   }, [params.id])
 
   useEffect(() => {
-    if (match?.id) {
+    if (SHOW_PLAYER_RATINGS && match?.id) {
       fetchAverageRatings()
     }
   }, [match?.id])
 
   const handlePlayerClick = (e: React.MouseEvent, player: Player | null) => {
     e.preventDefault()
-    if (player) {
+    if (!player) return
+    if (SHOW_PLAYER_RATINGS) {
       setSelectedPlayer(player)
       setRatingDialogOpen(true)
+      return
     }
+    router.push(`/players/${player.id}`)
   }
 
   const handleRatingSubmitted = () => {
@@ -91,7 +184,6 @@ export default function MatchDetailPage() {
       const response = await fetch(`/api/match-ratings?match_id=${match.id}`)
       if (response.ok) {
         const data = await response.json()
-        // API vraća Record<number, { average: number; count: number }>
         setAverageRatings(data || {})
       }
     } catch (error) {
@@ -99,35 +191,8 @@ export default function MatchDetailPage() {
     }
   }
 
-  const getTeamLogo = (teamName: string) => {
-    const team = teams.find(t => t.name === teamName)
-    return team?.logo_url || '/placeholder-logo.svg'
-  }
-
-  // Grupiše golove po igraču i vraća niz sa imenom i brojem golova
-  const groupGoalsByPlayer = (goals: GoalWithPlayer[]) => {
-    const grouped = new Map<string, { name: string; count: number; playerId: number | null; player: Player | null }>()
-
-    goals.forEach((goal) => {
-      const playerKey = goal.player_id?.toString() || 'unknown'
-      const playerName = goal.players
-        ? `${goal.players.first_name} ${goal.players.last_name}`
-        : `Igrač #${goal.player_id}`
-
-      if (grouped.has(playerKey)) {
-        grouped.get(playerKey)!.count++
-      } else {
-        grouped.set(playerKey, {
-          name: playerName,
-          count: 1,
-          playerId: goal.player_id || null,
-          player: goal.players
-        })
-      }
-    })
-
-    return Array.from(grouped.values())
-  }
+  const getTeam = (teamName: string) => teams.find((t) => t.name === teamName) || null
+  const getTeamLogo = (teamName: string) => getTeam(teamName)?.logo_url || '/placeholder-logo.svg'
 
   const fetchMatch = async () => {
     try {
@@ -184,9 +249,7 @@ export default function MatchDetailPage() {
     try {
       const response = await fetch(`/api/matches/${match.id}/comments`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           nickname: commentNickname.trim(),
           comment: commentText.trim(),
@@ -194,20 +257,17 @@ export default function MatchDetailPage() {
       })
 
       if (response.ok) {
-        const newComment = await response.json()
-        // Resetujemo na početak i učitavamo ponovo komentare
         setCommentsOffset(0)
         setCommentNickname('')
         setCommentText('')
-        // Refresh comments to get like counts
         fetchComments(0, false)
       } else {
         const error = await response.json()
-        alert(error.error || 'Greška pri dodavanju komentara')
+        alert(error.error || 'Error adding comment')
       }
     } catch (error) {
       console.error('Error submitting comment:', error)
-      alert('Greška pri dodavanju komentara')
+      alert('Error adding comment')
     } finally {
       setSubmittingComment(false)
     }
@@ -215,34 +275,77 @@ export default function MatchDetailPage() {
 
   const handleLikeComment = async (commentId: number, likeType: 'like' | 'dislike') => {
     if (!match?.id) return
-
     try {
       const response = await fetch(`/api/matches/${match.id}/comments/${commentId}/like`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ like_type: likeType }),
       })
-
       if (response.ok) {
-        // Refresh comments to get updated like counts
         fetchComments()
-      } else {
-        const error = await response.json()
-        console.error('Error liking comment:', error)
       }
     } catch (error) {
       console.error('Error liking comment:', error)
     }
   }
 
+  const toggleSort = (key: StatsSort) => {
+    if (statsSort === key) {
+      setStatsSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setStatsSort(key)
+      setStatsSortDir(key === 'player' ? 'asc' : 'desc')
+    }
+  }
+
+  const homeGoals = match?.goals?.filter((g) => g.team_type === 'home') || []
+  const awayGoals = match?.goals?.filter((g) => g.team_type === 'away') || []
+  const homePlayers = match?.players?.filter((p) => p.team_type === 'home') || []
+  const awayPlayers = match?.players?.filter((p) => p.team_type === 'away') || []
+
+  const goalsByPlayerId = useMemo(() => {
+    const map = new Map<number, number>()
+    ;(match?.goals || []).forEach((g) => {
+      if (!g.player_id) return
+      map.set(g.player_id, (map.get(g.player_id) || 0) + 1)
+    })
+    return map
+  }, [match?.goals])
+
+  const statsRows = useMemo(() => {
+    if (!match) return []
+    const pool =
+      teamFilter === 'home' ? homePlayers : teamFilter === 'away' ? awayPlayers : match.players || []
+
+    const rows = pool.map((mp) => {
+      const player = mp.players
+      const id = player?.id || mp.player_id
+      const rating = averageRatings[id]
+      const pts = rating?.average || 0
+      const gs = goalsByPlayerId.get(id) || 0
+      const name = player ? `${player.last_name}` : `Player #${id}`
+      const fullName = player ? `${player.first_name} ${player.last_name}` : name
+      const teamName = mp.team_type === 'home' ? match.home_team : match.away_team
+      return { mp, player, id, pts, gs, name, fullName, teamName, ratingCount: rating?.count || 0 }
+    })
+
+    rows.sort((a, b) => {
+      let cmp = 0
+      if (statsSort === 'player') cmp = a.name.localeCompare(b.name)
+      else if (statsSort === 'gs') cmp = a.gs - b.gs
+      else cmp = a.pts - b.pts
+      return statsSortDir === 'asc' ? cmp : -cmp
+    })
+
+    return rows
+  }, [match, teamFilter, homePlayers, awayPlayers, averageRatings, goalsByPlayerId, statsSort, statsSortDir])
+
   if (loading) {
     return (
-      <main className="min-h-screen hero-bg pb-20 md:pb-0">
+      <main className="min-h-screen bg-[var(--fpl-p120)] pb-20 md:pb-0">
         <Header />
-        <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-24 sm:pt-28">
-          <div className="text-white text-center py-12">Učitavanje...</div>
+        <section className="relative px-4 py-8 max-w-3xl mx-auto">
+          <div className="text-white text-center py-12">Loading...</div>
         </section>
       </main>
     )
@@ -250,13 +353,13 @@ export default function MatchDetailPage() {
 
   if (!match) {
     return (
-      <main className="min-h-screen hero-bg pb-20 md:pb-0">
+      <main className="min-h-screen bg-[var(--fpl-p120)] pb-20 md:pb-0">
         <Header />
-        <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-24 sm:pt-28">
+        <section className="relative px-4 py-8 max-w-3xl mx-auto">
           <div className="text-white text-center py-12">
-            <p className="text-lg sm:text-xl mb-4">Utakmica nije pronađena</p>
-            <Link href="/matches" className="text-white/80 hover:text-white underline z-50 relative">
-              Nazad na utakmice
+            <p className="text-lg mb-4">Match not found</p>
+            <Link href="/matches" className="text-white/80 hover:text-white underline">
+              Back to fixtures
             </Link>
           </div>
         </section>
@@ -264,675 +367,421 @@ export default function MatchDetailPage() {
     )
   }
 
-  const homeGoals = match.goals?.filter(g => g.team_type === 'home') || []
-  const awayGoals = match.goals?.filter(g => g.team_type === 'away') || []
-  const homePlayers = match.players?.filter(p => p.team_type === 'home') || []
-  const awayPlayers = match.players?.filter(p => p.team_type === 'away') || []
+  const homeTeam = getTeam(match.home_team)
+  const awayTeam = getTeam(match.away_team)
+  const homeShort = shortName(match.home_team, homeTeam)
+  const awayShort = shortName(match.away_team, awayTeam)
+
+  const homeGoalItems = groupGoalsByPlayer(homeGoals).map((g) => ({
+    label: g.count > 1 ? `${g.player?.last_name || g.name} (${g.count})` : g.player?.last_name || g.name,
+    player: g.player,
+  }))
+  const awayGoalItems = groupGoalsByPlayer(awayGoals).map((g) => ({
+    label: g.count > 1 ? `${g.player?.last_name || g.name} (${g.count})` : g.player?.last_name || g.name,
+    player: g.player,
+  }))
+
+  let mvpPlayer: MatchPlayerWithPlayer | null = null
+  let mvpRating: { average: number; count: number } | null = null
+  if (match.players && Object.keys(averageRatings).length > 0) {
+    let highest = 0
+    let bestId: number | null = null
+    Object.entries(averageRatings).forEach(([playerId, rating]) => {
+      if (rating.average > highest) {
+        highest = rating.average
+        bestId = parseInt(playerId, 10)
+      }
+    })
+    if (bestId) {
+      mvpPlayer = match.players.find((mp) => mp.players?.id === bestId) || null
+      mvpRating = averageRatings[bestId]
+    }
+  }
 
   return (
-    <main className="min-h-screen hero-bg">
+    <main className="min-h-screen bg-[var(--fpl-p120)] pb-24 md:pb-8">
       <Header />
-      <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pb-20">
-        <div className="space-y-6 sm:space-y-8">
-          {/* Back button */}
+
+      <section className="relative px-3 sm:px-6 py-4 max-w-3xl mx-auto">
+        <div className="flex items-center justify-between mb-3 px-1">
           <Link
             href="/matches"
-            className="inline-flex items-center gap-2 text-white/80 hover:text-white transition text-sm sm:text-base z-50 relative"
+            className="inline-flex items-center gap-2 text-white/80 hover:text-white transition text-sm"
           >
             <ArrowLeft className="w-4 h-4" />
-            Nazad na utakmice
+            Fixtures & Results
           </Link>
+        </div>
 
-          {/* Match header */}
-          <div className="liquid-glass rounded-2xl sm:rounded-3xl p-2 sm:p-6 md:p-8 lg:p-12">
-            {/* Mobile Layout */}
-            <div className="md:hidden space-y-4">
-              {/* Teams - Mobile */}
-              <div className="flex justify-between gap-3">
-                {/* Home team */}
-                <div className="flex items-center justify-between gap-3 p-3 bg-slate-700/30 rounded-xl w-1/2">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-slate-700/50 flex items-center justify-center shadow-md flex-shrink-0">
-                      <Image
-                        src={getTeamLogo(match.home_team)}
-                        alt={match.home_team}
-                        fill
-                        className="object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement
-                          target.src = '/placeholder-logo.svg'
-                        }}
-                      />
-                    </div>
-                    <h1 className="text-lg font-bold text-white truncate">
-                      {match.home_team}
-                    </h1>
-                  </div>
-                </div>
-
-                {/* Away team */}
-                <div className="flex items-center justify-between gap-3 p-3 bg-slate-700/30 rounded-xl w-1/2">
-                  <div className="flex items-center gap-3 flex-1 min-w-0 justify-end">
-                    <h1 className="text-lg font-bold text-white truncate">
-                      {match.away_team}
-                    </h1>
-                    <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-slate-700/50 flex items-center justify-center shadow-md flex-shrink-0">
-                      <Image
-                        src={getTeamLogo(match.away_team)}
-                        alt={match.away_team}
-                        fill
-                        className="object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement
-                          target.src = '/placeholder-logo.svg'
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
+        <div className="rounded-2xl overflow-hidden bg-[var(--fpl-p120)] shadow-xl border border-white/10">
+          {/* Split scoreboard */}
+          <div className="relative grid grid-cols-2 min-h-[120px] sm:min-h-[140px]">
+            <div className="bg-[#1a2f8c] flex flex-col items-center justify-center gap-2 py-5 px-3">
+              <div className="relative w-12 h-12 sm:w-14 sm:h-14">
+                <Image
+                  src={getTeamLogo(match.home_team)}
+                  alt={match.home_team}
+                  fill
+                  className="object-contain"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement
+                    target.src = '/placeholder-logo.svg'
+                  }}
+                />
               </div>
+              <span className="text-white font-bold text-lg tracking-wide">{homeShort}</span>
+            </div>
+            <div className="bg-[#5eb3e4] flex flex-col items-center justify-center gap-2 py-5 px-3">
+              <div className="relative w-12 h-12 sm:w-14 sm:h-14">
+                <Image
+                  src={getTeamLogo(match.away_team)}
+                  alt={match.away_team}
+                  fill
+                  className="object-contain"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement
+                    target.src = '/placeholder-logo.svg'
+                  }}
+                />
+              </div>
+              <span className="text-[var(--fpl-purple)] font-bold text-lg tracking-wide">{awayShort}</span>
             </div>
 
-            <div className="text-center space-y-2 lg:hidden">
-              <div className="flex items-center justify-center gap-3">
-                <span className="text-6xl font-bold text-white drop-shadow-lg">
-                  {match.home_score}
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+              <div className="bg-[#1a0a1e] rounded-xl px-4 sm:px-5 py-2 sm:py-2.5 shadow-lg border border-white/10">
+                <span className="font-display text-2xl sm:text-3xl font-bold text-white tracking-wide">
+                  {match.home_score} - {match.away_score}
                 </span>
-                <span className="text-3xl text-white/60 font-light">-</span>
-                <span className="text-6xl font-bold text-white drop-shadow-lg">
-                  {match.away_score}
-                </span>
-              </div>
-              <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-white/60">
-                <span>{format(new Date(match.date), 'dd MMM yyyy')}</span>
-                <span>•</span>
-                <span>{format(new Date(match.date), 'HH:mm')}</span>
-              </div>
-            </div>
-
-            {/* Desktop Layout */}
-            <div className="hidden md:grid md:grid-cols-3 gap-6 lg:gap-8 items-center">
-              {/* Home team */}
-              <div className="text-center md:text-right space-y-3 lg:space-y-4">
-                <div className="flex flex-col md:flex-row items-center md:justify-end gap-3 lg:gap-4">
-                  <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-xl lg:rounded-2xl overflow-hidden bg-slate-700/50 flex items-center justify-center shadow-lg">
-                    <Image
-                      src={getTeamLogo(match.home_team)}
-                      alt={match.home_team}
-                      fill
-                      className="object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement
-                        target.src = '/placeholder-logo.svg'
-                      }}
-                    />
-                  </div>
-                  <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white break-words">
-                    {match.home_team}
-                  </h1>
-                </div>
-              </div>
-
-              {/* Score */}
-              <div className="text-center space-y-3 lg:space-y-4">
-                <div className="flex items-center justify-center gap-4 lg:gap-6">
-                  <span className="text-6xl md:text-7xl lg:text-8xl font-bold text-white drop-shadow-lg">
-                    {match.home_score}
-                  </span>
-                  <span className="text-3xl md:text-4xl text-white/60 font-light">-</span>
-                  <span className="text-6xl md:text-7xl lg:text-8xl font-bold text-white drop-shadow-lg">
-                    {match.away_score}
-                  </span>
-                </div>
-                <div className="flex flex-wrap items-center justify-center gap-2 lg:gap-4 text-sm text-white/60">
-                  <span>FULL TIME</span>
-                  <span>•</span>
-                  <span>{format(new Date(match.date), 'dd MMM yyyy')}</span>
-                  <span>•</span>
-                  <span>{format(new Date(match.date), 'HH:mm')}</span>
-                </div>
-              </div>
-
-              {/* Away team */}
-              <div className="text-center md:text-left space-y-3 lg:space-y-4">
-                <div className="flex flex-col md:flex-row items-center md:justify-start gap-3 lg:gap-4">
-                  <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white break-words">
-                    {match.away_team}
-                  </h1>
-                  <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-xl lg:rounded-2xl overflow-hidden bg-slate-700/50 flex items-center justify-center shadow-lg">
-                    <Image
-                      src={getTeamLogo(match.away_team)}
-                      alt={match.away_team}
-                      fill
-                      className="object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement
-                        target.src = '/placeholder-logo.svg'
-                      }}
-                    />
-                  </div>
-                </div>
               </div>
             </div>
           </div>
 
-          {/* Goals */}
-          {(homeGoals.length > 0 || awayGoals.length > 0) && (
-            <div className="liquid-glass rounded-2xl sm:rounded-3xl p-2 sm:p-8">
-              <h2 className="text-xl sm:text-2xl font-bold text-white text-center mb-4">Strijelci</h2>
-              <div className="flex gap-4 sm:gap-6">
-                {/* Home goals */}
-                <div className="flex-1">
-                  {homeGoals.length > 0 ? (
-                    <div className="flex flex-col gap-3">
-                      {groupGoalsByPlayer(homeGoals).map((player, index) => (
-                        <div key={index} className="relative aspect-[4/3] rounded-xl overflow-hidden bg-slate-700/30 hover:bg-slate-700/50 transition-all hover:scale-105 cursor-pointer group">
-                          {player.player && player.playerId ? (
-                            <Link
-                              href={`/players/${player.playerId}`}
-                              className="block w-full h-full player-card-bg"
-                            >
-                              {/* Player Image */}
-                              <div className="relative w-full h-full bg-slate-800/50">
-                                <Image
-                                  src={getPlayerImageUrl(player.player.image_url)}
-                                  alt={player.name}
-                                  fill
-                                  className="object-contain object-bottom"
-                                  sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 50vw, 33vw"
-                                  unoptimized
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement
-                                    target.src = '/no-image-player.png'
-                                  }}
-                                />
-                              </div>
+          <div className="text-center py-3 text-sm text-white/55 border-b border-white/10">
+            {format(new Date(match.date), 'dd MMM yyyy')} • {format(new Date(match.date), 'HH:mm')}
+          </div>
 
-                              {/* Goals Badge - Top Right */}
-                              <div className="absolute top-2 right-2 bg-yellow-500/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center justify-center gap-1 shadow-lg">
-                                <span className='text-sm'>⚽</span>
-                                <span className="text-white font-bold text-sm">{player.count}</span>
-                              </div>
+          {/* Tabs */}
+          <div className="flex gap-6 px-4 border-b border-white/10">
+            <button
+              type="button"
+              onClick={() => setMainTab('details')}
+              className={`relative py-3 text-sm sm:text-base font-semibold transition ${
+                mainTab === 'details' ? 'text-white' : 'text-white/45 hover:text-white/70'
+              }`}
+            >
+              Match Details
+              {mainTab === 'details' && (
+                <span className="absolute left-0 right-0 -bottom-px h-[3px] bg-white rounded-t" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMainTab('stats')}
+              className={`relative py-3 text-sm sm:text-base font-semibold transition ${
+                mainTab === 'stats' ? 'text-white' : 'text-white/45 hover:text-white/70'
+              }`}
+            >
+              Player Stats
+              {mainTab === 'stats' && (
+                <span className="absolute left-0 right-0 -bottom-px h-[3px] bg-white rounded-t" />
+              )}
+            </button>
+          </div>
 
-                              {/* Player Name - Bottom Left */}
-                              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-3">
-                                <div className="text-white">
-                                  <div className="font-semibold text-sm">{player.player.first_name}</div>
-                                  <div className="font-bold text-base">{player.player.last_name}</div>
-                                </div>
-                              </div>
-                            </Link>
-                          ) : (
-                            <div className="w-full h-full">
-                              {/* Player Image */}
-                              <div className="relative w-full h-full bg-slate-800/50">
-                                <Image
-                                  src="/no-image-player.png"
-                                  alt={player.name}
-                                  fill
-                                  className="object-contain object-bottom"
-                                  sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 50vw, 33vw"
-                                  unoptimized
-                                />
-                              </div>
+          {/* Tab content */}
+          <div className="px-4 pb-5 pt-2">
+            {mainTab === 'details' ? (
+              <div>
+                <SplitStatSection
+                  title="Goals"
+                  homeItems={homeGoalItems}
+                  awayItems={awayGoalItems}
+                  onPlayerClick={handlePlayerClick}
+                />
 
-                              {/* Goals Badge - Top Right */}
-                              <div className="absolute top-2 right-2 bg-yellow-500/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center justify-center gap-1 shadow-lg">
-                                <span>⚽</span>
-                                <span className="text-white font-bold text-sm">{player.count}</span>
-                              </div>
-
-                              {/* Player Name - Bottom Left */}
-                              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-3">
-                                <div className="text-white">
-                                  <div className="font-semibold text-sm">{player.name}</div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-white/60 text-sm">Nema strijelaca</p>
-                  )}
-                </div>
-
-                {/* Away goals */}
-                <div className="flex-1">
-                  {awayGoals.length > 0 ? (
-                    <div className="flex flex-col gap-3">
-                      {groupGoalsByPlayer(awayGoals).map((player, index) => (
-                        <div key={index} className="relative aspect-[4/3] rounded-xl overflow-hidden bg-slate-700/30 hover:bg-slate-700/50 transition-all hover:scale-105 cursor-pointer group">
-                          {player.player && player.playerId ? (
-                            <Link
-                              href={`/players/${player.playerId}`}
-                              className="block w-full h-full player-card-bg"
-                            >
-                              {/* Player Image */}
-                              <div className="relative w-full h-full bg-slate-800/50">
-                                <Image
-                                  src={getPlayerImageUrl(player.player.image_url)}
-                                  alt={player.name}
-                                  fill
-                                  className="object-contain object-bottom"
-                                  sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 50vw, 33vw"
-                                  unoptimized
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement
-                                    target.src = '/no-image-player.png'
-                                  }}
-                                />
-                              </div>
-
-                              {/* Goals Badge - Top Right */}
-                              <div className="absolute top-2 right-2 bg-yellow-500/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center justify-center gap-1 shadow-lg">
-                                <span>⚽</span>
-                                <span className="text-white font-bold text-sm">{player.count}</span>
-                              </div>
-
-                              {/* Player Name - Bottom Left */}
-                              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-3">
-                                <div className="text-white">
-                                  <div className="font-semibold text-sm">{player.player.first_name}</div>
-                                  <div className="font-bold text-base">{player.player.last_name}</div>
-                                </div>
-                              </div>
-                            </Link>
-                          ) : (
-                            <div className="w-full h-full">
-                              {/* Player Image */}
-                              <div className="relative w-full h-full bg-slate-800/50">
-                                <Image
-                                  src="/no-image-player.png"
-                                  alt={player.name}
-                                  fill
-                                  className="object-contain object-bottom"
-                                  sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 50vw, 33vw"
-                                  unoptimized
-                                />
-                              </div>
-
-                              {/* Goals Badge - Top Right */}
-                              <div className="absolute top-2 right-2 bg-yellow-500/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center justify-center gap-1 shadow-lg">
-                                <span>⚽</span>
-                                <span className="text-white font-bold text-sm">{player.count}</span>
-                              </div>
-
-                              {/* Player Name - Bottom Left */}
-                              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-3">
-                                <div className="text-white">
-                                  <div className="font-semibold text-sm">{player.name}</div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-white/60 text-sm">Nema strijelaca</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* MVP Section */}
-          {(() => {
-            // Pronađi igrača sa najboljom prosječnom ocjenom
-            let mvpPlayer: MatchPlayerWithPlayer | null = null
-            let mvpRating: { average: number; count: number } | null = null
-
-            if (match?.players && Object.keys(averageRatings).length > 0) {
-              let highestRating = 0
-              let bestPlayerId: number | null = null
-
-              Object.entries(averageRatings).forEach(([playerId, rating]) => {
-                if (rating.average > highestRating) {
-                  highestRating = rating.average
-                  bestPlayerId = parseInt(playerId, 10)
-                }
-              })
-
-              if (bestPlayerId) {
-                mvpPlayer = match.players.find(mp => mp.players?.id === bestPlayerId) || null
-                mvpRating = averageRatings[bestPlayerId]
-              }
-            }
-
-            if (!mvpPlayer || !mvpRating) return null
-
-            return (
-              <div className="bg-gradient-to-br from-yellow-500/20 via-yellow-600/20 to-yellow-700/20 border-2 border-yellow-400/50 rounded-2xl sm:rounded-3xl p-4 sm:p-8 backdrop-blur-md shadow-2xl">
-                <div className="flex flex-col items-center gap-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h2 className="text-xl sm:text-2xl font-bold text-white">MVP</h2>
-                  </div>
-                  
-                  <div 
-                    className="flex flex-col items-center gap-4 cursor-pointer hover:scale-105 transition-transform"
-                    onClick={(e) => handlePlayerClick(e, mvpPlayer!.players || null)}
-                  >
-                    <div className="relative w-32 h-40 sm:w-40 sm:h-52">
-                      <Image
-                        src={getPlayerImageUrl(mvpPlayer.players?.image_url)}
-                        alt={`${mvpPlayer.players?.first_name} ${mvpPlayer.players?.last_name}`}
-                        fill
-                        className="object-contain object-bottom"
-                        sizes="(max-width: 640px) 128px, 160px"
-                        unoptimized
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement
-                          target.src = '/no-image-player.png'
-                        }}
-                      />
-                    </div>
-                    
-                    <div className="text-center">
-                      <h3 className="text-xl sm:text-2xl font-bold text-white mb-1">
-                        {mvpPlayer.players?.first_name} {mvpPlayer.players?.last_name}
-                      </h3>
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="flex items-center gap-1">
+                {SHOW_PLAYER_RATINGS && mvpPlayer && mvpRating && (
+                  <div className="py-4 border-t border-white/10">
+                    <h3 className="text-center text-white font-bold text-base mb-3">MVP</h3>
+                    <button
+                      type="button"
+                      onClick={(e) => handlePlayerClick(e, mvpPlayer!.players || null)}
+                      className="mx-auto flex flex-col items-center gap-2 hover:opacity-90 transition"
+                    >
+                      <div className="relative w-20 h-24">
+                        <Image
+                          src={getPlayerImageUrl(mvpPlayer.players?.image_url)}
+                          alt={`${mvpPlayer.players?.first_name} ${mvpPlayer.players?.last_name}`}
+                          fill
+                          className="object-contain object-bottom"
+                          unoptimized
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement
+                            target.src = '/no-image-player.png'
+                          }}
+                        />
+                      </div>
+                      <div className="text-center">
+                        <p className="text-white font-semibold">
+                          {mvpPlayer.players?.first_name} {mvpPlayer.players?.last_name}
+                        </p>
+                        <div className="flex items-center justify-center gap-1 mt-1">
                           {[1, 2, 3, 4, 5].map((star) => (
                             <Star
                               key={star}
-                              className={`w-5 h-5 ${
-                                star <= Math.round(mvpRating.average)
-                                  ? "fill-yellow-400 text-yellow-400"
-                                  : "fill-transparent text-white/30"
+                              className={`w-3.5 h-3.5 ${
+                                star <= Math.round(mvpRating!.average)
+                                  ? 'fill-[var(--fpl-green)] text-[var(--fpl-green)]'
+                                  : 'fill-transparent text-white/25'
                               }`}
                             />
                           ))}
-                        </div>
-                        <span className="text-white/90 font-semibold text-lg">
-                          {mvpRating.average.toFixed(1)}
-                        </span>
-                        <span className="text-white/60 text-sm">
-                          ({mvpRating.count} {mvpRating.count === 1 ? 'ocjena' : 'ocjena'})
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )
-          })()}
-
-          {/* Players */}
-          {(homePlayers.length > 0 || awayPlayers.length > 0) && (
-            <div className="liquid-glass rounded-2xl sm:rounded-3xl p-2 sm:p-8">
-              <h2 className="text-xl sm:text-2xl font-bold text-white mb-6">Igrači</h2>
-              <div className="flex gap-2 sm:gap-8">
-                {/* Home players */}
-                <div className='w-1/2'>
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="relative w-8 h-8 rounded-lg overflow-hidden bg-slate-700/50 flex items-center justify-center shadow-md flex-shrink-0">
-                      <Image
-                        src={getTeamLogo(match.home_team)}
-                        alt={match.home_team}
-                        fill
-                        className="object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement
-                          target.src = '/placeholder-logo.svg'
-                        }}
-                      />
-                    </div>
-                    <h3 className="text-lg font-semibold text-white">{match.home_team}</h3>
-                  </div>
-                  {homePlayers.length > 0 ? (
-                    <div className="space-y-2">
-                      {homePlayers.map((mp) => {
-                        const playerId = mp.players?.id
-                        const rating = playerId ? averageRatings[playerId] : null
-                        return (
-                          <div
-                            key={mp.id}
-                            className="flex items-center gap-1 bg-slate-700/30 rounded-lg text-white hover:bg-slate-700/50 transition-colors justify-between pt-2"
-                          >
-                            <div
-                              className="flex items-center gap-1 flex-1 min-w-0 cursor-pointer"
-                              onClick={(e) => handlePlayerClick(e, mp.players || null)}
-                            >
-                              <div className='flex flex-col py-2 pl-2 flex-1 min-w-0'>
-                                <span className='text-xs text-start'>
-                                  {mp.players?.first_name}
-                                </span>
-                                <span className='text-sm'>
-                                  {mp.players?.last_name}
-                                </span>
-                                <div className="flex items-center gap-2 px-1 py-1 shrink-0">
-                                  {rating && rating.average > 0 && (
-                                    <div className="text-xs text-white/70">
-                                      ⭐ {rating.average.toFixed(1)} ({rating.count})
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="relative w-18 h-18 shrink-0">
-                                <Image
-                                  src={getPlayerImageUrl(mp.players?.image_url)}
-                                  alt={`${mp.players?.first_name} ${mp.players?.last_name}`}
-                                  fill
-                                  className="object-contain"
-                                  sizes="40px"
-                                  unoptimized
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement
-                                    target.src = '/no-image-player.png'
-                                  }}
-                                />
-                              </div>
-                            </div>
-
-                          </div>
-                        )
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-white/60 text-sm">Nema igrača</p>
-                  )}
-                </div>
-
-                {/* Away players */}
-                <div className='w-1/2'>
-                  <div className="flex items-center gap-3 mb-4 justify-end">
-                    <h3 className="text-lg font-semibold text-white">{match.away_team}</h3>
-                    <div className="relative w-8 h-8 rounded-lg overflow-hidden bg-slate-700/50 flex items-center justify-center shadow-md flex-shrink-0">
-                      <Image
-                        src={getTeamLogo(match.away_team)}
-                        alt={match.away_team}
-                        fill
-                        className="object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement
-                          target.src = '/placeholder-logo.svg'
-                        }}
-                      />
-                    </div>
-                  </div>
-                  {awayPlayers.length > 0 ? (
-                    <div className="space-y-2">
-                      {awayPlayers.map((mp) => {
-                        const playerId = mp.players?.id
-                        const rating = playerId ? averageRatings[playerId] : null
-                        return (
-                          <div
-                            key={mp.id}
-                            className="flex items-center gap-1 bg-slate-700/30 rounded-lg text-white hover:bg-slate-700/50 transition-colors justify-between pt-2"
-                          >
-
-                            <div
-                              className="flex items-center gap-1 flex-1 min-w-0 justify-end cursor-pointer"
-                              onClick={(e) => handlePlayerClick(e, mp.players || null)}
-                            >
-                              <div className="relative w-18 h-18 shrink-0">
-                                <Image
-                                  src={getPlayerImageUrl(mp.players?.image_url)}
-                                  alt={`${mp.players?.first_name} ${mp.players?.last_name}`}
-                                  fill
-                                  className="object-contain"
-                                  sizes="40px"
-                                  unoptimized
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement
-                                    target.src = '/no-image-player.png'
-                                  }}
-                                />
-                              </div>
-                              <div className='flex flex-col py-2 pr-2 flex-1 min-w-0'>
-                                <span className='text-xs text-end'>
-                                  {mp.players?.first_name}
-                                </span>
-                                <span className='text-sm text-end'>
-                                  {mp.players?.last_name}
-                                </span>
-                                <div className="flex items-center gap-2 px-1 py-1 shrink-0 justify-end">
-                                  {rating && rating.average > 0 && (
-                                    <div className="text-xs text-white/70">
-                                      ⭐ {rating.average.toFixed(1)} ({rating.count})
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-white/60 text-sm">Nema igrača</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Comments Section */}
-          <div className="liquid-glass rounded-2xl sm:rounded-3xl p-4 sm:p-8">
-            <div className="flex items-center gap-2 mb-6">
-              <MessageSquare className="w-5 h-5 text-white" />
-              <h2 className="text-xl sm:text-2xl font-bold text-white">Komentari</h2>
-            </div>
-
-            {/* Comment Form */}
-            <form onSubmit={handleSubmitComment} className="mb-8 space-y-4">
-              <div className="space-y-2">
-                <Input
-                  type="text"
-                  placeholder="Vaš nadimak"
-                  value={commentNickname}
-                  onChange={(e) => setCommentNickname(e.target.value)}
-                  maxLength={50}
-                  className="bg-slate-700/50 border-white/20 text-white placeholder:text-white/50"
-                  required
-                />
-                <Textarea
-                  placeholder="Ostavite komentar..."
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  maxLength={1000}
-                  rows={4}
-                  className="bg-slate-700/50 border-white/20 text-white placeholder:text-white/50 resize-none"
-                  required
-                />
-                <div className="flex justify-between items-center text-xs text-white/60">
-                  <span>{commentText.length}/1000</span>
-                  <Button
-                    type="submit"
-                    disabled={submittingComment || !commentNickname.trim() || !commentText.trim()}
-                    className="bg-yellow-500 hover:bg-yellow-600 text-white"
-                  >
-                    {submittingComment ? (
-                      'Šalje se...'
-                    ) : (
-                      <>
-                        <Send className="w-4 h-4" />
-                        Pošalji
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </form>
-
-            {/* Comments List */}
-            {loadingComments ? (
-              <div className="text-center py-8 text-white/60">Učitavanje komentara...</div>
-            ) : comments.length === 0 ? (
-              <div className="text-center py-8 text-white/60">Nema komentara. Budite prvi koji će komentarisati!</div>
-            ) : (
-              <>
-                <div className="space-y-4">
-                  {comments.map((comment) => (
-                    <div
-                      key={comment.id}
-                      className="bg-slate-700/30 rounded-xl p-4 border border-white/10"
-                    >
-                      <div className="flex items-start justify-between gap-4 mb-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs text-white/60 mb-1">{comment.nickname}</div>
-                          <p className="text-white/80 text-base font-semibold whitespace-pre-wrap break-words" style={{ overflowWrap: 'anywhere' }}>
-                            {comment.comment}
-                          </p>
+                          <span className="text-white/80 text-sm ml-1">
+                            {mvpRating.average.toFixed(1)}
+                          </span>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between mt-3">
-                        <div className="text-xs text-white/50">
-                          {comment.created_at ? format(new Date(comment.created_at), 'dd MMM yyyy, HH:mm') : ''}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleLikeComment(comment.id, 'like')}
-                            className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors ${
-                              comment.user_like_type === 'like'
-                                ? 'bg-green-500/30 text-green-400 hover:bg-green-500/40'
-                                : 'bg-slate-600/30 text-white/70 hover:bg-slate-600/50'
-                            }`}
-                          >
-                            <ThumbsUp className="w-3.5 h-3.5" />
-                            <span>{comment.likes_count || 0}</span>
-                          </button>
-                          <button
-                            onClick={() => handleLikeComment(comment.id, 'dislike')}
-                            className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors ${
-                              comment.user_like_type === 'dislike'
-                                ? 'bg-red-500/30 text-red-400 hover:bg-red-500/40'
-                                : 'bg-slate-600/30 text-white/70 hover:bg-slate-600/50'
-                            }`}
-                          >
-                            <ThumbsDown className="w-3.5 h-3.5" />
-                            <span>{comment.dislikes_count || 0}</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                
-                {/* Load More Button */}
-                {hasMoreComments && (
-                  <div className="flex justify-center mt-6">
-                    <Button
-                      onClick={handleLoadMoreComments}
-                      disabled={loadingMoreComments}
-                      variant="outline"
-                      className="bg-slate-700/50 border-white/20 text-white hover:bg-slate-700/70 hover:text-white"
-                    >
-                      {loadingMoreComments ? 'Učitavanje...' : 'Prikaži više'}
-                    </Button>
+                    </button>
                   </div>
                 )}
-              </>
+
+                {(homePlayers.length > 0 || awayPlayers.length > 0) && (
+                  <div className="py-4 border-t border-white/10">
+                    <h3 className="text-center text-white font-bold text-base mb-3">Lineups</h3>
+                    <div className="relative grid grid-cols-2 gap-3">
+                      <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/15 -translate-x-1/2" />
+                      <div className="pr-3 space-y-1">
+                        {homePlayers.map((mp) => (
+                          <button
+                            key={mp.id}
+                            type="button"
+                            onClick={(e) => handlePlayerClick(e, mp.players || null)}
+                            className="block w-full text-right text-sm text-white/85 hover:text-[var(--fpl-cyan)]"
+                          >
+                            {mp.players?.last_name || mp.players?.first_name}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="pl-3 space-y-1">
+                        {awayPlayers.map((mp) => (
+                          <button
+                            key={mp.id}
+                            type="button"
+                            onClick={(e) => handlePlayerClick(e, mp.players || null)}
+                            className="block w-full text-left text-sm text-white/85 hover:text-[var(--fpl-cyan)]"
+                          >
+                            {mp.players?.last_name || mp.players?.first_name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Comments under Match Details */}
+                <div className="py-4 border-t border-white/10">
+                  <div className="flex items-center gap-2 mb-4">
+                    <MessageSquare className="w-4 h-4 text-white" />
+                    <h3 className="text-white font-bold text-base">Comments</h3>
+                  </div>
+
+                  <form onSubmit={handleSubmitComment} className="mb-5 space-y-3">
+                    <Input
+                      type="text"
+                      placeholder="Your nickname"
+                      value={commentNickname}
+                      onChange={(e) => setCommentNickname(e.target.value)}
+                      maxLength={50}
+                      className="bg-white/10 border-white/15 text-white placeholder:text-white/40"
+                      required
+                    />
+                    <Textarea
+                      placeholder="Leave a comment..."
+                      value={commentText}
+                      onChange={(e) => setCommentText(e.target.value)}
+                      maxLength={1000}
+                      rows={3}
+                      className="bg-white/10 border-white/15 text-white placeholder:text-white/40 resize-none"
+                      required
+                    />
+                    <div className="flex justify-between items-center text-xs text-white/50">
+                      <span>{commentText.length}/1000</span>
+                      <Button
+                        type="submit"
+                        disabled={submittingComment || !commentNickname.trim() || !commentText.trim()}
+                        className="bg-[var(--fpl-green)] hover:brightness-110 text-[var(--fpl-purple)] font-bold"
+                      >
+                        {submittingComment ? 'Sending...' : (
+                          <>
+                            <Send className="w-4 h-4" />
+                            Send
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </form>
+
+                  {loadingComments ? (
+                    <div className="text-center py-6 text-white/50 text-sm">Loading comments...</div>
+                  ) : comments.length === 0 ? (
+                    <div className="text-center py-6 text-white/50 text-sm">
+                      No comments yet. Be the first to comment!
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-3">
+                        {comments.map((comment) => (
+                          <div key={comment.id} className="bg-white/5 rounded-xl p-3 border border-white/10">
+                            <div className="text-xs text-white/50 mb-1">{comment.nickname}</div>
+                            <p className="text-white/90 text-sm font-medium whitespace-pre-wrap break-words">
+                              {comment.comment}
+                            </p>
+                            <div className="flex items-center justify-between mt-2">
+                              <div className="text-[11px] text-white/40">
+                                {comment.created_at
+                                  ? format(new Date(comment.created_at), 'dd MMM yyyy, HH:mm')
+                                  : ''}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleLikeComment(comment.id, 'like')}
+                                  className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors ${
+                                    comment.user_like_type === 'like'
+                                      ? 'bg-[var(--fpl-green)]/20 text-[var(--fpl-green)]'
+                                      : 'bg-white/5 text-white/60 hover:bg-white/10'
+                                  }`}
+                                >
+                                  <ThumbsUp className="w-3.5 h-3.5" />
+                                  <span>{comment.likes_count || 0}</span>
+                                </button>
+                                <button
+                                  onClick={() => handleLikeComment(comment.id, 'dislike')}
+                                  className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors ${
+                                    comment.user_like_type === 'dislike'
+                                      ? 'bg-[var(--fpl-pink)]/20 text-[var(--fpl-pink)]'
+                                      : 'bg-white/5 text-white/60 hover:bg-white/10'
+                                  }`}
+                                >
+                                  <ThumbsDown className="w-3.5 h-3.5" />
+                                  <span>{comment.dislikes_count || 0}</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {hasMoreComments && (
+                        <div className="flex justify-center mt-4">
+                          <Button
+                            onClick={handleLoadMoreComments}
+                            disabled={loadingMoreComments}
+                            variant="outline"
+                            className="border-white/20 text-white hover:bg-white/10"
+                          >
+                            {loadingMoreComments ? 'Loading...' : 'Show more'}
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div>
+                {/* Team filter pills */}
+                <div className="mt-2 mb-4 rounded-full bg-[var(--fpl-p90)] p-1 flex">
+                  {(
+                    [
+                      { key: 'all' as const, label: 'All' },
+                      { key: 'home' as const, label: match.home_team },
+                      { key: 'away' as const, label: match.away_team },
+                    ]
+                  ).map((opt) => (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      onClick={() => setTeamFilter(opt.key)}
+                      className={`flex-1 min-w-0 truncate px-2 py-2 rounded-full text-xs sm:text-sm font-semibold transition ${
+                        teamFilter === opt.key
+                          ? 'bg-[var(--fpl-p80)] text-white shadow-sm'
+                          : 'text-white/55 hover:text-white/80'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Stats table */}
+                <div className="overflow-x-auto">
+                  <div
+                    className={`grid gap-2 px-1 pb-2 text-[11px] sm:text-xs text-white/50 font-semibold uppercase tracking-wide border-b border-white/10 ${
+                      SHOW_PLAYER_RATINGS ? 'grid-cols-[1fr_48px_48px]' : 'grid-cols-[1fr_48px]'
+                    }`}
+                  >
+                    <button type="button" className="text-left hover:text-white" onClick={() => toggleSort('player')}>
+                      Player {statsSort === 'player' ? (statsSortDir === 'asc' ? '↑' : '↓') : '↕'}
+                    </button>
+                    {SHOW_PLAYER_RATINGS && (
+                      <button type="button" className="text-center hover:text-white" onClick={() => toggleSort('pts')}>
+                        Pts {statsSort === 'pts' ? (statsSortDir === 'asc' ? '↑' : '↓') : '↕'}
+                      </button>
+                    )}
+                    <button type="button" className="text-center hover:text-white" onClick={() => toggleSort('gs')}>
+                      GS {statsSort === 'gs' ? (statsSortDir === 'asc' ? '↑' : '↓') : '↕'}
+                    </button>
+                  </div>
+
+                  {statsRows.length === 0 ? (
+                    <p className="text-center text-white/50 text-sm py-8">No players to display</p>
+                  ) : (
+                    <div>
+                      {statsRows.map((row) => (
+                        <button
+                          key={row.mp.id}
+                          type="button"
+                          onClick={(e) => handlePlayerClick(e, row.player)}
+                          className={`w-full grid gap-2 items-center px-1 py-3 border-b border-white/10 hover:bg-white/5 transition text-left ${
+                            SHOW_PLAYER_RATINGS ? 'grid-cols-[1fr_48px_48px]' : 'grid-cols-[1fr_48px]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Info className="w-3.5 h-3.5 text-white/35 shrink-0" />
+                            <div className="relative w-7 h-7 rounded-full overflow-hidden bg-white/10 shrink-0">
+                              <Image
+                                src={getPlayerImageUrl(row.player?.image_url)}
+                                alt={row.fullName}
+                                fill
+                                className="object-cover"
+                                unoptimized
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement
+                                  target.src = '/no-image-player.png'
+                                }}
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-white text-sm font-semibold truncate">{row.name}</div>
+                              <div className="text-white/45 text-[11px] truncate">{row.teamName}</div>
+                            </div>
+                          </div>
+                          {SHOW_PLAYER_RATINGS && (
+                            <div className="text-center text-sm text-white font-medium">
+                              {row.pts > 0 ? row.pts.toFixed(1) : '—'}
+                            </div>
+                          )}
+                          <div className="text-center text-sm text-white font-medium">{row.gs}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         </div>
       </section>
 
-      {/* Rating Dialog */}
-      {selectedPlayer && match && (
+      {SHOW_PLAYER_RATINGS && selectedPlayer && match && (
         <PlayerRatingDialog
           open={ratingDialogOpen}
           onOpenChange={setRatingDialogOpen}
@@ -946,4 +795,3 @@ export default function MatchDetailPage() {
     </main>
   )
 }
-

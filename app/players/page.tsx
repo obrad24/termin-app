@@ -6,27 +6,27 @@ import Header from '@/components/header'
 import Image from 'next/image'
 import Link from 'next/link'
 import { getPlayerImageUrl } from '@/lib/image-utils'
-import { Star, Ambulance } from 'lucide-react'
+import { Ambulance } from 'lucide-react'
 import { useSeason } from '@/components/season-provider'
+import { SHOW_PLAYER_RATINGS } from '@/lib/features'
 
 interface PlayerWithStats extends Player {
   goals: number
   matches_played: number
   average_rating: number | null
+  fantasy_points?: number
 }
 
 export default function PlayersPage() {
   const [players, setPlayers] = useState<PlayerWithStats[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedPlayers, setSelectedPlayers] = useState<number[]>([])
   const { currentSeason } = useSeason()
 
   useEffect(() => {
     fetchPlayers()
   }, [currentSeason])
 
-  // Osveži podatke kada se stranica fokusira (korisnik se vratio na tab)
   useEffect(() => {
     const handleFocus = () => {
       fetchPlayers()
@@ -49,226 +49,142 @@ export default function PlayersPage() {
       if (response.ok) {
         if (contentType && contentType.includes('application/json')) {
           const data = await response.json()
-          console.log('Fetched players:', data?.length || 0, 'players')
-          // Debug: proveri injury polje
-          if (data && data.length > 0) {
-            console.log('Sample player injury status:', data[0]?.injury, 'for player:', data[0]?.first_name, data[0]?.last_name)
-          }
           setPlayers(data || [])
         }
-      } else {
-        // Pokušaj da parsiraš error kao JSON, ali ako ne uspe, koristi status text
-        let errorData
-        try {
-          if (contentType && contentType.includes('application/json')) {
-            errorData = await response.json()
-          } else {
-            const text = await response.text()
-            errorData = { error: text || response.statusText, status: response.status }
-          }
-        } catch (parseError) {
-          errorData = { error: response.statusText, status: response.status }
-        }
-
-        // Loguj samo ako nije 503 (Supabase not configured) - to je očekivano
-        if (response.status !== 503) {
-          console.error('Error fetching players:', errorData)
-        }
+      } else if (response.status !== 503) {
+        console.error('Error fetching players:', response.statusText)
       }
     } catch (error) {
-      // Loguj samo ako nije network error ili slično
       if (error instanceof Error) {
         console.error('Error fetching players:', error.message)
-      } else {
-        console.error('Error fetching players:', error)
       }
     } finally {
       setLoading(false)
     }
   }
 
-  // Filtriraj igrače po search termu
-  const filteredPlayers = players.filter(player => {
+  const filteredPlayers = players.filter((player) => {
     const search = searchTerm.toLowerCase()
     const fullName = `${player.first_name} ${player.last_name}`.toLowerCase()
     const team = (player.team || '').toLowerCase()
     return fullName.includes(search) || team.includes(search)
   })
 
-  const togglePlayerSelection = (playerId: number) => {
-    setSelectedPlayers(prev =>
-      prev.includes(playerId)
-        ? prev.filter(id => id !== playerId)
-        : [...prev, playerId]
-    )
-  }
-
-  const getRatingColor = (rating: number): string => {
-    if (rating >= 0 && rating <= 59) return '#E53935' // 🔴
-    if (rating >= 60 && rating <= 64) return '#FB8C00' // 🟠
-    if (rating >= 65 && rating <= 69) return '#FDD835' // 🟡
-    if (rating >= 70 && rating <= 79) return '#43A047' // 🟢
-    if (rating >= 80 && rating <= 100) return '#1B5E20' // 🟢 tamno zelena
-    return '#000000' // default crna
-  }
-
   return (
-    <main className="min-h-screen hero-bg pb-20 md:pb-0">
+    <main className="min-h-screen bg-[var(--fpl-p120)] pb-20 md:pb-0">
       <Header />
-      <section className="relative px-2 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-4 sm:pt-28">
-        <div className="space-y-6">
-          {/* Header */}
-          <div className="mb-6">
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">Igrači</h1>
+      <section className="relative px-3 sm:px-6 lg:px-8 py-6 sm:py-10 max-w-3xl mx-auto pt-4 sm:pt-28">
+        <div className="mb-5">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Players</h1>
+        </div>
+
+        <div className="relative mb-5">
+          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 z-10">
+            <svg className="w-4.5 h-4.5 text-white/45" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
           </div>
-
-          {/* Search Bar */}
-          <div className="relative mb-6">
-            <div className="relative">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10">
-                <svg className="w-5 h-5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-              <input
-                type="text"
-                placeholder="Pretraži igrače..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-12 py-4 rounded-2xl liquid-glass text-[var(--champagne)] placeholder-[var(--champagne)]/40 focus:outline-none focus:border-[var(--gold-300)]/70 focus:ring-2 focus:ring-[var(--gold-500)]/20 transition-all"
-              />
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm('')}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-                >
-                  <svg className="w-4 h-4 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-            </div>
-          </div>
-
-          {loading ? (
-            <div className="text-white text-center py-12 text-sm sm:text-base">Učitavanje igrača...</div>
-          ) : filteredPlayers.length === 0 ? (
-            <div className="text-white text-center py-12">
-              <p className="text-lg sm:text-xl mb-2">
-                {searchTerm ? 'Nema rezultata pretrage' : 'Nema igrača'}
-              </p>
-              <p className="text-white/60 text-sm sm:text-base">
-                {searchTerm ? 'Pokušajte sa drugim terminom' : 'Dodajte igrače u admin panelu'}
-              </p>
-            </div>
-          ) : (
-            <div className=" backdrop-blur-xl rounded-3xl sm:p-6">
-              {/* Players Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {filteredPlayers.map((player) => {
-                  const isSelected = selectedPlayers.includes(player.id)
-                  return (
-                    <Link
-                      key={player.id}
-                      href={`/players/${player.id}`}
-                      className="relative cursor-pointer overflow-hidden group block rounded-2xl aspect-[3/4] transition-all bg-zlatna"
-                    >
-
-                      {/* Player Image */}
-                      <div className="relative w-full h-[67%] flex items-end justify-center overflow-hidden">
-                        <Image
-                          src={getPlayerImageUrl(player.image_url, true)}
-                          alt={`${player.first_name} ${player.last_name}`}
-                          fill
-                          className="object-contain object-bottom group-hover:scale-105 transition-transform duration-300"
-                          sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
-                          unoptimized
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement
-                            target.src = '/no-image-player.png'
-                          }}
-                        />
-                      </div>
-
-                      {/* Average Rating Badge */}
-                      {player.average_rating !== null && (
-                        <div className="absolute left-3 top-3 w-14 h-16 sm:w-16 sm:h-20">
-                          <span
-                            className="text-2xl sm:text-base font-black leading-tight">
-                            {player.average_rating}
-                          </span>
-                        </div>
-                      )}
-
-                      {player.injury === true && (
-                        <div className="absolute right-2 top-3 flex items-center justify-center bg-white rounded-full p-1 border-2 border-red-600 shadow-lg">
-                          <Ambulance className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" strokeWidth={2.5} />
-                        </div>
-                      )}
-
-                      {/* Player Name Section */}
-                      <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-3 h-[36%] flex flex-col pt-3 gap-0.5 px-1">
-                        <div className='flex justify-center items-center'>
-                          <h3 className="font-bold text-black text-base sm:text-sm truncate text-center">
-                            {player.first_name.charAt(0).toUpperCase()}. {player.last_name}
-                          </h3>
-                        </div>
-
-                        {/* Player Attributes */}
-                        <div className="flex text-sm justify-around">
-                          {player.pace !== null && player.pace !== undefined && (
-                            <div className="flex flex-col items-center">
-                              <span className="text-black text-[10px] font-semibold">PAC</span>
-                              <span className="text-black font-bold">{player.pace}</span>
-                            </div>
-                          )}
-                          {player.shooting !== null && player.shooting !== undefined && (
-                            <div className="flex flex-col items-center">
-                              <span className="text-black text-[10px] font-semibold">SHO</span>
-                              <span className="text-black font-bold">{player.shooting}</span>
-                            </div>
-                          )}
-                          {player.passing !== null && player.passing !== undefined && (
-                            <div className="flex flex-col items-center">
-                              <span className="text-black text-[10px] font-semibold">PAS</span>
-                              <span className="text-black font-bold">{player.passing}</span>
-                            </div>
-                          )}
-                          {player.dribbling !== null && player.dribbling !== undefined && (
-                            <div className="flex flex-col items-center">
-                              <span className="text-black text-[10px] font-semibold">DRI</span>
-                              <span className="text-black font-bold">{player.dribbling}</span>
-                            </div>
-                          )}
-                          {player.defending !== null && player.defending !== undefined && (
-                            <div className="flex flex-col items-center">
-                              <span className="text-black text-[10px] font-semibold">DEF</span>
-                              <span className="text-black font-bold">{player.defending}</span>
-                            </div>
-                          )}
-                          {player.physical !== null && player.physical !== undefined && (
-                            <div className="flex flex-col items-center">
-                              <span className="text-black text-[10px] font-semibold">PHY</span>
-                              <span className="text-black font-bold">{player.physical}</span>
-                            </div>
-                          )}
-                          {player.stamina !== null && player.stamina !== undefined && (
-                            <div className="flex flex-col items-center">
-                              <span className="text-black text-[10px] font-semibold">STA</span>
-                              <span className="text-black font-bold">{player.stamina}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </Link>
-                  )
-                })}
-              </div>
-            </div>
+          <input
+            type="text"
+            placeholder="Search players..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-11 pr-10 py-3 rounded-xl bg-[var(--fpl-purple)] border border-white/10 text-white placeholder:text-white/35 focus:outline-none focus:border-white/25 transition"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+              aria-label="Clear search"
+            >
+              <svg className="w-3.5 h-3.5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           )}
         </div>
+
+        {loading ? (
+          <div className="text-white/60 text-center py-12 text-sm">Loading players...</div>
+        ) : filteredPlayers.length === 0 ? (
+          <div className="text-white text-center py-12">
+            <p className="text-lg mb-2">{searchTerm ? 'No search results' : 'No players'}</p>
+            <p className="text-white/50 text-sm">
+              {searchTerm ? 'Try a different search term' : 'Add players in the admin panel'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
+            {filteredPlayers.map((player) => (
+              <Link
+                key={player.id}
+                href={`/players/${player.id}`}
+                className="group relative overflow-hidden rounded-2xl bg-[var(--fpl-purple)] border border-white/10 hover:border-white/20 transition"
+              >
+                <div className="relative aspect-[3/4] bg-gradient-to-b from-[var(--fpl-cyan)] via-[#7a5cff] to-[var(--fpl-lilac)]">
+                  <Image
+                    src={getPlayerImageUrl(player.image_url, true)}
+                    alt={`${player.first_name} ${player.last_name}`}
+                    fill
+                    className="object-contain object-bottom group-hover:scale-105 transition-transform duration-300"
+                    sizes="(max-width: 768px) 33vw, 220px"
+                    unoptimized
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement
+                      target.src = '/no-image-player.png'
+                    }}
+                  />
+
+                  {SHOW_PLAYER_RATINGS && player.average_rating !== null && (
+                    <div className="absolute left-1.5 top-1.5 rounded-md bg-[var(--fpl-purple)]/85 px-1.5 py-0.5">
+                      <span className="text-white text-xs font-black leading-none">
+                        {player.average_rating}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="absolute right-1.5 top-1.5 flex items-center gap-1">
+                    {player.injury === true && (
+                      <div className="flex items-center justify-center bg-white rounded-full p-0.5 border border-red-600">
+                        <Ambulance className="w-3.5 h-3.5 text-red-600" strokeWidth={2.5} />
+                      </div>
+                    )}
+                    <div className="rounded-md bg-white px-1.5 py-0.5 shadow-sm">
+                      <span className="text-[var(--fpl-purple)] text-xs font-black tabular-nums leading-none">
+                        {player.fantasy_points ?? 0}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="absolute inset-x-0 bottom-0 bg-[var(--fpl-purple)]/92 px-1.5 py-2 backdrop-blur-[2px]">
+                    <h3 className="text-white text-[11px] sm:text-xs font-bold truncate text-center leading-tight">
+                      {player.first_name.charAt(0).toUpperCase()}. {player.last_name}
+                    </h3>
+                    {player.team && (
+                      <p className="text-white/50 text-[10px] truncate text-center mt-0.5">
+                        {player.team}
+                      </p>
+                    )}
+                    {SHOW_PLAYER_RATINGS && (
+                      <div className="mt-1.5 flex justify-around text-[9px] leading-none">
+                        {player.pace != null && (
+                          <span className="text-white/80 font-semibold">PAC {player.pace}</span>
+                        )}
+                        {player.shooting != null && (
+                          <span className="text-white/80 font-semibold">SHO {player.shooting}</span>
+                        )}
+                        {player.passing != null && (
+                          <span className="text-white/80 font-semibold">PAS {player.passing}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
     </main>
   )
 }
-

@@ -26,6 +26,8 @@ export interface Result {
   odds_1?: number | null
   odds_x?: number | null
   odds_2?: number | null
+  summary_comment?: string | null
+  image_url?: string | null
   created_at?: string
 }
 
@@ -37,6 +39,7 @@ export interface Player {
   birth_year: number
   team?: string | null
   image_url?: string | null
+  price?: number | null
   pace?: number | null
   shooting?: number | null
   passing?: number | null

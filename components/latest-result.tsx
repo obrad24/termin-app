@@ -117,7 +117,7 @@ export default function LatestResult() {
     return (
       <section className="relative min-h-[70vh] sm:min-h-[80vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
         <div className="absolute inset-0 bg-[#a80710]" />
-        <div className="relative z-10 text-white text-sm sm:text-base">Učitavanje...</div>
+        <div className="relative z-10 text-white text-sm sm:text-base">Loading...</div>
       </section>
     )
   }
@@ -127,8 +127,8 @@ export default function LatestResult() {
       <section className="relative min-h-[70vh] sm:min-h-[80vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
         <div className="absolute inset-0 bg-[#a80710]" />
         <div className="relative z-10 text-white text-center px-4">
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4">Nema rezultata</h2>
-          <p className="text-blue-300/60 text-sm sm:text-base">Dodajte rezultate u admin panelu</p>
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4">No results</h2>
+          <p className="text-blue-300/60 text-sm sm:text-base">Add results in the admin panel</p>
         </div>
       </section>
     )
@@ -141,7 +141,7 @@ export default function LatestResult() {
       {/* Main match display */}
       <div className="relative w-full max-w-6xl mx-auto z-20">
         <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white text-center mb-4">
-          Posljednji rezultat:
+          Latest result:
         </h2>
         {/* Match result */}
         <Link href={`/matches/${latestResult.id}`} className="block">
@@ -222,13 +222,13 @@ export default function LatestResult() {
                                 <span className="truncate">
                                   {goal.players
                                     ? `${goal.players.first_name} ${goal.players.last_name}`
-                                    : `Igrač #${goal.player_id}`}
+                                    : `Player #${goal.player_id}`}
                                 </span>
                               </div>
                             ))}
                         </div>
                       ) : (
-                        <p className="text-white/60 text-xs sm:text-sm text-center sm:text-left">Nema strijelaca</p>
+                        <p className="text-white/60 text-xs sm:text-sm text-center sm:text-left">No scorers</p>
                       )}
                     </div>
 
@@ -243,13 +243,13 @@ export default function LatestResult() {
                                 <span className="truncate">
                                   {goal.players
                                     ? `${goal.players.first_name} ${goal.players.last_name}`
-                                    : `Igrač #${goal.player_id}`}
+                                    : `Player #${goal.player_id}`}
                                 </span>
                               </div>
                             ))}
                         </div>
                       ) : (
-                        <p className="text-white/60 text-xs sm:text-sm text-center sm:text-left">Nema strijelaca</p>
+                        <p className="text-white/60 text-xs sm:text-sm text-center sm:text-left">No scorers</p>
                       )}
                     </div>
                   </div>
@@ -316,13 +316,13 @@ export default function LatestResult() {
                                 <span className="truncate">
                                   {goal.players
                                     ? `${goal.players.first_name} ${goal.players.last_name}`
-                                    : `Igrač #${goal.player_id}`}
+                                    : `Player #${goal.player_id}`}
                                 </span>
                               </div>
                             ))}
                         </div>
                       ) : (
-                        <p className="text-white/60 text-xs">Nema strijelaca</p>
+                        <p className="text-white/60 text-xs">No scorers</p>
                       )}
                     </div>
 
@@ -337,13 +337,13 @@ export default function LatestResult() {
                                 <span className="truncate">
                                   {goal.players
                                     ? `${goal.players.first_name} ${goal.players.last_name}`
-                                    : `Igrač #${goal.player_id}`}
+                                    : `Player #${goal.player_id}`}
                                 </span>
                               </div>
                             ))}
                         </div>
                       ) : (
-                        <p className="text-white/60 text-xs">Nema strijelaca</p>
+                        <p className="text-white/60 text-xs">No scorers</p>
                       )}
                     </div>
                   </div>

@@ -102,7 +102,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     // Brojanje odigranih mečeva - samo za postojeće mečeve
     const { data: matchPlayers, error: matchPlayersError } = await supabase
       .from('match_players')
-      .select('result_id')
+      .select('result_id, team_type')
       .eq('player_id', id)
       .not('result_id', 'is', null)
 
@@ -153,11 +153,136 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       }
     }
 
+    // Form / fixtures: GW broj = redni broj meča u sezoni (po datumu)
+    let matchForm: any[] = []
+    {
+      let seasonResultsQuery = supabase
+        .from('results')
+        .select('id, home_team, away_team, home_score, away_score, date, season_id')
+        .order('date', { ascending: true })
+        .order('id', { ascending: true })
+
+      if (seasonId) {
+        seasonResultsQuery = seasonResultsQuery.eq('season_id', seasonId)
+      }
+
+      const { data: seasonResults } = await seasonResultsQuery
+      const gwByResultId = new Map<number, number>()
+      ;(seasonResults || []).forEach((result: any, index: number) => {
+        gwByResultId.set(result.id, index + 1)
+      })
+
+      const goalsByResultId = new Map<number, number>()
+      ;(goalsData || []).forEach((goal: any) => {
+        const resultId =
+          typeof goal.result_id === 'string' ? parseInt(goal.result_id, 10) : goal.result_id
+        if (resultId == null || isNaN(resultId) || !existingResultIds.has(resultId)) return
+        goalsByResultId.set(resultId, (goalsByResultId.get(resultId) || 0) + 1)
+      })
+
+      const playedResultIds = [
+        ...new Set(
+          validMatchPlayers.map((mp) => {
+            const resultId =
+              typeof mp.result_id === 'string' ? parseInt(mp.result_id, 10) : mp.result_id
+            return resultId
+          })
+        ),
+      ].filter((id): id is number => id != null && !isNaN(id))
+
+      if (playedResultIds.length > 0) {
+        const { data: playedResults } = await supabase
+          .from('results')
+          .select('id, home_team, away_team, home_score, away_score, date, season_id')
+          .in('id', playedResultIds)
+          .order('date', { ascending: true })
+          .order('id', { ascending: true })
+
+        const teamTypeByResultId = new Map<number, 'home' | 'away'>()
+        validMatchPlayers.forEach((mp: any) => {
+          const resultId =
+            typeof mp.result_id === 'string' ? parseInt(mp.result_id, 10) : mp.result_id
+          if (resultId != null && !isNaN(resultId) && mp.team_type) {
+            teamTypeByResultId.set(resultId, mp.team_type)
+          }
+        })
+
+        matchForm = (playedResults || [])
+          .filter((result: any) => !seasonId || result.season_id === seasonId)
+          .map((result: any) => {
+            const teamType = teamTypeByResultId.get(result.id) || 'home'
+            const isHome = teamType === 'home'
+            return {
+              matchId: result.id,
+              gameweek: gwByResultId.get(result.id) ?? null,
+              date: result.date,
+              home_team: result.home_team,
+              away_team: result.away_team,
+              home_score: result.home_score,
+              away_score: result.away_score,
+              isHome,
+              opponent: isHome ? result.away_team : result.home_team,
+              playerGoals: goalsByResultId.get(result.id) || 0,
+              fantasyPoints: 0,
+            }
+          })
+          .filter((m: any) => m.gameweek != null)
+
+        // Attach fantasy points per match
+        if (matchForm.length > 0) {
+          const formResultIds = matchForm.map((m: any) => m.matchId)
+          const { data: fantasyRows } = await supabase
+            .from('fantasy_match_points')
+            .select('result_id, total_points')
+            .eq('player_id', id)
+            .in('result_id', formResultIds)
+
+          const fantasyByResult = new Map<number, number>()
+          ;(fantasyRows || []).forEach((row: any) => {
+            fantasyByResult.set(row.result_id, row.total_points || 0)
+          })
+          matchForm = matchForm.map((m: any) => ({
+            ...m,
+            fantasyPoints: fantasyByResult.get(m.matchId) || 0,
+          }))
+        }
+      }
+    }
+
+    // Upcoming fixture from next_match (if player's team is involved)
+    let nextFixture: any = null
+    {
+      const playerTeam = player.team || null
+      const { data: nextMatch } = await supabase
+        .from('next_match')
+        .select('id, home_team, away_team, match_date')
+        .order('id', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (nextMatch && playerTeam && (nextMatch.home_team === playerTeam || nextMatch.away_team === playerTeam)) {
+        const isHome = nextMatch.home_team === playerTeam
+        const nextGw =
+          (matchForm.length > 0
+            ? Math.max(...matchForm.map((m: any) => m.gameweek || 0))
+            : 0) + 1
+        nextFixture = {
+          gameweek: nextGw,
+          opponent: isHome ? nextMatch.away_team : nextMatch.home_team,
+          isHome,
+          date: nextMatch.match_date || null,
+          difficulty: 3,
+        }
+      }
+    }
+
     const response = NextResponse.json({
       ...player,
       goals: goalsCount,
       matches_played: matchesPlayed,
       goals_details: goalsWithMatches,
+      match_form: matchForm,
+      next_fixture: nextFixture,
     })
     // Dodaj headere da se osigura da se ne cache-uje
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
@@ -241,6 +366,7 @@ export async function PUT(
       birth_year, 
       team, 
       image_url,
+      price,
       pace,
       shooting,
       passing,
@@ -285,6 +411,13 @@ export async function PUT(
       return num
     }
 
+    const parsePrice = (value: any): number | null => {
+      if (value === null || value === undefined || value === '') return null
+      const n = typeof value === 'number' ? value : parseFloat(String(value))
+      if (Number.isNaN(n) || n < 0 || n > 99.9) return null
+      return Math.round(n * 10) / 10
+    }
+
     const { data, error } = await supabase
       .from('players')
       .update({
@@ -293,6 +426,7 @@ export async function PUT(
         birth_year: year,
         team: team || null,
         image_url: image_url || null,
+        price: parsePrice(price),
         pace: validateRating(pace),
         shooting: validateRating(shooting),
         passing: validateRating(passing),

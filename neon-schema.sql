@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS players (
   birth_year INTEGER NOT NULL,
   team TEXT,
   image_url TEXT,
+  price NUMERIC(4,1),
   pace INTEGER CHECK (pace IS NULL OR (pace >= 0 AND pace <= 100)),
   shooting INTEGER CHECK (shooting IS NULL OR (shooting >= 0 AND shooting <= 100)),
   passing INTEGER CHECK (passing IS NULL OR (passing >= 0 AND passing <= 100)),
@@ -49,6 +50,8 @@ CREATE TABLE IF NOT EXISTS results (
   odds_1 DECIMAL(5,2),
   odds_x DECIMAL(5,2),
   odds_2 DECIMAL(5,2),
+  summary_comment TEXT,
+  image_url TEXT,
   created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
@@ -169,6 +172,77 @@ CREATE TABLE IF NOT EXISTS termin_news (
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS fantasy_match_points (
+  id BIGSERIAL PRIMARY KEY,
+  result_id BIGINT NOT NULL REFERENCES results(id) ON DELETE CASCADE,
+  player_id BIGINT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  season_id BIGINT REFERENCES seasons(id) ON DELETE SET NULL,
+  gameweek INTEGER NOT NULL,
+  appearance_points INTEGER NOT NULL DEFAULT 0,
+  result_points INTEGER NOT NULL DEFAULT 0,
+  goals_points INTEGER NOT NULL DEFAULT 0,
+  team_scored_bonus INTEGER NOT NULL DEFAULT 0,
+  team_conceded_penalty INTEGER NOT NULL DEFAULT 0,
+  manual_adjustment INTEGER NOT NULL DEFAULT 0,
+  manual_adjustment_reason TEXT,
+  total_points INTEGER NOT NULL DEFAULT 0,
+  goals_scored INTEGER NOT NULL DEFAULT 0,
+  team_type TEXT NOT NULL CHECK (team_type IN ('home', 'away')),
+  breakdown JSONB NOT NULL DEFAULT '[]'::jsonb,
+  calculated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  UNIQUE (result_id, player_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_fantasy_match_points_player_id ON fantasy_match_points(player_id);
+CREATE INDEX IF NOT EXISTS idx_fantasy_match_points_season_id ON fantasy_match_points(season_id);
+CREATE INDEX IF NOT EXISTS idx_fantasy_match_points_gameweek ON fantasy_match_points(season_id, gameweek);
+
+CREATE TABLE IF NOT EXISTS fantasy_gameweek_locks (
+  id BIGSERIAL PRIMARY KEY,
+  season_id BIGINT NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+  gameweek INTEGER NOT NULL,
+  locked BOOLEAN NOT NULL DEFAULT FALSE,
+  locked_at TIMESTAMPTZ,
+  UNIQUE (season_id, gameweek)
+);
+
+CREATE TABLE IF NOT EXISTS fantasy_calc_logs (
+  id BIGSERIAL PRIMARY KEY,
+  season_id BIGINT REFERENCES seasons(id) ON DELETE SET NULL,
+  result_id BIGINT REFERENCES results(id) ON DELETE SET NULL,
+  gameweek INTEGER,
+  action TEXT NOT NULL,
+  message TEXT,
+  details JSONB,
+  created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_fantasy_calc_logs_created_at ON fantasy_calc_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_fantasy_calc_logs_season_id ON fantasy_calc_logs(season_id);
+
+CREATE TABLE IF NOT EXISTS player_accounts (
+  id BIGSERIAL PRIMARY KEY,
+  player_id BIGINT NOT NULL UNIQUE REFERENCES players(id) ON DELETE CASCADE,
+  nickname TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_player_accounts_nickname ON player_accounts(nickname);
+
+CREATE TABLE IF NOT EXISTS fantasy_user_squads (
+  id BIGSERIAL PRIMARY KEY,
+  account_id BIGINT NOT NULL REFERENCES player_accounts(id) ON DELETE CASCADE,
+  season_id BIGINT NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+  gameweek INTEGER NOT NULL,
+  player_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+  transfers_used INTEGER NOT NULL DEFAULT 0,
+  updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  UNIQUE (account_id, season_id, gameweek)
+);
+
+CREATE INDEX IF NOT EXISTS idx_fantasy_user_squads_account ON fantasy_user_squads(account_id, season_id);
 
 -- Početna sezona
 INSERT INTO seasons (name)

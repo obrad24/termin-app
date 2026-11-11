@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { Team, Result } from '@/lib/supabase'
+import { Team, Result, Player } from '@/lib/supabase'
 import Image from 'next/image'
 import { format } from 'date-fns'
 import Link from 'next/link'
 import MatchAnnouncement from './match-announcement'
 import { useSeason } from '@/components/season-provider'
+import { getPlayerImageUrl } from '@/lib/image-utils'
+import { SHOW_TERMINBET } from '@/lib/features'
 
 interface HeadToHeadStats {
   team1Wins: number
@@ -15,10 +17,128 @@ interface HeadToHeadStats {
   totalMatches: number
 }
 
+function shuffle<T>(items: T[]): T[] {
+  const arr = [...items]
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+  }
+  return arr
+}
+
+/** Prefer players with photos; pick 1 or up to 3 at random each visit. */
+function pickHeroPlayers(players: Player[]): Player[] {
+  if (players.length === 0) return []
+
+  const withImage = players.filter((p) => p.image_url && p.image_url.trim() !== '')
+  const pool = shuffle(withImage.length > 0 ? withImage : players)
+  const wantThree = pool.length >= 3 && Math.random() < 0.45
+  const count = wantThree ? 3 : 1
+  return pool.slice(0, count)
+}
+
+function HeroPlayerSide({
+  players,
+  side,
+}: {
+  players: Player[]
+  side: 'left' | 'right'
+}) {
+  if (players.length === 0) return null
+
+  const isTriple = players.length >= 3
+  const sideClass = side === 'left' ? 'left-0' : 'right-0'
+
+  if (!isTriple) {
+    const player = players[0]
+    return (
+      <div
+        className={`absolute bottom-0 ${
+          side === 'left' ? 'left-[-2%] sm:left-[4%]' : 'right-[-2%] sm:right-[4%]'
+        } w-[58%] sm:w-[46%] md:w-[40%] h-[92%] z-[5] pointer-events-none`}
+      >
+        <div
+          className="relative w-full h-full hero-player-enter"
+          style={{ animationDelay: side === 'left' ? '0ms' : '120ms' }}
+        >
+          <Image
+            src={getPlayerImageUrl(player.image_url)}
+            alt={`${player.first_name} ${player.last_name}`}
+            fill
+            className="object-contain object-bottom"
+            priority
+            unoptimized
+            onError={(e) => {
+              const target = e.target as HTMLImageElement
+              target.src = '/no-image-player.png'
+            }}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  const [a, b, c] = players
+  const flankLeft = side === 'left' ? a : c
+  const center = b
+  const flankRight = side === 'left' ? c : a
+
+  return (
+    <div className={`absolute bottom-0 ${sideClass} w-[56%] sm:w-[48%] md:w-[42%] h-[90%] z-[5] pointer-events-none`}>
+      <div className="relative w-full h-full">
+        <div className="absolute left-[2%] bottom-0 w-[38%] h-[78%] hero-player-enter" style={{ animationDelay: '40ms' }}>
+          <Image
+            src={getPlayerImageUrl(flankLeft.image_url)}
+            alt={`${flankLeft.first_name} ${flankLeft.last_name}`}
+            fill
+            className="object-contain object-bottom opacity-90"
+            priority
+            unoptimized
+            onError={(e) => {
+              const target = e.target as HTMLImageElement
+              target.src = '/no-image-player.png'
+            }}
+          />
+        </div>
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-0 w-[48%] h-full z-20 hero-player-enter" style={{ animationDelay: '100ms' }}>
+          <Image
+            src={getPlayerImageUrl(center.image_url)}
+            alt={`${center.first_name} ${center.last_name}`}
+            fill
+            className="object-contain object-bottom"
+            priority
+            unoptimized
+            onError={(e) => {
+              const target = e.target as HTMLImageElement
+              target.src = '/no-image-player.png'
+            }}
+          />
+        </div>
+        <div className="absolute right-[2%] bottom-0 w-[38%] h-[78%] hero-player-enter" style={{ animationDelay: '160ms' }}>
+          <Image
+            src={getPlayerImageUrl(flankRight.image_url)}
+            alt={`${flankRight.first_name} ${flankRight.last_name}`}
+            fill
+            className="object-contain object-bottom opacity-90"
+            priority
+            unoptimized
+            onError={(e) => {
+              const target = e.target as HTMLImageElement
+              target.src = '/no-image-player.png'
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function HeroSection() {
   const { currentSeason } = useSeason()
   const [team1, setTeam1] = useState<Team | null>(null)
   const [team2, setTeam2] = useState<Team | null>(null)
+  const [leftPlayers, setLeftPlayers] = useState<Player[]>([])
+  const [rightPlayers, setRightPlayers] = useState<Player[]>([])
   const [stats, setStats] = useState<HeadToHeadStats>({
     team1Wins: 0,
     team2Wins: 0,
@@ -44,20 +164,16 @@ export default function HeroSection() {
 
   useEffect(() => {
     const handleScroll = () => {
-      const scrollPosition = window.scrollY
-      setIsScrolled(scrollPosition > 0)
+      setIsScrolled(window.scrollY > 40)
     }
 
-    // Proveri na početku da li je već skrolovano
     handleScroll()
-
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
   const fetchHeadToHead = async () => {
     try {
-      // Uzmi sve timove
       const seasonTeamsQuery = currentSeason ? `?season_id=${currentSeason.id}` : ''
       const teamsResponse = await fetch(`/api/teams${seasonTeamsQuery}`)
       if (!teamsResponse.ok) return
@@ -68,53 +184,65 @@ export default function HeroSection() {
         return
       }
 
-      // Uzmi prve dve ekipe za izabranu sezonu
-      // (API za sezonu vraća timove redom kojim su dodati u sezoni)
       const firstTeam = teams[0]
       const secondTeam = teams[1]
 
       setTeam1(firstTeam)
       setTeam2(secondTeam)
 
-      // Uzmi sve rezultate
       const seasonQuery = currentSeason ? `?season_id=${currentSeason.id}` : ''
-      const resultsResponse = await fetch(`/api/results${seasonQuery}`)
-      if (!resultsResponse.ok) return
+      const [resultsResponse, playersResponse] = await Promise.all([
+        fetch(`/api/results${seasonQuery}`),
+        fetch(`/api/players${seasonQuery}`),
+      ])
 
-      const results: Result[] = await resultsResponse.json()
+      if (resultsResponse.ok) {
+        const results: Result[] = await resultsResponse.json()
 
-      // Pronađi međusobne utakmice
-      const headToHeadMatches = results.filter(
-        (result) =>
-          (result.home_team === firstTeam.name && result.away_team === secondTeam.name) ||
-          (result.home_team === secondTeam.name && result.away_team === firstTeam.name)
-      )
+        const headToHeadMatches = results.filter(
+          (result) =>
+            (result.home_team === firstTeam.name && result.away_team === secondTeam.name) ||
+            (result.home_team === secondTeam.name && result.away_team === firstTeam.name)
+        )
 
-      // Izračunaj statistiku
-      let team1Wins = 0
-      let team2Wins = 0
-      let draws = 0
+        let team1Wins = 0
+        let team2Wins = 0
+        let draws = 0
 
-      headToHeadMatches.forEach((match) => {
-        const isTeam1Home = match.home_team === firstTeam.name
-        const team1Score = isTeam1Home ? match.home_score : match.away_score
-        const team2Score = isTeam1Home ? match.away_score : match.home_score
+        headToHeadMatches.forEach((match) => {
+          const isTeam1Home = match.home_team === firstTeam.name
+          const team1Score = isTeam1Home ? match.home_score : match.away_score
+          const team2Score = isTeam1Home ? match.away_score : match.home_score
 
-        if (team1Score > team2Score) {
-          team1Wins++
-        } else if (team2Score > team1Score) {
-          team2Wins++
-        } else {
-          draws++
-        }
-      })
+          if (team1Score > team2Score) {
+            team1Wins++
+          } else if (team2Score > team1Score) {
+            team2Wins++
+          } else {
+            draws++
+          }
+        })
 
-      setStats({
-        team1Wins,
-        team2Wins,
-        draws,
-        totalMatches: headToHeadMatches.length,
-      })
+        setStats({
+          team1Wins,
+          team2Wins,
+          draws,
+          totalMatches: headToHeadMatches.length,
+        })
+      }
+
+      if (playersResponse.ok) {
+        const players: Player[] = await playersResponse.json()
+        const team1Players = players.filter((p) => p.team === firstTeam.name)
+        const team2Players = players.filter((p) => p.team === secondTeam.name)
+
+        const isSecondSeason = currentSeason?.id === 2
+        const leftPool = isSecondSeason ? team1Players : team2Players
+        const rightPool = isSecondSeason ? team2Players : team1Players
+
+        setLeftPlayers(pickHeroPlayers(leftPool))
+        setRightPlayers(pickHeroPlayers(rightPool))
+      }
     } catch (error) {
       console.error('Error fetching head to head:', error)
     } finally {
@@ -145,17 +273,17 @@ export default function HeroSection() {
 
   if (loading) {
     return (
-      <section className="relative min-h-screen flex items-center justify-center px-4 py-8">
-        <div className="text-white text-center">Učitavanje...</div>
+      <section className="relative h-[52vh] min-h-[360px] max-h-[480px] flex items-center justify-center">
+        <div className="text-white text-center">Loading...</div>
       </section>
     )
   }
 
   if (!team1 || !team2) {
     return (
-      <section className="relative min-h-screen flex items-center justify-center px-4 py-8">
+      <section className="relative h-[52vh] min-h-[360px] max-h-[480px] flex items-center justify-center">
         <div className="text-white text-center">
-          <p className="text-lg">Nedovoljno timova za prikaz međusobnog skora</p>
+          <p className="text-lg">Not enough teams for head-to-head</p>
         </div>
       </section>
     )
@@ -166,117 +294,116 @@ export default function HeroSection() {
   const rightWins = isSecondSeason ? stats.team1Wins : stats.team2Wins
 
   return (
-    <section ref={heroRef} className="relative min-h-screen flex items-center justify-center px-0 py-8 overflow-hidden h-screen">
-      <div className="relative w-full h-screen max-w-7xl mx-auto flex items-center justify-between gap-4 sm:gap-8 min-h-[60vh]">
-        {/* Background Image - murinjo.png */}
-        <div className="z-0">
+    <section ref={heroRef} className="relative overflow-hidden">
+      {/* Visual stage — shorter than viewport, mockup framing */}
+      <div className="relative h-[48vh] min-h-[340px] max-h-[460px] sm:h-[52vh] sm:max-h-[500px] overflow-hidden">
+        <div className="absolute inset-0 z-0">
           <Image
-            src="/murinjo-removebg-preview.png"
-            alt="Hero background"
+            src="/hero-balona.jpg"
+            alt="Zlatni Termin Semberije"
             fill
-            className="object-cover !h-[75vh] !top-10"
+            className="object-cover object-[48%_28%]"
             priority
+            sizes="100vw"
           />
+          <div className="absolute inset-0 bg-[rgba(55,0,60,0.22)]" />
         </div>
 
-        {/* Foreground Image - lalat.png (preko murinja) */}
-        <div className="z-0">
-          <Image
-            src="/lalat1.png"
-            alt="Hero foreground"
-            fill
-            className="object-cover !h-[75vh] !top-10"
-            priority
-          />
-          <div className="absolute bottom-[17%] left-0 w-full h-[70%] bg-gradient-to-t from-[rgba(18,14,9,0.95)] via-[rgba(31,22,12,0.55)] to-transparent z-[20]"></div>
-        </div>
+        <div className="relative z-10 w-full h-full max-w-5xl mx-auto">
+          <HeroPlayerSide players={leftPlayers} side="left" />
+          <HeroPlayerSide players={rightPlayers} side="right" />
 
-
-        {/* Content */}
-        <div
-          className={`flex items-center justify-center gap-3 sm:gap-5 transition-all duration-500 ${isScrolled
-            ? 'fixed left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 z-0 opacity-25 blur-sm scale-95'
-            : 'fixed left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 z-50 opacity-100 blur-0'
+          <div
+            className={`absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2 z-30 transition-all duration-500 ${
+              isScrolled ? 'opacity-40 scale-95' : 'opacity-100 scale-100'
             }`}
-        >
-          <div className="score-glass px-6 sm:px-10 py-3 sm:py-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <span className="gold-score text-[110px] sm:text-7xl md:text-[132px] lg:text-[9rem] leading-none">
-                {leftWins}
-              </span>
-              <span className="gold-score text-[64px] sm:text-5xl md:text-6xl leading-none opacity-70">:</span>
-              <span className="gold-score text-[110px] sm:text-7xl md:text-[132px] lg:text-[9rem] leading-none" style={{ animationDelay: '80ms' }}>
-                {rightWins}
-              </span>
+          >
+            <div className="score-glass px-5 sm:px-8 py-2 sm:py-3">
+              <div className="flex items-center gap-1.5 sm:gap-2.5">
+                <span className="gold-score text-[72px] sm:text-6xl md:text-7xl lg:text-8xl leading-none">
+                  {leftWins}
+                </span>
+                <span className="gold-score text-[40px] sm:text-4xl md:text-5xl leading-none opacity-70">:</span>
+                <span
+                  className="gold-score text-[72px] sm:text-6xl md:text-7xl lg:text-8xl leading-none"
+                  style={{ animationDelay: '80ms' }}
+                >
+                  {rightWins}
+                </span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-[rgba(18,14,9,0.95)] via-[rgba(31,22,12,0.55)] to-transparent"></div>
-      <Link href="/terminbet" className='absolute bottom-[12%] left-0 bg-[#280071] w-full h-8 flex items-center overflow-hidden hover:bg-[#320085] transition-colors cursor-pointer z-40'>
-        <div className='terminbet-scroll flex items-center font-bold text-2xl'>
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className='flex items-center justify-center px-2'>
-              <span className='text-white'>TERMIN</span><span className='text-[#f9c14c]'>BET</span>
-            </div>
-          ))}
-        </div>
-      </Link>
-      <MatchAnnouncement />
-      <div className='rajko bottom-[14%] h-[50px] absolute left-0 w-full bg-[rgba(18,14,9,0.92)]'></div>
-      <div className='absolute bottom-0 left-0 w-full liquid-glass border-t border-[var(--gold-400)]/35 flex'>
-        {nextMatch && nextMatch.home_team && nextMatch.away_team ? (
-          <div className="w-full max-w-7xl mx-auto flex py-2 border-y border-[var(--gold-400)]/40 h-auto">
-            {/* Leva kolona */}
-            <div className="flex-1 flex flex-col px-2">
-              {/* Datum gore */}
-              <div className="text-[var(--gold-300)] text-xs sm:text-sm font-medium flex gap-1 h-5 items-center">
-                {nextMatch.match_date && (
-                  <>
-                    <span>{format(new Date(nextMatch.match_date), 'd.M')}.</span>
-                    <span>{format(new Date(nextMatch.match_date), 'EEE')}</span>
-                  </>
-                )}
-              </div>
-              {/* Timovi dole */}
-              <div className='flex flex-col gap-0.5 h-11 justify-center'>
-                <div className="text-[var(--champagne)] text-sm sm:text-base font-medium truncate">
-                  {nextMatch.home_team}
-                </div>
-                <div className="text-[var(--champagne)] text-sm sm:text-base font-medium truncate">
-                  {nextMatch.away_team}
-                </div>
-              </div>
-            </div>
 
-            {/* Desna kolona */}
-            <div className="flex flex-col px-2 items-end">
-              {/* 1 X 2 gore */}
-              <div className="flex items-center gap-3 sm:gap-4 w-full justify-around h-5">
-                <span className="text-[var(--gold-400)]/70 text-sm sm:text-base font-medium">1</span>
-                <span className="text-[var(--gold-400)]/70 text-sm sm:text-base font-medium">X</span>
-                <span className="text-[var(--gold-400)]/70 text-sm sm:text-base font-medium">2</span>
-              </div>
-              {/* Kvote dole */}
-              <div className="flex items-center gap-3 sm:gap-4 h-11">
-                <span className="text-[var(--champagne)] text-sm sm:text-base font-medium">
-                  {nextMatch.odds_1 ? nextMatch.odds_1.toFixed(2) : '-'}
-                </span>
-                <span className="text-[var(--champagne)] text-sm sm:text-base font-medium">
-                  {nextMatch.odds_x ? nextMatch.odds_x.toFixed(2) : '-'}
-                </span>
-                <span className="text-[var(--champagne)] text-sm sm:text-base font-medium">
-                  {nextMatch.odds_2 ? nextMatch.odds_2.toFixed(2) : '-'}
-                </span>
-              </div>
+        {SHOW_TERMINBET && (
+          <Link
+            href="/terminbet"
+            className="absolute bottom-0 left-0 bg-[var(--fpl-p120)] w-full h-8 flex items-center overflow-hidden hover:bg-[var(--fpl-p110)] transition-colors cursor-pointer z-40"
+          >
+            <div className="terminbet-scroll flex items-center font-bold text-2xl">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-center px-2">
+                  <span className="text-white">TERMIN</span>
+                  <span className="text-[var(--fpl-green)]">BET</span>
+                </div>
+              ))}
             </div>
-          </div>
-        ) : (
-          <div className="w-full max-w-7xl mx-auto h-[82px] flex items-center justify-center">
-            <p className="text-[var(--champagne)]/60 text-sm sm:text-base">Kvote će uskoro biti dostupne</p>
-          </div>
+          </Link>
         )}
       </div>
+
+      {SHOW_TERMINBET && (
+        <div className="relative z-20">
+          <MatchAnnouncement />
+          <div className="w-full bg-[var(--fpl-p120)] border-t border-white/10 flex rounded-none text-white">
+            {nextMatch && nextMatch.home_team && nextMatch.away_team ? (
+              <div className="w-full max-w-7xl mx-auto flex py-2 border-y border-white/10 h-auto">
+                <div className="flex-1 flex flex-col px-2">
+                  <div className="text-[var(--fpl-cyan)] text-xs sm:text-sm font-medium flex gap-1 h-5 items-center">
+                    {nextMatch.match_date && (
+                      <>
+                        <span>{format(new Date(nextMatch.match_date), 'd.M')}.</span>
+                        <span>{format(new Date(nextMatch.match_date), 'EEE')}</span>
+                      </>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-0.5 h-11 justify-center">
+                    <div className="text-[var(--champagne)] text-sm sm:text-base font-medium truncate">
+                      {nextMatch.home_team}
+                    </div>
+                    <div className="text-[var(--champagne)] text-sm sm:text-base font-medium truncate">
+                      {nextMatch.away_team}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col px-2 items-end">
+                  <div className="flex items-center gap-3 sm:gap-4 w-full justify-around h-5">
+                    <span className="text-[var(--gold-400)]/70 text-sm sm:text-base font-medium">1</span>
+                    <span className="text-[var(--gold-400)]/70 text-sm sm:text-base font-medium">X</span>
+                    <span className="text-[var(--gold-400)]/70 text-sm sm:text-base font-medium">2</span>
+                  </div>
+                  <div className="flex items-center gap-3 sm:gap-4 h-11">
+                    <span className="text-[var(--champagne)] text-sm sm:text-base font-medium">
+                      {nextMatch.odds_1 ? nextMatch.odds_1.toFixed(2) : '-'}
+                    </span>
+                    <span className="text-[var(--champagne)] text-sm sm:text-base font-medium">
+                      {nextMatch.odds_x ? nextMatch.odds_x.toFixed(2) : '-'}
+                    </span>
+                    <span className="text-[var(--champagne)] text-sm sm:text-base font-medium">
+                      {nextMatch.odds_2 ? nextMatch.odds_2.toFixed(2) : '-'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="w-full max-w-7xl mx-auto h-12 flex items-center justify-center">
+                <p className="text-white/55 text-sm">Odds coming soon</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </section>
   )
 }

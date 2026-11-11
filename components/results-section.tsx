@@ -1,21 +1,24 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Result, Team, MatchGoal, Player } from '@/lib/supabase'
+import { Result, Team } from '@/lib/supabase'
 import { format } from 'date-fns'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { useSeason } from '@/components/season-provider'
+import { getPlayerImageUrl } from '@/lib/image-utils'
 
-interface GoalWithPlayer extends MatchGoal {
-  players: Player | null
+function shortName(name: string, team?: Team | null) {
+  if (team?.short_name) return team.short_name.toUpperCase()
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 1) return parts[0].slice(0, 3).toUpperCase()
+  return parts.map((p) => p[0]).join('').slice(0, 3).toUpperCase()
 }
 
 export default function ResultsSection() {
   const [results, setResults] = useState<Result[]>([])
   const [teams, setTeams] = useState<Team[]>([])
-  const [goalsByMatch, setGoalsByMatch] = useState<Record<number, GoalWithPlayer[]>>({})
   const [loading, setLoading] = useState(true)
   const { currentSeason } = useSeason()
 
@@ -39,437 +42,155 @@ export default function ResultsSection() {
     }
   }
 
-  const getTeamLogo = (teamName: string) => {
-    const team = teams.find(t => t.name === teamName)
-    return team?.logo_url || '/placeholder-logo.svg'
-  }
-
-  // Grupiše golove po igraču i vraća niz sa imenom i brojem golova
-  const groupGoalsByPlayer = (goals: GoalWithPlayer[]) => {
-    const grouped = new Map<string, { name: string; count: number; playerId: number | null; player: Player | null }>()
-    
-    goals.forEach((goal) => {
-      const playerKey = goal.player_id?.toString() || 'unknown'
-      const playerName = goal.players
-        ? `${goal.players.first_name} ${goal.players.last_name}`
-        : `Igrač #${goal.player_id}`
-      
-      if (grouped.has(playerKey)) {
-        grouped.get(playerKey)!.count++
-      } else {
-        grouped.set(playerKey, { 
-          name: playerName, 
-          count: 1, 
-          playerId: goal.player_id || null,
-          player: goal.players
-        })
-      }
-    })
-    
-    return Array.from(grouped.values())
-  }
+  const getTeam = (teamName: string) => teams.find((t) => t.name === teamName) || null
+  const getTeamLogo = (teamName: string) => getTeam(teamName)?.logo_url || '/placeholder-logo.svg'
 
   const fetchResults = async () => {
     try {
       const seasonQuery = currentSeason ? `?season_id=${currentSeason.id}` : ''
       const response = await fetch(`/api/results${seasonQuery}`)
-      const contentType = response.headers.get('content-type')
-
       if (response.ok) {
-        if (contentType && contentType.includes('application/json')) {
-          const data = await response.json()
-          setResults(data || [])
-          // Učitaj golove samo za poslednja 4 rezultata
-          if (data && Array.isArray(data) && data.length > 0) {
-            // Sortiraj po datumu utakmice (najnoviji prvi), pa po id kao fallback
-            const sorted = [...data].sort((a: Result, b: Result) => {
-              const dateA = new Date(a.date || 0).getTime()
-              const dateB = new Date(b.date || 0).getTime()
-              if (dateB !== dateA) {
-                return dateB - dateA
-              }
-              return (b.id || 0) - (a.id || 0)
-            })
-            const latest4 = sorted.slice(0, 4)
-            fetchAllGoals(latest4.map((r: Result) => r.id))
-          }
-        }
-      } else {
-        // Pokušaj da parsiraš error kao JSON, ali ako ne uspe, koristi status text
-        let errorData
-        try {
-          if (contentType && contentType.includes('application/json')) {
-            errorData = await response.json()
-          } else {
-            const text = await response.text()
-            errorData = { error: text || response.statusText, status: response.status }
-          }
-        } catch (parseError) {
-          errorData = { error: response.statusText, status: response.status }
-        }
-
-        // Loguj samo ako nije 503 (Supabase not configured) - to je očekivano
-        if (response.status !== 503) {
-          console.error('Error fetching results:', errorData)
-        }
+        const data = await response.json()
+        setResults(Array.isArray(data) ? data : [])
       }
     } catch (error) {
-      // Loguj samo ako nije network error ili slično
-      if (error instanceof Error) {
-        console.error('Error fetching results:', error.message)
-      } else {
-        console.error('Error fetching results:', error)
-      }
+      console.error('Error fetching results:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  const fetchAllGoals = async (matchIds: number[]) => {
-    try {
-      // Učitaj golove za sve utakmice paralelno
-      const goalsPromises = matchIds.map(async (matchId) => {
-        try {
-          const response = await fetch(`/api/results/${matchId}`)
-          if (response.ok) {
-            const data = await response.json()
-            return { matchId, goals: data.goals || [] }
-          }
-          return { matchId, goals: [] }
-        } catch (error) {
-          console.error(`Error fetching goals for match ${matchId}:`, error)
-          return { matchId, goals: [] }
-        }
-      })
-
-      const goalsResults = await Promise.all(goalsPromises)
-      const goalsMap: Record<number, GoalWithPlayer[]> = {}
-      goalsResults.forEach(({ matchId, goals }) => {
-        goalsMap[matchId] = goals
-      })
-      setGoalsByMatch(goalsMap)
-    } catch (error) {
-      console.error('Error fetching all goals:', error)
-    }
-  }
-
-  if (loading) {
-    return (
-      <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto">
-        <div className="text-white text-center text-sm sm:text-base">Učitavanje rezultata...</div>
-      </section>
-    )
-  }
-
-  if (results.length === 0) {
-    return (
-      <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto">
-        <div className="text-white text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold mb-4">Rezultati</h2>
-          <p className="text-white/60 text-sm sm:text-base">Nema rezultata za prikaz</p>
-        </div>
-      </section>
-    )
-  }
-
-  // Sortiraj rezultate po datumu utakmice opadajuće (najnoviji prvi), pa po id kao fallback
   const sortedResults = [...results].sort((a, b) => {
-    const dateA = new Date(a.date || 0).getTime()
-    const dateB = new Date(b.date || 0).getTime()
-    if (dateB !== dateA) {
-      return dateB - dateA
-    }
+    const dateA = new Date(a.date || a.created_at || 0).getTime()
+    const dateB = new Date(b.date || b.created_at || 0).getTime()
+    if (dateB !== dateA) return dateB - dateA
     return (b.id || 0) - (a.id || 0)
   })
 
-  // Uzmi samo poslednja 4 rezultata
   const latestResults = sortedResults.slice(0, 4)
 
-  // Grupiši rezultate po datumu
-  const groupedResults = latestResults.reduce((acc, result) => {
-    const date = result.date
-    if (!acc[date]) {
-      acc[date] = []
-    }
-    acc[date].push(result)
-    return acc
-  }, {} as Record<string, Result[]>)
-
   return (
-    <section className="relative px-2 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-4">
+    <section className="relative bg-[var(--fpl-p120)] px-3 sm:px-6 py-6 sm:py-8">
+      <div className="max-w-3xl mx-auto space-y-4">
+        <div className="flex items-end justify-between gap-3">
+          <h2 className="font-display text-xl sm:text-2xl font-bold text-white tracking-tight">
+            Results
+          </h2>
+          <Link
+            href="/matches"
+            className="text-[var(--fpl-green)] text-xs sm:text-sm font-semibold hover:underline shrink-0"
+          >
+            View all
+          </Link>
+        </div>
 
-      <div className="space-y-6 sm:space-y-8">
-        <div className="absolute inset-0 w-full h-[100px] bg-gradient-to-b from-[rgba(10,13,26,0.95)] via-[rgba(15,21,37,0.6)] to-transparent z-[15]"></div>
-        <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold gold-text mb-3 sm:mb-8 text-center z-20 relative tracking-[0.06em]">Rezultati</h2>
+        {loading ? (
+          <div className="text-white/60 text-center py-10 text-sm">Loading results...</div>
+        ) : latestResults.length === 0 ? (
+          <div className="text-white/60 text-center py-10 text-sm">No results to show</div>
+        ) : (
+          <div className="space-y-2.5">
+            {latestResults.map((result) => {
+              const homeTeam = getTeam(result.home_team)
+              const awayTeam = getTeam(result.away_team)
+              const comment =
+                result.summary_comment?.trim() ||
+                `${result.home_team} ${result.home_score}-${result.away_score} ${result.away_team}`
+              const imageUrl = result.image_url
+                ? getPlayerImageUrl(result.image_url)
+                : null
 
-        {Object.entries(groupedResults).map(([date, dateResults]) => (
-          <div key={date} className="space-y-4 z-20 relative">
-            <div className="space-y-2">
-              <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-white text-center">
-                {format(new Date(date), 'EEEE, MMMM d, yyyy')}
-              </h3>
-            </div>
-
-            <div className="space-y-3 sm:space-y-4">
-              {dateResults.map((result) => (
-                <Link key={result.id} href={`/matches/${result.id}`} className="block">
-                  <div className="liquid-glass z-20 rounded-2xl sm:rounded-3xl p-2 sm:p-6 md:p-8 lg:p-12 hover:border-[var(--gold-300)]/60 transition-all hover:scale-[1.01] sm:hover:scale-[1.02] cursor-pointer">
-                    {/* Mobile Layout */}
-                    <div className="md:hidden space-y-4">
-                      {/* Teams - Mobile */}
-                      <div className="flex justify-between gap-3">
-                        {/* Home team */}
-                        <div className="flex items-center justify-between gap-3 p-3 bg-slate-700/30 rounded-xl w-1/2">
-                          <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-slate-700/50 flex items-center justify-center shadow-md flex-shrink-0">
-                              <Image
-                                src={getTeamLogo(result.home_team)}
-                                alt={result.home_team}
-                                fill
-                                className="object-cover"
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement
-                                  target.src = '/placeholder-logo.svg'
-                                }}
-                              />
-                            </div>
-                            <h2 className="text-lg font-bold text-white truncate">
-                              {result.home_team}
-                            </h2>
-                          </div>
-                        </div>
-
-                        {/* Away team */}
-                        <div className="flex items-center justify-between gap-3 p-3 bg-slate-700/30 rounded-xl w-1/2">
-                          <div className="flex items-center gap-3 flex-1 min-w-0 justify-end">
-                            <h2 className="text-lg font-bold text-white truncate">
-                              {result.away_team}
-                            </h2>
-                            <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-slate-700/50 flex items-center justify-center shadow-md flex-shrink-0">
-                              <Image
-                                src={getTeamLogo(result.away_team)}
-                                alt={result.away_team}
-                                fill
-                                className="object-cover"
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement
-                                  target.src = '/placeholder-logo.svg'
-                                }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+              return (
+                <Link
+                  key={result.id}
+                  href={`/matches/${result.id}`}
+                  className="block rounded-2xl bg-[var(--fpl-purple)] border border-white/10 px-3 py-2.5 hover:border-white/20 transition"
+                >
+                  <div className="flex items-center justify-center gap-1.5 sm:gap-2 mb-1.5">
+                    <span className="text-white font-bold text-xs sm:text-sm tracking-wide min-w-[2rem] text-right">
+                      {shortName(result.home_team, homeTeam)}
+                    </span>
+                    <div className="relative w-7 h-7 sm:w-8 sm:h-8">
+                      <Image
+                        src={getTeamLogo(result.home_team)}
+                        alt={result.home_team}
+                        fill
+                        className="object-contain"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement
+                          target.src = '/placeholder-logo.svg'
+                        }}
+                      />
                     </div>
 
-                    <div className="text-center space-y-2 lg:hidden pt-2 ">
-                      <div className="flex items-center justify-center gap-3">
-                        <span className="text-6xl font-bold text-white drop-shadow-lg">
-                          {result.home_score}
+                    <span className="font-display text-2xl sm:text-3xl font-bold text-white px-1 tabular-nums leading-none">
+                      {result.home_score}-{result.away_score}
+                    </span>
+
+                    <div className="relative w-7 h-7 sm:w-8 sm:h-8">
+                      <Image
+                        src={getTeamLogo(result.away_team)}
+                        alt={result.away_team}
+                        fill
+                        className="object-contain"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement
+                          target.src = '/placeholder-logo.svg'
+                        }}
+                      />
+                    </div>
+                    <span className="text-white font-bold text-xs sm:text-sm tracking-wide min-w-[2rem] text-left">
+                      {shortName(result.away_team, awayTeam)}
+                    </span>
+                  </div>
+
+                  <div className="flex gap-2.5 items-center">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-semibold text-sm sm:text-[15px] leading-snug line-clamp-2">
+                        {comment}
+                      </p>
+                      <p className="text-white/45 text-[11px] mt-1">
+                        Match Report · {format(new Date(result.date), 'd MMM yyyy')}
+                      </p>
+                    </div>
+
+                    {imageUrl ? (
+                      <div className="relative w-[112px] h-[80px] sm:w-[128px] sm:h-[90px] rounded-xl overflow-hidden shrink-0 bg-white/5">
+                        <Image
+                          src={imageUrl}
+                          alt="Match"
+                          fill
+                          className="object-cover"
+                          unoptimized
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement
+                            target.style.display = 'none'
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-[112px] h-[80px] sm:w-[128px] sm:h-[90px] rounded-xl shrink-0 bg-white/5 border border-white/10 flex items-center justify-center">
+                        <span className="text-white/25 text-[10px] font-semibold tracking-wide">
+                          NO IMAGE
                         </span>
-                        <span className="text-3xl text-white/60 font-light">-</span>
-                        <span className="text-6xl font-bold text-white drop-shadow-lg">
-                          {result.away_score}
-                        </span>
                       </div>
-                      {/* Goal Scorers - Mobile */}
-                      {goalsByMatch[result.id] && goalsByMatch[result.id].length > 0 && (
-                        <div className="flex justify-between gap-3">
-                          {/* Home goals */}
-                          <div className="w-1/2">
-                            {goalsByMatch[result.id].filter(g => g.team_type === 'home').length > 0 ? (
-                              <div className="space-y-2 text-start">
-                                {groupGoalsByPlayer(goalsByMatch[result.id].filter(g => g.team_type === 'home'))
-                                  .map((player, index) => (
-                                    <div key={index} className="text-white text-sm sm:text-base">
-                                      <div className="truncate flex justify-between">
-                                        <span>
-                                        {player.name}
-                                        </span>
-                                        <span className="text ml-1 leading-0 inline-flex items-center gap-0.5">{player.count > 1 && <span className="text-bold text-lg leading-0 text-yellow-400">{player.count}</span>} ⚽</span>
-                                      </div>
-                                    </div>
-                                  ))}
-                              </div>
-                            ) : (
-                              <p className="text-white/60 text-xs sm:text-sm text-center sm:text-left">Nema strijelaca</p>
-                            )}
-                          </div>
-
-                          {/* Away goals */}
-                          <div className="w-1/2">
-                            {goalsByMatch[result.id].filter(g => g.team_type === 'away').length > 0 ? (
-                              <div className="space-y-2 text-end">
-                                {groupGoalsByPlayer(goalsByMatch[result.id].filter(g => g.team_type === 'away'))
-                                  .map((player, index) => (
-                                    <div key={index} className="text-white text-sm sm:text-base">
-                                      <div className="truncate flex justify-between">
-                                        <span className="text ml-1 leading-0 inline-flex items-center gap-0.5">⚽{player.count > 1 && <span className="text-bold text-lg leading-0 text-yellow-400">{player.count}</span>}</span>
-                                        <span>
-                                        {player.name}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  ))}
-                              </div>
-                            ) : (
-                              <p className="text-white/60 text-xs sm:text-sm text-center sm:text-left">Nema strijelaca</p>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                      <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-white/60">
-                        <span>{format(new Date(result.date), 'dd MMM yyyy')}</span>
-                        <span>•</span>
-                        <span>{format(new Date(result.date), 'HH:mm')}</span>
-                      </div>
-                    </div>
-
-                    {/* Desktop Layout */}
-                    <div className="hidden md:grid md:grid-cols-3 gap-6 lg:gap-8 items-center">
-                      {/* Home team */}
-                      <div className="text-center md:text-right space-y-3 lg:space-y-4">
-                        <div className="flex flex-col md:flex-row items-center md:justify-end gap-3 lg:gap-4">
-                          <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-xl lg:rounded-2xl overflow-hidden bg-slate-700/50 flex items-center justify-center shadow-lg">
-                            <Image
-                              src={getTeamLogo(result.home_team)}
-                              alt={result.home_team}
-                              fill
-                              className="object-cover"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement
-                                target.src = '/placeholder-logo.svg'
-                              }}
-                            />
-                          </div>
-                          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white break-words">
-                            {result.home_team}
-                          </h2>
-                        </div>
-                      </div>
-
-                      {/* Score */}
-                      <div className="text-center space-y-3 lg:space-y-4">
-                        <div className="flex items-center justify-center gap-4 lg:gap-6">
-                          <span className="text-6xl md:text-7xl lg:text-8xl font-bold text-white drop-shadow-lg">
-                            {result.home_score}
-                          </span>
-                          <span className="text-3xl md:text-4xl text-white/60 font-light">-</span>
-                          <span className="text-6xl md:text-7xl lg:text-8xl font-bold text-white drop-shadow-lg">
-                            {result.away_score}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap items-center justify-center gap-2 lg:gap-4 text-sm text-white/60">
-                          <span>FULL TIME</span>
-                          <span>•</span>
-                          <span>{format(new Date(result.date), 'dd MMM yyyy')}</span>
-                          <span>•</span>
-                          <span>{format(new Date(result.date), 'HH:mm')}</span>
-                        </div>
-                        {/* Goal Scorers - Desktop */}
-                        {goalsByMatch[result.id] && goalsByMatch[result.id].length > 0 && (
-                          <div className="grid grid-cols-2 gap-4 lg:gap-6 pt-2">
-                            {/* Home goals */}
-                            <div className="text-right">
-                              {goalsByMatch[result.id].filter(g => g.team_type === 'home').length > 0 ? (
-                                <div className="space-y-1">
-                                  {groupGoalsByPlayer(goalsByMatch[result.id].filter(g => g.team_type === 'home'))
-                                    .map((player, index) => (
-                                      <div key={index} className="text-white text-xs sm:text-sm">
-                                        {player.player && player.playerId ? (
-                                          <Link
-                                            href={`/players/${player.playerId}`}
-                                            className="truncate hover:text-[#a80710] transition-colors cursor-pointer inline-block"
-                                            onClick={(e) => e.stopPropagation()}
-                                          >
-                                            {player.name}
-                                            <span className="text ml-1 leading-0 inline-flex items-center gap-0.5">⚽{player.count > 1 && <span className="text-bold text-lg leading-0 text-yellow-400">{player.count}</span>}</span>
-                                          </Link>
-                                        ) : (
-                                          <span className="truncate">
-                                            {player.name}
-                                            <span className="text ml-1 leading-0 inline-flex items-center gap-0.5">⚽{player.count > 1 && <span className="text-bold text-lg leading-0 text-yellow-400">{player.count}</span>}</span>
-                                          </span>
-                                        )}
-                                      </div>
-                                    ))}
-                                </div>
-                              ) : (
-                                <p className="text-white/60 text-xs">Nema strijelaca</p>
-                              )}
-                            </div>
-
-                            {/* Away goals */}
-                            <div className="text-left">
-                              {goalsByMatch[result.id].filter(g => g.team_type === 'away').length > 0 ? (
-                                <div className="space-y-1">
-                                  {groupGoalsByPlayer(goalsByMatch[result.id].filter(g => g.team_type === 'away'))
-                                    .map((player, index) => (
-                                      <div key={index} className="text-white text-xs sm:text-sm">
-                                        {player.player && player.playerId ? (
-                                          <Link
-                                            href={`/players/${player.playerId}`}
-                                            className="truncate hover:text-[#a80710] transition-colors cursor-pointer inline-block"
-                                            onClick={(e) => e.stopPropagation()}
-                                          >
-                                            {player.name}
-                                            <span className="text ml-1 leading-0 inline-flex items-center gap-0.5">⚽{player.count > 1 && <span className="text-bold text-lg leading-0 text-yellow-400">{player.count}</span>}</span>
-                                          </Link>
-                                        ) : (
-                                          <span className="truncate">
-                                            {player.name}
-                                            <span className="text ml-1 leading-0 inline-flex items-center gap-0.5">⚽{player.count > 1 && <span className="text-bold text-lg leading-0 text-yellow-400">{player.count}</span>}</span>
-                                          </span>
-                                        )}
-                                      </div>
-                                    ))}
-                                </div>
-                              ) : (
-                                <p className="text-white/60 text-xs">Nema strijelaca</p>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Away team */}
-                      <div className="text-center md:text-left space-y-3 lg:space-y-4">
-                        <div className="flex flex-col md:flex-row items-center md:justify-start gap-3 lg:gap-4">
-                          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white break-words">
-                            {result.away_team}
-                          </h2>
-                          <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-xl lg:rounded-2xl overflow-hidden bg-slate-700/50 flex items-center justify-center shadow-lg">
-                            <Image
-                              src={getTeamLogo(result.away_team)}
-                              alt={result.away_team}
-                              fill
-                              className="object-cover"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement
-                                target.src = '/placeholder-logo.svg'
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </Link>
-              ))}
-            </div>
+              )
+            })}
           </div>
-        ))}
+        )}
 
-        {/* Prikaži više dugme */}
         {results.length > 4 && (
-          <div className="flex justify-center pt-4">
+          <div className="flex justify-center pt-1">
             <Link href="/matches">
               <Button
                 variant="outline"
                 size="lg"
-                className="liquid-glass border-[var(--gold-400)]/40 text-[var(--champagne)] hover:bg-[var(--gold-500)]/15 hover:border-[var(--gold-300)]/70"
+                className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
               >
-                Prikaži više
+                Show more
               </Button>
             </Link>
           </div>
@@ -478,4 +199,3 @@ export default function ResultsSection() {
     </section>
   )
 }
-

@@ -69,7 +69,7 @@ export default function TerminNewsSection() {
           href="/terminnews"
           className="flex items-center gap-2 text-amber-400 hover:text-amber-300 transition-colors text-sm sm:text-base"
         >
-          <span>Pročitaj više</span>
+          <span>Read more</span>
           <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
@@ -79,11 +79,11 @@ export default function TerminNewsSection() {
           {/* Header */}
           <div className="px-6 sm:px-8 py-4 sm:py-6 border-b border-white/10">
             <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-2 leading-tight">
-              {newsData.title || 'Izvještaj o poslednjem terminu'}
+              {newsData.title || 'Latest fixture report'}
             </h3>
             {newsData.updated_at && (
               <p className="text-white/60 text-xs sm:text-sm">
-                {new Date(newsData.updated_at).toLocaleDateString('sr-RS', { 
+                {new Date(newsData.updated_at).toLocaleDateString('en-GB', { 
                   day: 'numeric', 
                   month: 'long', 
                   year: 'numeric' 
@@ -118,7 +118,7 @@ export default function TerminNewsSection() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-amber-400/80 text-xs sm:text-sm font-semibold mb-1">
-                    Najbolji strijelac
+                    Top scorer
                   </p>
                   <p className="text-white font-semibold text-sm sm:text-base truncate">
                     {newsData.top_scorer.first_name} {newsData.top_scorer.last_name}

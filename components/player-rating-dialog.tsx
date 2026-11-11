@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Player } from '@/lib/supabase'
 import { getPlayerImageUrl } from '@/lib/image-utils'
 import Image from 'next/image'
+import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
 interface PlayerRatingDialogProps {
@@ -114,14 +115,19 @@ export default function PlayerRatingDialog({
       <DialogContent className="bg-slate-800 border-white/30 text-white max-w-md w-[90%]">
         <DialogHeader>
           <DialogTitle className="text-white text-center text-xl">
-            Ocijeni igrača
+            Rate player
           </DialogTitle>
         </DialogHeader>
         
         <div className="flex flex-col items-center gap-6 py-4">
           {/* Player Image and Name */}
           <div className="flex flex-col items-center gap-4">
-            <div className="relative h-80 w-60">
+            <Link
+              href={`/players/${player.id}`}
+              onClick={() => onOpenChange(false)}
+              className="relative h-80 w-60 block hover:opacity-90 transition-opacity"
+              aria-label={`Open ${player.first_name} ${player.last_name} profile`}
+            >
               <Image
                 src={getPlayerImageUrl(player.image_url)}
                 alt={`${player.first_name} ${player.last_name}`}
@@ -134,14 +140,18 @@ export default function PlayerRatingDialog({
                   target.src = '/no-image-player.png'
                 }}
               />
-            </div>
+            </Link>
             <div className="text-center">
-              <h3 className="text-xl font-bold text-white">
+              <Link
+                href={`/players/${player.id}`}
+                onClick={() => onOpenChange(false)}
+                className="text-xl font-bold text-white hover:text-[var(--fpl-cyan)] transition-colors"
+              >
                 {player.first_name} {player.last_name}
-              </h3>
+              </Link>
               {currentAverageRating > 0 && (
                 <p className="text-sm text-white/70 mt-1">
-                  Prosječna ocjena: {currentAverageRating.toFixed(1)} ({ratingCount} {ratingCount === 1 ? 'ocjena' : 'ocjena'})
+                  Average rating: {currentAverageRating.toFixed(1)} ({ratingCount} {ratingCount === 1 ? 'rating' : 'ratings'})
                 </p>
               )}
             </div>
@@ -151,7 +161,7 @@ export default function PlayerRatingDialog({
           <div className="flex flex-col items-center gap-4">
             {userRating && (
               <p className="text-white/80 text-sm">
-                Tvoja ocjena: {userRating} {userRating === 1 ? 'zvjezdica' : 'zvjezdice'}
+                Your rating: {userRating} {userRating === 1 ? 'star' : 'stars'}
               </p>
             )}
             <div 
@@ -187,11 +197,11 @@ export default function PlayerRatingDialog({
             </div>
             {selectedRating && (
               <p className="text-green-400 text-sm font-semibold animate-in fade-in">
-                Hvala na ocjeni!
+                Thanks for rating!
               </p>
             )}
             {isSubmitting && (
-              <p className="text-white/60 text-sm">Šalje se...</p>
+              <p className="text-white/60 text-sm">Submitting...</p>
             )}
           </div>
         </div>

@@ -15,6 +15,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { SHOW_TERMINBET } from '@/lib/features'
+import { useRouter } from 'next/navigation'
 
 interface SelectedOdd {
   matchId: number
@@ -24,7 +26,7 @@ interface SelectedOdd {
   homeTeam: string
   awayTeam: string
   matchDate: string
-  label?: string // Dodatni label za prikaz (npr. "2 golova", "Igrač X - 2 golova", "Preko 2.5")
+  label?: string // Extra display label (e.g. "2+ goals", "Player X - 2+ goals", "Over 2.5")
 }
 
 interface Ticket {
@@ -37,6 +39,7 @@ interface Ticket {
 }
 
 export default function TerminBetPage() {
+  const router = useRouter()
   const [matches, setMatches] = useState<(Result & { hasOdds: boolean })[]>([])
   const [nextMatch, setNextMatch] = useState<{
     home_team: string
@@ -60,12 +63,20 @@ export default function TerminBetPage() {
   const { toast } = useToast()
 
   useEffect(() => {
+    if (!SHOW_TERMINBET) {
+      router.replace('/')
+      return
+    }
     fetchMatches()
     fetchNextMatch()
     fetchTeams()
     fetchPlayers()
     loadTickets()
-  }, [])
+  }, [router])
+
+  if (!SHOW_TERMINBET) {
+    return null
+  }
 
   // Listen for storage changes to update tickets list
   useEffect(() => {
@@ -118,15 +129,15 @@ export default function TerminBetPage() {
         }
 
         toast({
-          title: 'Tiket obrisan',
-          description: 'Tiket je uspješno obrisan.',
+          title: 'Ticket deleted',
+          description: 'Ticket successfully deleted.',
         })
       }
     } catch (error) {
       console.error('Error deleting ticket:', error)
       toast({
-        title: 'Greška',
-        description: 'Došlo je do greške pri brisanju tiketa.',
+        title: 'Error',
+        description: 'An error occurred while deleting the ticket.',
         variant: 'destructive',
       })
     }
@@ -376,7 +387,7 @@ export default function TerminBetPage() {
               <span className="text-[#280071] font-bold text-lg">✓</span>
             </div>
             <div>
-              <span className="text-base font-bold text-black">Uspješno odigran tiket</span>
+              <span className="text-base font-bold text-black">Bet slip placed successfully</span>
               <div className="text-xs text-black/60 mt-0.5">
                 {format(new Date(), 'd.M.yyyy • HH:mm')}
               </div>
@@ -414,16 +425,16 @@ export default function TerminBetPage() {
             {/* Detalji tiketa */}
             <div className="bg-gradient-to-r from-slate-800/90 to-slate-900/90 rounded-lg p-4 border-2 border-[#f9c14c]/30 shadow-lg space-y-2.5">
               <div className="flex justify-between items-center text-sm">
-                <span className="text-white/70 font-medium">Ulog:</span>
+                <span className="text-white/70 font-medium">Stake:</span>
                 <span className="text-white font-bold text-base">{parseFloat(stake).toFixed(2)} BAM</span>
               </div>
               <div className="flex justify-between items-center text-sm">
-                <span className="text-white/70 font-medium">Kombinovana kvota:</span>
+                <span className="text-white/70 font-medium">Combined odds:</span>
                 <span className="text-white font-bold text-base">{calculateCombinedOdd().toFixed(2)}</span>
               </div>
               <div className="border-t-2 border-[#f9c14c]/30 pt-3 mt-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-white font-semibold text-base">Potencijalni dobitak:</span>
+                  <span className="text-white font-semibold text-base">Potential winnings:</span>
                   <span className="text-[#f9c14c] font-bold text-xl">{calculatePotentialWin().toFixed(2)} BAM</span>
                 </div>
               </div>
@@ -439,8 +450,8 @@ export default function TerminBetPage() {
     } catch (error) {
       console.error('Error saving ticket to localStorage:', error)
       toast({
-        title: 'Greška',
-        description: 'Došlo je do greške pri čuvanju tiketa.',
+        title: 'Error',
+        description: 'An error occurred while saving the ticket.',
         variant: 'destructive',
       })
     }
@@ -496,17 +507,17 @@ export default function TerminBetPage() {
             <span className="text-white">TERMIN</span>
             <span className="text-[#f9c14c]">BET</span>
           </h1>
-          <p className="text-white/60 text-sm sm:text-base">Izaberite kvote i izračunajte potencijalni dobitak</p>
+          <p className="text-white/60 text-sm sm:text-base">Select odds and calculate potential winnings</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Lista utakmica sa kvotama */}
+          {/* Fixtures with odds */}
           <div className="lg:col-span-2 space-y-4">
             {loading ? (
-              <div className="text-white text-center py-8">Učitavanje utakmica...</div>
+              <div className="text-white text-center py-8">Loading fixtures...</div>
             ) : allMatches.length === 0 ? (
               <div className="text-white text-center py-8">
-                <p className="text-white/60">Nema dostupnih utakmica sa kvotama</p>
+                <p className="text-white/60">No fixtures with odds available</p>
               </div>
             ) : (
               allMatches.map((match) => (
@@ -617,10 +628,10 @@ export default function TerminBetPage() {
                       {/* Broj golova na terminu */}
                       {(match as any).total_goals_odds && (match as any).total_goals_odds.length > 0 && (
                         <div>
-                          <div className="text-xs text-white/60 mb-2">Broj golova na terminu</div>
+                          <div className="text-xs text-white/60 mb-2">Matchday goals</div>
                           <div className="flex flex-wrap gap-2">
                             {(match as any).total_goals_odds.map((item: any, idx: number) => {
-                              const label = `${item.goals}+ golova`
+                              const label = `${item.goals}+ goals`
                               const isSelected = isOddSelected(-1, 'total_goals', label)
                               return (
                                 <button
@@ -651,12 +662,12 @@ export default function TerminBetPage() {
                       {/* Igrač sa termina i broj golova */}
                       {(match as any).player_goals_odds && (match as any).player_goals_odds.length > 0 && (
                         <div>
-                          <div className="text-xs text-white/60 mb-2">Igrač sa termina i broj golova</div>
+                          <div className="text-xs text-white/60 mb-2">Player goals</div>
                           <div className="flex flex-wrap gap-2">
                             {(match as any).player_goals_odds.map((item: any, idx: number) => {
                               const player = players.find(p => p.id === item.player_id)
-                              const playerName = player ? `${player.first_name} ${player.last_name}` : `Igrač #${item.player_id}`
-                              const label = `${playerName} - ${item.goals}+ golova`
+                              const playerName = player ? `${player.first_name} ${player.last_name}` : `Player #${item.player_id}`
+                              const label = `${playerName} - ${item.goals}+ goals`
                               const isSelected = isOddSelected(-1, 'player_goals', label)
                               return (
                                 <button
@@ -687,11 +698,11 @@ export default function TerminBetPage() {
                       {/* Preko/Ispod broj golova */}
                       {(match as any).over_under_odds && (match as any).over_under_odds.length > 0 && (
                         <div>
-                          <div className="text-xs text-white/60 mb-2">Preko/Ispod broj golova</div>
+                          <div className="text-xs text-white/60 mb-2">Over/Under goals</div>
                           <div className="flex flex-wrap gap-2">
                             {(match as any).over_under_odds.map((item: any, idx: number) => {
-                              const overLabel = `Preko ${item.goals}`
-                              const underLabel = `Ispod ${item.goals}`
+                              const overLabel = `Over ${item.goals}`
+                              const underLabel = `Under ${item.goals}`
                               const isOverSelected = isOddSelected(-1, 'over', overLabel)
                               const isUnderSelected = isOddSelected(-1, 'under', underLabel)
                               return (
@@ -717,7 +728,7 @@ export default function TerminBetPage() {
                                         : 'bg-slate-700/50 text-white hover:bg-slate-600/50'
                                         }`}
                                     >
-                                      Preko {item.goals} ({item.over_odd.toFixed(2)})
+                                      Over {item.goals} ({item.over_odd.toFixed(2)})
                                     </button>
                                   )}
                                   {item.under_odd !== null && item.under_odd !== undefined && (
@@ -741,7 +752,7 @@ export default function TerminBetPage() {
                                         : 'bg-slate-700/50 text-white hover:bg-slate-600/50'
                                         }`}
                                     >
-                                      Ispod {item.goals} ({item.under_odd.toFixed(2)})
+                                      Under {item.goals} ({item.under_odd.toFixed(2)})
                                     </button>
                                   )}
                                 </div>
@@ -762,12 +773,12 @@ export default function TerminBetPage() {
             <div className="bg-slate-800/70 border border-white/20 rounded-xl p-4 sm:p-6 backdrop-blur-md sticky top-24">
               <h2 className="text-xl sm:text-2xl font-bold text-white mb-4">
                 <span className="text-white">TERMIN</span>
-                <span className="text-[#f9c14c]">BET</span> Tiket
+                <span className="text-[#f9c14c]">BET</span> Slip
               </h2>
 
               {selectedOdds.length === 0 ? (
                 <div className="text-white/60 text-sm text-center py-8">
-                  Izaberite kvote da biste napravili tiket
+                  Select odds to build your bet slip
                 </div>
               ) : (
                 <>
@@ -810,7 +821,7 @@ export default function TerminBetPage() {
                   <div className="border-t border-white/20 pt-4 space-y-4">
                     <div className="flex justify-between items-center mb-2">
                       <label className="text-white/80 text-sm font-medium">
-                        Ulog (BAM)
+                        Stake (BAM)
                       </label>
                       {selectedOdds.length > 0 && (
                         <button
@@ -820,7 +831,7 @@ export default function TerminBetPage() {
                           }}
                           className="text-white/60 hover:text-white text-xs transition-colors"
                         >
-                          Obriši tiket
+                          Clear slip
                         </button>
                       )}
                     </div>
@@ -836,19 +847,19 @@ export default function TerminBetPage() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
-                        <span className="text-white/60">Kombinovana kvota:</span>
+                        <span className="text-white/60">Combined odds:</span>
                         <span className="text-white font-semibold">
                           {calculateCombinedOdd().toFixed(2)}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-white/60">Ulog:</span>
+                        <span className="text-white/60">Stake:</span>
                         <span className="text-white font-semibold">
                           {stake ? parseFloat(stake).toFixed(2) : '0.00'} BAM
                         </span>
                       </div>
                       <div className="flex justify-between text-xs text-white/50">
-                        <span>Osnovni dobitak:</span>
+                        <span>Base winnings:</span>
                         <span>
                           {stake && parseFloat(stake) > 0
                             ? (parseFloat(stake) * calculateCombinedOdd()).toFixed(2)
@@ -864,7 +875,7 @@ export default function TerminBetPage() {
                         </span>
                       </div>
                       <div className="border-t border-white/20 pt-2 flex justify-between">
-                        <span className="text-white font-medium">Potencijalni dobitak:</span>
+                        <span className="text-white font-medium">Potential winnings:</span>
                         <span className="text-[#f9c14c] font-bold text-lg">
                           {calculatePotentialWin().toFixed(2)} BAM
                         </span>
@@ -876,7 +887,7 @@ export default function TerminBetPage() {
                       disabled={selectedOdds.length === 0 || !stake || parseFloat(stake) <= 0}
                       className="w-full bg-[#280071] hover:bg-[#320085] text-white font-bold py-3 px-4 rounded-lg transition-colors disabled:bg-slate-700/30 disabled:text-white/30 disabled:cursor-not-allowed"
                     >
-                      Potvrdi tiket
+                      Place bet
                     </button>
                   </div>
                 </>
@@ -889,8 +900,8 @@ export default function TerminBetPage() {
         {tickets.length > 0 && (
           <div className="mt-12">
             <h2 className="text-2xl sm:text-3xl font-bold text-white mb-6">
-              <span className="text-white">Moji</span>
-              <span className="text-[#f9c14c]"> Tiketi</span>
+              <span className="text-white">My</span>
+              <span className="text-[#f9c14c]"> Tickets</span>
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {tickets.map((ticket) => (
@@ -910,32 +921,32 @@ export default function TerminBetPage() {
                         <div className="text-white/60 text-xs mb-1">
                           {format(new Date(ticket.timestamp), 'd.M.yyyy • HH:mm')}
                         </div>
-                        <div className='text-white/60 text-xs mb-1'>Klinki da pogledaš</div>
+                        <div className='text-white/60 text-xs mb-1'>Click to view</div>
                       </div>
                     </div>
 
                     <div className="border-t border-white/10 pt-3 space-y-1">
                       <div className="flex justify-between text-xs text-white/60">
-                        <span>Ulog:</span>
+                        <span>Stake:</span>
                         <span className="text-white font-medium">{ticket.stake.toFixed(2)} BAM</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-white/80 font-medium">Potencijalni dobitak:</span>
+                        <span className="text-white/80 font-medium">Potential winnings:</span>
                         <span className="text-[#f9c14c] font-bold">{ticket.potentialWin.toFixed(2)} BAM</span>
                       </div>
                     </div>
                   </button>
 
-                  {/* Dugme za brisanje */}
+                  {/* Delete button */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
-                      if (confirm('Da li ste sigurni da želite da obrišete ovaj tiket?')) {
+                      if (confirm('Are you sure you want to delete this ticket?')) {
                         deleteTicket(ticket.id)
                       }
                     }}
                     className="relative mt-2 float-right p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 hover:text-red-300 transition-colors"
-                    title="Obriši tiket"
+                    title="Delete ticket"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -955,18 +966,18 @@ export default function TerminBetPage() {
                 <div className="flex flex-col">
                     <button
                       onClick={() => {
-                        if (confirm('Da li ste sigurni da želite da obrišete ovaj tiket?')) {
+                        if (confirm('Are you sure you want to delete this ticket?')) {
                           deleteTicket(selectedTicket.id)
                         }
                       }}
                       className="p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 hover:text-red-300 transition-colors absolute top-3 left-3"
-                      title="Obriši tiket"
+                      title="Delete ticket"
                     >
                       <Trash2 className="w-5 h-5" />
                     </button>
                     <div className='flex flex-col'>
                     <DialogTitle className="text-white text-xl">
-                      Detalji tiketa
+                      Ticket details
                     </DialogTitle>
                     <DialogDescription className="text-white/60 text-sm">
                       {format(new Date(selectedTicket.timestamp), 'd.M.yyyy • HH:mm')}
@@ -978,7 +989,7 @@ export default function TerminBetPage() {
               <div className="space-y-4 mt-4">
                 {/* Lista kvota */}
                 <div className="space-y-3">
-                  <h3 className="text-white font-semibold text-sm mb-3">Odabrane kvote:</h3>
+                  <h3 className="text-white font-semibold text-sm mb-3">Selected odds:</h3>
                   <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
                     {selectedTicket.selectedOdds.map((odd, index) => (
                       <div key={index} className="bg-gradient-to-r from-slate-700/80 to-slate-800/80 rounded-lg p-4 border border-slate-600/50 shadow-sm">
@@ -1008,16 +1019,16 @@ export default function TerminBetPage() {
                 {/* Detalji tiketa */}
                 <div className="bg-gradient-to-r from-slate-800/90 to-slate-900/90 rounded-lg p-4 border-2 border-[#f9c14c]/30 shadow-lg space-y-2.5">
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-white/70 font-medium">Ulog:</span>
+                    <span className="text-white/70 font-medium">Stake:</span>
                     <span className="text-white font-bold text-base">{selectedTicket.stake.toFixed(2)} BAM</span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-white/70 font-medium">Kombinovana kvota:</span>
+                    <span className="text-white/70 font-medium">Combined odds:</span>
                     <span className="text-white font-bold text-base">{selectedTicket.combinedOdd.toFixed(2)}</span>
                   </div>
                   <div className="border-t-2 border-[#f9c14c]/30 pt-3 mt-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-white font-semibold text-base">Potencijalni dobitak:</span>
+                      <span className="text-white font-semibold text-base">Potential winnings:</span>
                       <span className="text-[#f9c14c] font-bold text-xl">{selectedTicket.potentialWin.toFixed(2)} BAM</span>
                     </div>
                   </div>

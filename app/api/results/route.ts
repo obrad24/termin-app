@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { requireAuth } from '@/lib/auth'
+import { calculateFantasyForResult } from '@/lib/fantasy/calculate'
 
 // GET - Prikaz svih rezultata (opciono filtrirano po sezoni)
 export async function GET(request: Request) {
@@ -92,6 +93,8 @@ export async function POST(request: Request) {
       odds_1,
       odds_x,
       odds_2,
+      summary_comment,
+      image_url,
       goals = [],
       players = [],
       season_id,
@@ -133,6 +136,12 @@ export async function POST(request: Request) {
     }
     if (odds_2 !== undefined && odds_2 !== null && odds_2 !== '') {
       insertData.odds_2 = parseFloat(odds_2)
+    }
+    if (typeof summary_comment === 'string' && summary_comment.trim() !== '') {
+      insertData.summary_comment = summary_comment.trim()
+    }
+    if (typeof image_url === 'string' && image_url.trim() !== '') {
+      insertData.image_url = image_url.trim()
     }
 
     const result = await supabase
@@ -221,6 +230,15 @@ export async function POST(request: Request) {
         console.error('Error creating match players:', playersError)
         // Ne vraćamo grešku, samo logujemo jer rezultat je već kreiran
       }
+    }
+
+    try {
+      await calculateFantasyForResult(resultId, {
+        action: 'calculate',
+        message: `Auto-calculated after creating match #${resultId}`,
+      })
+    } catch (fantasyError) {
+      console.error('Fantasy calculation error:', fantasyError)
     }
 
     return NextResponse.json(resultData, { status: 201 })

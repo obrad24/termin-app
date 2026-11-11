@@ -1,26 +1,28 @@
 import type { Metadata } from 'next'
 import { Analytics } from '@vercel/analytics/next'
-import { Syne, Manrope, Bebas_Neue } from 'next/font/google'
+import { Sofia_Sans, Oswald } from 'next/font/google'
 import './globals.css'
 import { Toaster } from '@/components/ui/toaster'
 import { SeasonProvider } from '@/components/season-provider'
+import FantasyFloatButton from '@/components/fantasy-float-button'
 
-const display = Syne({
+/* Closest public stand-ins for PremierSans / BudBold */
+const display = Sofia_Sans({
   subsets: ['latin'],
   variable: '--font-display',
   weight: ['500', '600', '700', '800'],
 })
 
-const body = Manrope({
+const body = Sofia_Sans({
   subsets: ['latin'],
   variable: '--font-body',
   weight: ['400', '500', '600', '700'],
 })
 
-const score = Bebas_Neue({
+const score = Oswald({
   subsets: ['latin'],
   variable: '--font-score',
-  weight: '400',
+  weight: ['500', '600', '700'],
 })
 
 export const metadata: Metadata = {
@@ -37,10 +39,6 @@ export const metadata: Metadata = {
         url: '/icon-dark-32x32.png',
         media: '(prefers-color-scheme: dark)',
       },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
     ],
     apple: '/apple-icon.png',
   },
@@ -52,10 +50,11 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${display.variable} ${body.variable} ${score.variable}`}>
+    <html lang="en-GB" className={`${display.variable} ${body.variable} ${score.variable}`}>
       <body className="font-sans antialiased" suppressHydrationWarning>
         <SeasonProvider>
           {children}
+          <FantasyFloatButton />
           <Toaster />
           <Analytics />
         </SeasonProvider>

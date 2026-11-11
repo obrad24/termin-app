@@ -62,11 +62,11 @@ export default function TerminNewsPage() {
     try {
       const date = new Date(dateString)
       const day = date.getDate()
-      const month = date.toLocaleDateString('sr-RS', { month: 'long' })
+      const month = date.toLocaleDateString('en-US', { month: 'long' })
       const year = date.getFullYear()
       const hours = String(date.getHours()).padStart(2, '0')
       const minutes = String(date.getMinutes()).padStart(2, '0')
-      return `${day}. ${month} ${year}. | ${hours}:${minutes}`
+      return `${day} ${month} ${year} | ${hours}:${minutes}`
     } catch {
       return null
     }
@@ -87,7 +87,7 @@ export default function TerminNewsPage() {
             </h1>
           </div>
           <p className="text-white/70 text-sm sm:text-base ml-14 sm:ml-16">
-            Izvještaj o poslednjem terminu
+            Latest matchday report
           </p>
         </div>
 
@@ -95,7 +95,7 @@ export default function TerminNewsPage() {
         <article className="bg-white/5 rounded-2xl border border-white/10 overflow-hidden shadow-2xl hover:border-white/20 transition-colors">
           {loading ? (
             <div className="text-white text-center py-16 text-base sm:text-lg">
-              Učitavanje izvještaja...
+              Loading report...
             </div>
           ) : newsData.content ? (
             <>
@@ -132,7 +132,7 @@ export default function TerminNewsPage() {
                           </p>
                         )}
                         <p className="text-amber-400/80 text-xs sm:text-sm mt-1">
-                          Najbolji strijelac utakmice
+                          Match top scorer
                         </p>
                       </div>
                     </div>
@@ -141,7 +141,7 @@ export default function TerminNewsPage() {
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex-1">
                       <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2 leading-tight">
-                        {newsData.title || 'Izvještaj o poslednjem terminu'}
+                        {newsData.title || 'Latest matchday report'}
                       </h2>
                       <div className="flex items-center gap-2 text-amber-400/80 text-xs sm:text-sm mt-2">
                         <Newspaper className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -233,7 +233,7 @@ export default function TerminNewsPage() {
                     <div className="flex-1 text-center sm:text-left">
                       <div className="mb-4">
                         <h3 className="text-xl sm:text-2xl font-bold text-amber-400 mb-2">
-                          Najbolji strijelac utakmice
+                          Match top scorer
                         </h3>
                         <Link href={`/players/${newsData.top_scorer.id}`}>
                           <h4 className="text-lg sm:text-xl font-semibold text-white hover:text-amber-400 transition-colors cursor-pointer">
@@ -265,7 +265,7 @@ export default function TerminNewsPage() {
               <div className="border-t border-white/10 px-6 sm:px-8 py-4 bg-white/5">
                 <div className="flex items-center gap-2 text-white/50 text-xs sm:text-sm">
                   <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span>Poslednje ažuriranje: {newsData.updated_at ? formatDate(newsData.updated_at) : 'N/A'}</span>
+                  <span>Last updated: {newsData.updated_at ? formatDate(newsData.updated_at) : 'N/A'}</span>
                 </div>
               </div>
             </>
@@ -274,9 +274,9 @@ export default function TerminNewsPage() {
               <div className="text-white/60 mb-4">
                 <Newspaper className="w-16 h-16 mx-auto mb-4 opacity-50" />
               </div>
-              <p className="text-white text-xl sm:text-2xl mb-2 font-semibold">Nema izvještaja</p>
+              <p className="text-white text-xl sm:text-2xl mb-2 font-semibold">No report available</p>
               <p className="text-white/60 text-sm sm:text-base">
-                Izvještaj o poslednjem terminu će uskoro biti dostupan
+                The latest matchday report will be available soon
               </p>
             </div>
           )}
@@ -286,9 +286,9 @@ export default function TerminNewsPage() {
         {newsData.content && (
           <div className="mt-6 sm:mt-8 text-center">
             <p className="text-white/40 text-xs sm:text-sm">
-              Za više informacija o utakmicama, posetite sekciju{' '}
+              For more match info, visit{' '}
               <a href="/matches" className="text-amber-400 hover:text-amber-300 underline">
-                Utakmice
+                Fixtures & Results
               </a>
             </p>
           </div>

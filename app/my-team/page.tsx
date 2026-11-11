@@ -1,0 +1,820 @@
+'use client'
+
+import { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import Image from 'next/image'
+import { X } from 'lucide-react'
+import Header from '@/components/header'
+import { useSeason } from '@/components/season-provider'
+import { getPlayerImageUrl } from '@/lib/image-utils'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet'
+
+type PlayerOpt = {
+  id: number
+  first_name: string
+  last_name: string
+  team: string | null
+  image_url?: string | null
+  price?: number | null
+}
+
+function toId(value: unknown): number {
+  const n = typeof value === 'string' ? parseInt(value, 10) : Number(value)
+  return Number.isFinite(n) ? n : NaN
+}
+
+function formatPrice(price?: number | null) {
+  if (price == null || Number.isNaN(Number(price))) return '—'
+  const n = Number(price)
+  return `£${n % 1 === 0 ? n.toFixed(0) : n.toFixed(1)}m`
+}
+
+function normalizePlayer(p: any): PlayerOpt {
+  const priceRaw = p.price
+  const price =
+    priceRaw === null || priceRaw === undefined || priceRaw === ''
+      ? null
+      : Number(priceRaw)
+  return {
+    id: toId(p.id),
+    first_name: p.first_name,
+    last_name: p.last_name,
+    team: p.team ?? null,
+    image_url: p.image_url ?? null,
+    price: price != null && !Number.isNaN(price) ? price : null,
+  }
+}
+
+type MyTeamData = {
+  gameweek: number
+  locked: boolean
+  squad_size: number
+  max_transfers: number
+  max_budget?: number
+  has_previous_squad: boolean
+  free_initial_pick: boolean
+  transfers_used: number
+  transfers_remaining: number | null
+  player_ids: number[]
+  previous_player_ids?: number[]
+  available_players: PlayerOpt[]
+}
+
+function PitchCard({
+  player,
+  onClick,
+  emptyLabel,
+  disabled,
+}: {
+  player?: PlayerOpt | null
+  onClick?: () => void
+  emptyLabel?: string
+  disabled?: boolean
+}) {
+  if (!player) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        className="relative flex flex-col items-center w-[96px] group disabled:opacity-60"
+      >
+        <div className="relative z-0 w-[84px] h-[100px] rounded-lg border-2 border-dashed border-white/35 bg-black/20 flex items-center justify-center">
+          <span className="text-white/70 text-2xl font-light leading-none">+</span>
+        </div>
+        <div className="relative z-10 w-full -mt-1 overflow-hidden rounded-[4px] bg-white/90 shadow-sm leading-none">
+          <p className="text-[var(--fpl-purple)] text-[11px] font-bold truncate text-center px-1 py-[4px]">
+            {emptyLabel || 'Empty'}
+          </p>
+          <p className="bg-[#e8e8e8] text-[var(--fpl-purple)]/50 text-[11px] font-bold text-center px-1 py-[4px]">
+            —
+          </p>
+        </div>
+      </button>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="relative flex flex-col items-center w-[96px] group disabled:opacity-70"
+    >
+      <div className="relative z-0 w-[84px] h-[100px]">
+        <Image
+          src={getPlayerImageUrl(player.image_url, true)}
+          alt={`${player.first_name} ${player.last_name}`}
+          fill
+          className="object-contain object-bottom drop-shadow-md group-hover:scale-105 transition-transform"
+          unoptimized
+          onError={(e) => {
+            const target = e.target as HTMLImageElement
+            target.src = '/no-image-player.png'
+          }}
+        />
+      </div>
+      <div className="relative z-10 w-full -mt-1 overflow-hidden rounded-[4px] bg-white shadow-sm leading-none">
+        <p className="text-[var(--fpl-purple)] text-[11px] font-bold truncate text-center px-1 py-[4px]">
+          {player.last_name}
+        </p>
+        <p className="bg-[#e8e8e8] text-[var(--fpl-purple)] text-[10px] font-semibold truncate text-center px-1 py-[4px]">
+          {formatPrice(player.price)}
+        </p>
+      </div>
+    </button>
+  )
+}
+
+export default function MyTeamPage() {
+  const router = useRouter()
+  const { currentSeason } = useSeason()
+  const [nickname, setNickname] = useState<string | null>(null)
+  const [authChecked, setAuthChecked] = useState(false)
+  const [data, setData] = useState<MyTeamData | null>(null)
+  const [selected, setSelected] = useState<number[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [view, setView] = useState<'pitch' | 'list'>('pitch')
+
+  const [activePlayer, setActivePlayer] = useState<PlayerOpt | null>(null)
+  const [playerSheetOpen, setPlayerSheetOpen] = useState(false)
+  const [replaceSheetOpen, setReplaceSheetOpen] = useState(false)
+  const [replacingId, setReplacingId] = useState<number | null>(null)
+
+  useEffect(() => {
+    fetch('/api/player-auth/me')
+      .then((r) => r.json())
+      .then((me) => {
+        if (!me.authenticated) {
+          router.replace('/login')
+          return
+        }
+        setNickname(me.account?.nickname || null)
+        setAuthChecked(true)
+      })
+      .catch(() => router.replace('/login'))
+  }, [router])
+
+  useEffect(() => {
+    if (!authChecked || !currentSeason?.id) return
+    loadTeam()
+  }, [authChecked, currentSeason?.id])
+
+  const loadTeam = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const response = await fetch(`/api/my-team?season_id=${currentSeason!.id}`)
+      if (response.status === 401) {
+        router.replace('/login')
+        return
+      }
+      const json = await response.json()
+      if (!response.ok) throw new Error(json.error || 'Failed to load')
+      const available_players = (json.available_players || []).map(normalizePlayer)
+      const player_ids = (json.player_ids || []).map(toId).filter((n: number) => !Number.isNaN(n))
+      const previous_player_ids = (json.previous_player_ids || [])
+        .map(toId)
+        .filter((n: number) => !Number.isNaN(n))
+      setData({
+        ...json,
+        available_players,
+        player_ids,
+        previous_player_ids,
+      })
+      setSelected(player_ids)
+    } catch (err: any) {
+      setError(err.message || 'Failed to load')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const baselineIds = useMemo(() => {
+    if (!data || data.free_initial_pick) return new Set<number>()
+    return new Set(data.previous_player_ids || [])
+  }, [data])
+
+  const transfersUsedNow = useMemo(() => {
+    if (!data || data.free_initial_pick) return 0
+    let incoming = 0
+    for (const id of selected) {
+      if (!baselineIds.has(id)) incoming += 1
+    }
+    return incoming
+  }, [data, selected, baselineIds])
+
+  const transfersLeft = data?.free_initial_pick
+    ? null
+    : Math.max(0, (data?.max_transfers || 2) - transfersUsedNow)
+
+  const maxBudget = data?.max_budget ?? 40
+
+  const playersById = useMemo(() => {
+    const map = new Map<number, PlayerOpt>()
+    ;(data?.available_players || []).forEach((p) => map.set(p.id, p))
+    return map
+  }, [data])
+
+  const slots = useMemo(() => {
+    const size = data?.squad_size || 5
+    const filled = selected
+      .map((id) => playersById.get(id))
+      .filter(Boolean) as PlayerOpt[]
+    const out: (PlayerOpt | null)[] = [...filled]
+    while (out.length < size) out.push(null)
+    return out.slice(0, size)
+  }, [selected, playersById, data])
+
+  const top = slots[0]
+  const mid = slots.slice(1, 3)
+  const bottom = slots.slice(3, 5)
+
+  const selectedPlayers = useMemo(() => {
+    return selected
+      .map((id) => playersById.get(id))
+      .filter(Boolean) as PlayerOpt[]
+  }, [selected, playersById])
+
+  const budgetSpent = useMemo(() => {
+    return Math.round(
+      selectedPlayers.reduce((sum, p) => sum + (Number(p.price) || 0), 0) * 10,
+    ) / 10
+  }, [selectedPlayers])
+
+  const budgetRemaining = Math.round((maxBudget - budgetSpent) * 10) / 10
+
+  const selectablePlayers = useMemo(() => {
+    const exclude = new Set(selected)
+    if (replacingId != null) exclude.delete(replacingId)
+    const list = (data?.available_players || []).filter((p) => !exclude.has(p.id))
+    const q = search.trim().toLowerCase()
+    if (!q) return list
+    return list.filter((p) =>
+      `${p.first_name} ${p.last_name} ${p.team || ''}`.toLowerCase().includes(q),
+    )
+  }, [data, search, selected, replacingId])
+
+  const openPlayerSheet = (player: PlayerOpt) => {
+    setActivePlayer(player)
+    setPlayerSheetOpen(true)
+  }
+
+  const openAddSheet = () => {
+    if (data?.locked) return
+    if (selected.length >= (data?.squad_size || 5)) {
+      setError('Squad is full — tap a player to select a replacement')
+      return
+    }
+    setReplacingId(null)
+    setSearch('')
+    setReplaceSheetOpen(true)
+  }
+
+  const openReplaceSheet = () => {
+    if (!activePlayer || data?.locked) return
+    setReplacingId(activePlayer.id)
+    setSearch('')
+    setPlayerSheetOpen(false)
+    setReplaceSheetOpen(true)
+  }
+
+  const removePlayer = (id: number) => {
+    if (data?.locked) return
+    setMessage(null)
+    setError(null)
+    setSelected((prev) => prev.filter((x) => x !== id))
+    setPlayerSheetOpen(false)
+    setActivePlayer(null)
+  }
+
+  const applySelection = (newId: number) => {
+    if (data?.locked) return
+    setMessage(null)
+    setError(null)
+
+    setSelected((prev) => {
+      let next: number[]
+      if (replacingId != null) {
+        next = prev.map((id) => (id === replacingId ? newId : id))
+        if (!prev.includes(replacingId)) {
+          next = prev.includes(newId) ? prev : [...prev, newId]
+        }
+      } else {
+        if (prev.includes(newId)) return prev
+        if (prev.length >= (data?.squad_size || 5)) {
+          setError(`Squad is full (${data?.squad_size || 5})`)
+          return prev
+        }
+        next = [...prev, newId]
+      }
+
+      const cost = next.reduce((sum, id) => {
+        const p = playersById.get(id)
+        return sum + (Number(p?.price) || 0)
+      }, 0)
+      if (cost > maxBudget + 0.05) {
+        setError(`Budget exceeded: £${cost.toFixed(1)}m / £${maxBudget}m`)
+        return prev
+      }
+
+      if (!data?.free_initial_pick) {
+        let incoming = 0
+        for (const pid of next) {
+          if (!baselineIds.has(pid)) incoming += 1
+        }
+        if (incoming > (data?.max_transfers || 2)) {
+          setError(`Max ${data?.max_transfers || 2} changes this gameweek`)
+          return prev
+        }
+      }
+
+      return next
+    })
+
+    setReplaceSheetOpen(false)
+    setReplacingId(null)
+    setActivePlayer(null)
+  }
+
+  const save = async () => {
+    if (!currentSeason?.id || !data) return
+    if (selected.length !== data.squad_size) {
+      setError(`Select exactly ${data.squad_size} players`)
+      return
+    }
+    if (budgetSpent > maxBudget + 0.05) {
+      setError(`Budget exceeded: £${budgetSpent.toFixed(1)}m / £${maxBudget}m`)
+      return
+    }
+    setSaving(true)
+    setError(null)
+    setMessage(null)
+    try {
+      const response = await fetch('/api/my-team', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ season_id: currentSeason.id, player_ids: selected }),
+      })
+      const json = await response.json()
+      if (!response.ok) throw new Error(json.error || 'Save failed')
+      setMessage(`Squad saved for GW${json.gameweek}`)
+      await loadTeam()
+    } catch (err: any) {
+      setError(err.message || 'Save failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const logout = async () => {
+    await fetch('/api/player-auth/logout', { method: 'POST' })
+    router.push('/login')
+  }
+
+  if (!authChecked) {
+    return (
+      <main className="min-h-screen bg-[var(--fpl-p120)]">
+        <Header />
+        <p className="text-white/60 text-center py-16 text-sm">Checking login...</p>
+      </main>
+    )
+  }
+
+  return (
+    <main className="min-h-screen bg-[var(--fpl-p120)] pb-28 md:pb-10">
+      <Header />
+      <section className="relative px-3 sm:px-6 py-4 max-w-3xl mx-auto">
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">My Fantasy Team</h1>
+            <p className="text-white/45 text-sm mt-1">
+              {nickname ? `${nickname} · ` : ''}
+              {currentSeason?.name || 'Season'}
+              {data ? ` · GW${data.gameweek}` : ''}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={logout}
+            className="text-white/60 text-xs font-semibold hover:text-white shrink-0 mt-1"
+          >
+            Log out
+          </button>
+        </div>
+
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <div className="inline-flex rounded-full bg-[var(--fpl-purple)] border border-white/10 p-0.5">
+            <button
+              type="button"
+              onClick={() => setView('pitch')}
+              className={`px-4 py-1.5 rounded-full text-xs font-bold transition ${
+                view === 'pitch'
+                  ? 'bg-[var(--fpl-p110)] text-white'
+                  : 'text-white/55 hover:text-white'
+              }`}
+            >
+              Pitch
+            </button>
+            <button
+              type="button"
+              onClick={() => setView('list')}
+              className={`px-4 py-1.5 rounded-full text-xs font-bold transition ${
+                view === 'list'
+                  ? 'bg-[var(--fpl-p110)] text-white'
+                  : 'text-white/55 hover:text-white'
+              }`}
+            >
+              List
+            </button>
+          </div>
+          <p className="text-white/55 text-[11px] font-semibold">
+            {selected.length}/{data?.squad_size || 5}
+            {data?.free_initial_pick
+              ? ' · pick any 5'
+              : ` · ${transfersUsedNow}/${data?.max_transfers || 2} transfers`}
+          </p>
+        </div>
+
+        <div
+          className={`mb-3 rounded-xl px-3 py-2.5 flex items-center justify-between gap-2 ${
+            budgetRemaining < 0
+              ? 'bg-red-500/15 border border-red-500/30'
+              : 'bg-[var(--fpl-cyan)]/20 border border-[var(--fpl-cyan)]/30'
+          }`}
+        >
+          <span className="text-white text-sm font-semibold">
+            Bank £{budgetRemaining.toFixed(1)}m
+          </span>
+          <span className="text-white/70 text-xs">
+            £{budgetSpent.toFixed(1)}m / £{maxBudget}m
+          </span>
+        </div>
+
+        {loading ? (
+          <p className="text-white/60 text-center py-12 text-sm">Loading squad...</p>
+        ) : (
+          <>
+            {view === 'pitch' ? (
+              <div className="mb-4 overflow-hidden rounded-2xl border border-white/10 bg-[var(--fpl-purple)]">
+                <div className="px-3 py-2 border-b border-white/10 flex items-center justify-between">
+                  <h2 className="text-white font-bold text-sm">Your team</h2>
+                  <span className="text-white/45 text-[11px]">
+                    {data?.locked ? 'Locked' : 'Tap player for options'}
+                  </span>
+                </div>
+
+                <div className="relative w-full aspect-[344/389] min-h-[360px] sm:min-h-[420px]">
+                  <Image
+                    src="/pitch-graphic.svg"
+                    alt=""
+                    fill
+                    className="object-cover object-[center_12%] pointer-events-none select-none"
+                    priority
+                    unoptimized
+                  />
+
+                  <div className="absolute inset-0 z-10">
+                    <div className="absolute left-1/2 -translate-x-1/2 top-[8%]">
+                      <PitchCard
+                        player={top}
+                        emptyLabel="Slot 1"
+                        disabled={!!data?.locked && !!top}
+                        onClick={() => (top ? openPlayerSheet(top) : openAddSheet())}
+                      />
+                    </div>
+
+                    <div className="absolute inset-x-0 top-[28%] flex justify-between px-[8%] sm:px-[12%]">
+                      {mid.map((p, i) => (
+                        <PitchCard
+                          key={p?.id ?? `mid-${i}`}
+                          player={p}
+                          emptyLabel={`Slot ${i + 2}`}
+                          disabled={!!data?.locked && !!p}
+                          onClick={() => (p ? openPlayerSheet(p) : openAddSheet())}
+                        />
+                      ))}
+                    </div>
+
+                    <div className="absolute inset-x-0 top-[58%] flex justify-between px-[10%] sm:px-[14%]">
+                      {bottom.map((p, i) => (
+                        <PitchCard
+                          key={p?.id ?? `bot-${i}`}
+                          player={p}
+                          emptyLabel={`Slot ${i + 4}`}
+                          disabled={!!data?.locked && !!p}
+                          onClick={() => (p ? openPlayerSheet(p) : openAddSheet())}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-black/35 border-t border-white/10 px-3 py-3">
+                  <p className="text-center text-white/70 text-xs mb-2">
+                    {data?.free_initial_pick
+                      ? 'First pick — choose any 5 players'
+                      : `Transfers left: ${transfersLeft}`}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={openAddSheet}
+                    disabled={!!data?.locked || selected.length >= (data?.squad_size || 5)}
+                    className="w-full rounded-xl border border-white/15 text-white text-sm font-semibold py-2.5 hover:bg-white/5 disabled:opacity-50"
+                  >
+                    Add players
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="mb-4 overflow-hidden rounded-2xl border border-white/10 bg-[var(--fpl-purple)]">
+                <div className="px-3 py-2 border-b border-white/10 flex items-center justify-between">
+                  <h2 className="text-white font-bold text-sm">Selected squad</h2>
+                  <span className="text-white/45 text-[11px]">
+                    {selectedPlayers.length}/{data?.squad_size || 5}
+                  </span>
+                </div>
+
+                {selectedPlayers.length === 0 ? (
+                  <p className="text-white/50 text-sm text-center py-10 px-4">
+                    No players selected yet. Add from Pitch empty slots.
+                  </p>
+                ) : (
+                  <div>
+                    {selectedPlayers.map((p, index) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => openPlayerSheet(p)}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 border-b border-white/10 last:border-0 text-left hover:bg-white/5 transition"
+                      >
+                        <span className="w-5 text-white/40 text-xs font-bold tabular-nums">
+                          {index + 1}
+                        </span>
+                        <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-gradient-to-b from-[var(--fpl-cyan)] to-[var(--fpl-lilac)] shrink-0">
+                          <Image
+                            src={getPlayerImageUrl(p.image_url, true)}
+                            alt={p.last_name}
+                            fill
+                            className="object-contain object-bottom"
+                            unoptimized
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-white text-sm font-semibold truncate">
+                            {p.first_name} {p.last_name}
+                          </p>
+                          <p className="text-white/45 text-xs truncate">{p.team || 'Free agent'}</p>
+                        </div>
+                        <span className="text-white font-bold text-sm tabular-nums shrink-0">
+                          {formatPrice(p.price)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {!data?.locked && selected.length < (data?.squad_size || 5) && (
+                  <div className="p-3 border-t border-white/10">
+                    <button
+                      type="button"
+                      onClick={openAddSheet}
+                      className="w-full rounded-xl bg-[var(--fpl-green)] text-[var(--fpl-purple)] text-sm font-bold py-2.5"
+                    >
+                      Add players
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {message && (
+              <p className="text-[var(--fpl-green)] text-sm mb-3 bg-[var(--fpl-green)]/10 border border-[var(--fpl-green)]/20 rounded-xl px-3 py-2">
+                {message}
+              </p>
+            )}
+            {error && (
+              <p className="text-red-300 text-sm mb-3 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">
+                {error}
+              </p>
+            )}
+            {data?.locked && (
+              <p className="text-amber-300 text-xs mb-3">This gameweek is locked — squad cannot be changed.</p>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={save}
+                disabled={saving || !!data?.locked || selected.length !== (data?.squad_size || 5)}
+                className="flex-1 rounded-xl bg-[var(--fpl-green)] text-[var(--fpl-purple)] font-bold py-3 hover:opacity-90 transition disabled:opacity-50"
+              >
+                {saving ? 'Saving...' : 'Save My Team'}
+              </button>
+              <Link
+                href="/fantasy"
+                className="rounded-xl border border-white/15 text-white/80 px-4 py-3 text-sm font-semibold hover:bg-white/5"
+              >
+                Fantasy
+              </Link>
+            </div>
+          </>
+        )}
+      </section>
+
+      {/* Player actions sheet */}
+      <Sheet
+        open={playerSheetOpen}
+        onOpenChange={(open) => {
+          setPlayerSheetOpen(open)
+          if (!open) setActivePlayer(null)
+        }}
+      >
+        <SheetContent
+          side="bottom"
+          className="!bg-[var(--fpl-p120)] border-t border-white/15 rounded-t-3xl p-0 gap-0 [&>button]:hidden max-h-[85vh]"
+        >
+          {activePlayer && (
+            <div className="px-4 pt-4 pb-6">
+              <div className="flex justify-end mb-2">
+                <button
+                  type="button"
+                  onClick={() => setPlayerSheetOpen(false)}
+                  className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white"
+                  aria-label="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[var(--fpl-cyan)] via-[#7a5cff] to-[var(--fpl-lilac)] min-h-[120px] mb-4">
+                <div className="absolute left-0 bottom-0 w-[40%] h-full">
+                  <Image
+                    src={getPlayerImageUrl(activePlayer.image_url)}
+                    alt={`${activePlayer.first_name} ${activePlayer.last_name}`}
+                    fill
+                    className="object-contain object-bottom"
+                    unoptimized
+                  />
+                </div>
+                <div className="relative z-10 pl-[38%] pr-4 py-4">
+                  <p className="text-[var(--fpl-purple)]/75 text-xs font-semibold">Player</p>
+                  <p className="text-[var(--fpl-purple)] text-sm font-medium leading-tight">
+                    {activePlayer.first_name}
+                  </p>
+                  <h2 className="text-[var(--fpl-purple)] text-2xl font-black leading-tight">
+                    {activePlayer.last_name}
+                  </h2>
+                  {activePlayer.team && (
+                    <p className="text-[var(--fpl-purple)]/85 text-sm font-semibold mt-0.5">
+                      {activePlayer.team}
+                    </p>
+                  )}
+                  <p className="text-[var(--fpl-purple)] text-sm font-bold mt-1">
+                    Price: {formatPrice(activePlayer.price)}
+                  </p>
+                </div>
+              </div>
+
+              <SheetHeader className="sr-only">
+                <SheetTitle>
+                  {activePlayer.first_name} {activePlayer.last_name}
+                </SheetTitle>
+                <SheetDescription>Player actions</SheetDescription>
+              </SheetHeader>
+
+              {!data?.locked && (
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => removePlayer(activePlayer.id)}
+                    className="rounded-full bg-white text-[var(--fpl-purple)] font-bold text-sm py-3"
+                  >
+                    Remove
+                  </button>
+                  <button
+                    type="button"
+                    onClick={openReplaceSheet}
+                    className="rounded-full bg-white text-[var(--fpl-purple)] font-bold text-sm py-3"
+                  >
+                    Select Replacement
+                  </button>
+                </div>
+              )}
+
+              <Link
+                href={`/players/${activePlayer.id}`}
+                className="block w-full text-center rounded-full border border-white/20 text-white font-semibold text-sm py-3 hover:bg-white/5"
+              >
+                Full Profile
+              </Link>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Player selection / replacement sheet */}
+      <Sheet open={replaceSheetOpen} onOpenChange={setReplaceSheetOpen}>
+        <SheetContent
+          side="bottom"
+          className="!bg-[var(--fpl-p120)] border-t border-white/15 rounded-t-3xl p-0 gap-0 [&>button]:hidden h-[88vh] max-h-[88vh]"
+        >
+          <div className="flex flex-col h-full">
+            <div className="px-4 pt-4 pb-3 border-b border-white/10">
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div>
+                  <SheetTitle className="text-white text-xl font-bold">
+                    Player Selection
+                  </SheetTitle>
+                  <SheetDescription className="text-white/50 text-xs mt-1">
+                    {replacingId != null
+                      ? 'Choose a replacement for your squad'
+                      : 'Add a player to an empty slot'}
+                  </SheetDescription>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReplaceSheetOpen(false)}
+                  className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white shrink-0"
+                  aria-label="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by name"
+                className="w-full rounded-xl bg-[var(--fpl-purple)] border border-white/15 px-3 py-2.5 text-white placeholder:text-white/35 focus:outline-none focus:border-white/30"
+              />
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              <div className="px-4 py-2 flex items-center justify-between text-[11px] text-white/45 font-semibold uppercase tracking-wide border-b border-white/10 sticky top-0 bg-[var(--fpl-p120)] z-10">
+                <span>Players</span>
+                <span>Price</span>
+              </div>
+
+              {selectablePlayers.length === 0 ? (
+                <p className="text-white/50 text-sm text-center py-12">No players found</p>
+              ) : (
+                selectablePlayers.map((p) => {
+                  const outgoing =
+                    replacingId != null
+                      ? Number(playersById.get(replacingId)?.price) || 0
+                      : 0
+                  const projected =
+                    Math.round((budgetSpent - outgoing + (Number(p.price) || 0)) * 10) / 10
+                  const overBudget = projected > maxBudget + 0.05
+                  return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => applySelection(p.id)}
+                    disabled={overBudget}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 border-b border-white/10 text-left hover:bg-white/5 transition disabled:opacity-40"
+                  >
+                    <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-gradient-to-b from-[var(--fpl-cyan)] to-[var(--fpl-lilac)] shrink-0">
+                      <Image
+                        src={getPlayerImageUrl(p.image_url, true)}
+                        alt={p.last_name}
+                        fill
+                        className="object-contain object-bottom"
+                        unoptimized
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-white text-sm font-semibold truncate">
+                        {p.first_name} {p.last_name}
+                      </p>
+                      <p className="text-white/45 text-xs truncate">{p.team || 'Free agent'}</p>
+                    </div>
+                    <span className="text-white text-sm font-bold tabular-nums shrink-0 mr-2">
+                      {formatPrice(p.price)}
+                    </span>
+                    <span className="w-8 h-8 rounded-full bg-[var(--fpl-purple)] border border-white/15 text-white flex items-center justify-center text-lg font-light shrink-0">
+                      {overBudget ? '!' : '+'}
+                    </span>
+                  </button>
+                  )
+                })
+              )}
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+    </main>
+  )
+}

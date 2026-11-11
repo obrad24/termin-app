@@ -57,7 +57,7 @@ export default function TeamsSection() {
   if (loading) {
     return (
       <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto">
-        <div className="text-white text-center text-sm sm:text-base">Učitavanje timova...</div>
+        <div className="text-white text-center text-sm sm:text-base">Loading teams...</div>
       </section>
     )
   }
@@ -66,8 +66,8 @@ export default function TeamsSection() {
     return (
       <section className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto">
         <div className="text-white text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold mb-4">Timovi</h2>
-          <p className="text-blue-300/60 text-sm sm:text-base">Nema timova za prikaz</p>
+          <h2 className="text-2xl sm:text-3xl font-bold mb-4">Teams</h2>
+          <p className="text-blue-300/60 text-sm sm:text-base">No teams to show</p>
         </div>
       </section>
     )
@@ -77,8 +77,8 @@ export default function TeamsSection() {
     <section className="relative px-2 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-7xl mx-auto pt-4">
       <div className="space-y-6 sm:space-y-8">
         <div className="text-center">
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">Timovi</h2>
-          <p className="text-blue-300/60 text-sm sm:text-base">Svi registrovani timovi</p>
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">Teams</h2>
+          <p className="text-blue-300/60 text-sm sm:text-base">All registered teams</p>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6">
