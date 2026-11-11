@@ -1,8 +1,27 @@
 import type { Metadata } from 'next'
 import { Analytics } from '@vercel/analytics/next'
+import { Syne, Manrope, Bebas_Neue } from 'next/font/google'
 import './globals.css'
 import { Toaster } from '@/components/ui/toaster'
 import { SeasonProvider } from '@/components/season-provider'
+
+const display = Syne({
+  subsets: ['latin'],
+  variable: '--font-display',
+  weight: ['500', '600', '700', '800'],
+})
+
+const body = Manrope({
+  subsets: ['latin'],
+  variable: '--font-body',
+  weight: ['400', '500', '600', '700'],
+})
+
+const score = Bebas_Neue({
+  subsets: ['latin'],
+  variable: '--font-score',
+  weight: '400',
+})
 
 export const metadata: Metadata = {
   title: 'Termin',
@@ -33,8 +52,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className={`font-sans antialiased`} suppressHydrationWarning>
+    <html lang="en" className={`${display.variable} ${body.variable} ${score.variable}`}>
+      <body className="font-sans antialiased" suppressHydrationWarning>
         <SeasonProvider>
           {children}
           <Toaster />

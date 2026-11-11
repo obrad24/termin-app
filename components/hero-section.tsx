@@ -188,64 +188,49 @@ export default function HeroSection() {
             className="object-cover !h-[75vh] !top-10"
             priority
           />
-          <div className="absolute bottom-[17%] left-0 w-full h-[70%] bg-gradient-to-t from-[rgba(10,13,26,0.95)] via-[rgba(15,21,37,0.6)] to-transparent z-[20]"></div>
+          <div className="absolute bottom-[17%] left-0 w-full h-[70%] bg-gradient-to-t from-[rgba(18,14,9,0.95)] via-[rgba(31,22,12,0.55)] to-transparent z-[20]"></div>
         </div>
 
 
         {/* Content */}
         <div
-          className={`flex items-center justify-center gap-4 sm:gap-6 transition-all duration-300 ${isScrolled
-            ? 'fixed left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 z-0 opacity-30 blur-sm'
+          className={`flex items-center justify-center gap-3 sm:gap-5 transition-all duration-500 ${isScrolled
+            ? 'fixed left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 z-0 opacity-25 blur-sm scale-95'
             : 'fixed left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 z-50 opacity-100 blur-0'
             }`}
         >
-          <span className="text-[145px] sm:text-7xl md:text-[160px] lg:text-9xl font-bold text-white drop-shadow-lg">
-            {leftWins}
-          </span>
-          <span className="text-[100px] sm:text-5xl md:text-6xl text-white/80 font-light">-</span>
-          <span className="text-[145px] sm:text-7xl md:text-[160px] lg:text-9xl font-bold text-white drop-shadow-lg">
-            {rightWins}
-          </span>
+          <div className="score-glass px-6 sm:px-10 py-3 sm:py-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <span className="gold-score text-[110px] sm:text-7xl md:text-[132px] lg:text-[9rem] leading-none">
+                {leftWins}
+              </span>
+              <span className="gold-score text-[64px] sm:text-5xl md:text-6xl leading-none opacity-70">:</span>
+              <span className="gold-score text-[110px] sm:text-7xl md:text-[132px] lg:text-[9rem] leading-none" style={{ animationDelay: '80ms' }}>
+                {rightWins}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
-      <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-[rgba(10,13,26,0.95)] via-[rgba(15,21,37,0.6)] to-transparent"></div>
+      <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-[rgba(18,14,9,0.95)] via-[rgba(31,22,12,0.55)] to-transparent"></div>
       <Link href="/terminbet" className='absolute bottom-[12%] left-0 bg-[#280071] w-full h-8 flex items-center overflow-hidden hover:bg-[#320085] transition-colors cursor-pointer z-40'>
         <div className='terminbet-scroll flex items-center font-bold text-2xl'>
-          <div className='flex items-center justify-center px-2'>
-            <span className='text-white'>TERMIN</span><span className='text-[#f9c14c]'>BET</span>
-          </div>
-          <div className='flex items-center justify-center px-2'>
-            <span className='text-white'>TERMIN</span><span className='text-[#f9c14c]'>BET</span>
-          </div>
-          <div className='flex items-center justify-center px-2'>
-            <span className='text-white'>TERMIN</span><span className='text-[#f9c14c]'>BET</span>
-          </div>
-          <div className='flex items-center justify-center px-2'>
-            <span className='text-white'>TERMIN</span><span className='text-[#f9c14c]'>BET</span>
-          </div>
-          <div className='flex items-center justify-center px-2'>
-            <span className='text-white'>TERMIN</span><span className='text-[#f9c14c]'>BET</span>
-          </div>
-          <div className='flex items-center justify-center px-2'>
-            <span className='text-white'>TERMIN</span><span className='text-[#f9c14c]'>BET</span>
-          </div>
-          <div className='flex items-center justify-center px-2'>
-            <span className='text-white'>TERMIN</span><span className='text-[#f9c14c]'>BET</span>
-          </div>
-          <div className='flex items-center justify-center px-2'>
-            <span className='text-white'>TERMIN</span><span className='text-[#f9c14c]'>BET</span>
-          </div>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className='flex items-center justify-center px-2'>
+              <span className='text-white'>TERMIN</span><span className='text-[#f9c14c]'>BET</span>
+            </div>
+          ))}
         </div>
       </Link>
       <MatchAnnouncement />
-      <div className='rajko bottom-[14%] h-[50px] absolute left-0 w-full bg-[rgba(10,13,26,0.95)]'></div>
-      <div className='absolute bottom-0 left-0 w-full bg-[rgba(10,13,26,0.95)] flex'>
+      <div className='rajko bottom-[14%] h-[50px] absolute left-0 w-full bg-[rgba(18,14,9,0.92)]'></div>
+      <div className='absolute bottom-0 left-0 w-full liquid-glass border-t border-[var(--gold-400)]/35 flex'>
         {nextMatch && nextMatch.home_team && nextMatch.away_team ? (
-          <div className="w-full max-w-7xl mx-auto flex py-2 border-t border-amber-400 border-b border-amber-400 h-auto">
+          <div className="w-full max-w-7xl mx-auto flex py-2 border-y border-[var(--gold-400)]/40 h-auto">
             {/* Leva kolona */}
             <div className="flex-1 flex flex-col px-2">
               {/* Datum gore */}
-              <div className="text-amber-400 text-xs sm:text-sm font-medium flex gap-1 h-5 items-center">
+              <div className="text-[var(--gold-300)] text-xs sm:text-sm font-medium flex gap-1 h-5 items-center">
                 {nextMatch.match_date && (
                   <>
                     <span>{format(new Date(nextMatch.match_date), 'd.M')}.</span>
@@ -255,10 +240,10 @@ export default function HeroSection() {
               </div>
               {/* Timovi dole */}
               <div className='flex flex-col gap-0.5 h-11 justify-center'>
-                <div className="text-white text-sm sm:text-base font-medium truncate">
+                <div className="text-[var(--champagne)] text-sm sm:text-base font-medium truncate">
                   {nextMatch.home_team}
                 </div>
-                <div className="text-white text-sm sm:text-base font-medium truncate">
+                <div className="text-[var(--champagne)] text-sm sm:text-base font-medium truncate">
                   {nextMatch.away_team}
                 </div>
               </div>
@@ -268,19 +253,19 @@ export default function HeroSection() {
             <div className="flex flex-col px-2 items-end">
               {/* 1 X 2 gore */}
               <div className="flex items-center gap-3 sm:gap-4 w-full justify-around h-5">
-                <span className="text-gray-400 text-sm sm:text-base font-medium">1</span>
-                <span className="text-gray-400 text-sm sm:text-base font-medium">X</span>
-                <span className="text-gray-400 text-sm sm:text-base font-medium">2</span>
+                <span className="text-[var(--gold-400)]/70 text-sm sm:text-base font-medium">1</span>
+                <span className="text-[var(--gold-400)]/70 text-sm sm:text-base font-medium">X</span>
+                <span className="text-[var(--gold-400)]/70 text-sm sm:text-base font-medium">2</span>
               </div>
               {/* Kvote dole */}
               <div className="flex items-center gap-3 sm:gap-4 h-11">
-                <span className="text-white text-sm sm:text-base font-medium">
+                <span className="text-[var(--champagne)] text-sm sm:text-base font-medium">
                   {nextMatch.odds_1 ? nextMatch.odds_1.toFixed(2) : '-'}
                 </span>
-                <span className="text-white text-sm sm:text-base font-medium">
+                <span className="text-[var(--champagne)] text-sm sm:text-base font-medium">
                   {nextMatch.odds_x ? nextMatch.odds_x.toFixed(2) : '-'}
                 </span>
-                <span className="text-white text-sm sm:text-base font-medium">
+                <span className="text-[var(--champagne)] text-sm sm:text-base font-medium">
                   {nextMatch.odds_2 ? nextMatch.odds_2.toFixed(2) : '-'}
                 </span>
               </div>
@@ -288,7 +273,7 @@ export default function HeroSection() {
           </div>
         ) : (
           <div className="w-full max-w-7xl mx-auto h-[82px] flex items-center justify-center">
-            <p className="text-white/60 text-sm sm:text-base">Kvote će uskoro biti dostupne</p>
+            <p className="text-[var(--champagne)]/60 text-sm sm:text-base">Kvote će uskoro biti dostupne</p>
           </div>
         )}
       </div>

@@ -135,7 +135,7 @@ export default function PlayersPage() {
                 placeholder="Pretraži igrače..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-12 py-4 rounded-2xl bg-slate-800/50 border border-white/30 text-white placeholder-white/40 focus:outline-none focus:border-white/60 focus:ring-2 focus:ring-[#a80710]/20 transition-all"
+                className="w-full pl-12 pr-12 py-4 rounded-2xl liquid-glass text-[var(--champagne)] placeholder-[var(--champagne)]/40 focus:outline-none focus:border-[var(--gold-300)]/70 focus:ring-2 focus:ring-[var(--gold-500)]/20 transition-all"
               />
               {searchTerm && (
                 <button

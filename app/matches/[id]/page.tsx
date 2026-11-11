@@ -284,7 +284,7 @@ export default function MatchDetailPage() {
           </Link>
 
           {/* Match header */}
-          <div className="bg-slate-800/50 border border-white/30 rounded-2xl sm:rounded-3xl p-2 sm:p-6 md:p-8 lg:p-12 backdrop-blur-md shadow-2xl">
+          <div className="liquid-glass rounded-2xl sm:rounded-3xl p-2 sm:p-6 md:p-8 lg:p-12">
             {/* Mobile Layout */}
             <div className="md:hidden space-y-4">
               {/* Teams - Mobile */}
@@ -418,7 +418,7 @@ export default function MatchDetailPage() {
 
           {/* Goals */}
           {(homeGoals.length > 0 || awayGoals.length > 0) && (
-            <div className="bg-slate-800/50 border border-white/30 rounded-2xl sm:rounded-3xl p-2 sm:p-8 backdrop-blur-md shadow-2xl">
+            <div className="liquid-glass rounded-2xl sm:rounded-3xl p-2 sm:p-8">
               <h2 className="text-xl sm:text-2xl font-bold text-white text-center mb-4">Strijelci</h2>
               <div className="flex gap-4 sm:gap-6">
                 {/* Home goals */}
@@ -662,7 +662,7 @@ export default function MatchDetailPage() {
 
           {/* Players */}
           {(homePlayers.length > 0 || awayPlayers.length > 0) && (
-            <div className="bg-slate-800/50 border border-white/30 rounded-2xl sm:rounded-3xl p-2 sm:p-8 backdrop-blur-md shadow-2xl">
+            <div className="liquid-glass rounded-2xl sm:rounded-3xl p-2 sm:p-8">
               <h2 className="text-xl sm:text-2xl font-bold text-white mb-6">Igrači</h2>
               <div className="flex gap-2 sm:gap-8">
                 {/* Home players */}
@@ -811,7 +811,7 @@ export default function MatchDetailPage() {
           )}
 
           {/* Comments Section */}
-          <div className="bg-slate-800/50 border border-white/30 rounded-2xl sm:rounded-3xl p-4 sm:p-8 backdrop-blur-md shadow-2xl">
+          <div className="liquid-glass rounded-2xl sm:rounded-3xl p-4 sm:p-8">
             <div className="flex items-center gap-2 mb-6">
               <MessageSquare className="w-5 h-5 text-white" />
               <h2 className="text-xl sm:text-2xl font-bold text-white">Komentari</h2>

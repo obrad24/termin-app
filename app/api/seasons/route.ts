@@ -12,8 +12,8 @@ export async function GET() {
     if (!isSupabaseConfigured()) {
       return NextResponse.json(
         {
-          error: 'Supabase not configured',
-          message: 'Please set SUPABASE_URL and SUPABASE_ANON_KEY environment variables',
+          error: 'Database not configured',
+          message: 'Please set DATABASE_URL environment variable (Neon)',
         },
         { status: 503 },
       )
@@ -48,8 +48,8 @@ export async function POST(request: Request) {
     if (!isSupabaseConfigured()) {
       return NextResponse.json(
         {
-          error: 'Supabase not configured',
-          message: 'Please set SUPABASE_URL and SUPABASE_ANON_KEY environment variables',
+          error: 'Database not configured',
+          message: 'Please set DATABASE_URL environment variable (Neon)',
         },
         { status: 503 },
       )
