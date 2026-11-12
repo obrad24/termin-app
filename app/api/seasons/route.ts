@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { requireAuth } from '@/lib/auth'
+import { jsonCached } from '@/lib/http-cache'
 
-// Uvek svježi podaci
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+export const revalidate = 60
 
 // GET - sve sezone
 export async function GET() {
@@ -32,7 +31,7 @@ export async function GET() {
       )
     }
 
-    return NextResponse.json(data || [])
+    return jsonCached(data || [], { seconds: 60 })
   } catch (error: any) {
     console.error('Error:', error)
     return NextResponse.json(

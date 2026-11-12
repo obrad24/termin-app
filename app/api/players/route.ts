@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { requireAuth } from '@/lib/auth'
+import { jsonCached } from '@/lib/http-cache'
 
-// Onemogući cache-ovanje - osvježavaj podatke svaki put
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+export const revalidate = 20
 
 const parseSeasonId = (request: Request): number | null => {
   const { searchParams } = new URL(request.url)
@@ -92,12 +91,7 @@ export async function GET(request: Request) {
       }
     })
 
-    const response = NextResponse.json(playersWithSeasonTeam)
-    // Dodaj headere da se osigura da se ne cache-uje
-    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
-    response.headers.set('Pragma', 'no-cache')
-    response.headers.set('Expires', '0')
-    return response
+    return jsonCached(playersWithSeasonTeam, { seconds: 20 })
   } catch (error: any) {
     console.error('Error:', error)
     return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 })

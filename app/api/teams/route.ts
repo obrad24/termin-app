@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { requireAuth } from '@/lib/auth'
+import { jsonCached } from '@/lib/http-cache'
+
+export const revalidate = 30
 
 const parseSeasonId = (request: Request): number | null => {
   const { searchParams } = new URL(request.url)
@@ -74,7 +77,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Failed to fetch teams', details: error.message }, { status: 500 })
     }
 
-    return NextResponse.json(data || [])
+    return jsonCached(data || [], { seconds: 30 })
   } catch (error: any) {
     console.error('Error:', error)
     

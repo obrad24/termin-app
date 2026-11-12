@@ -174,8 +174,12 @@ export default function HeroSection() {
 
   const fetchHeadToHead = async () => {
     try {
-      const seasonTeamsQuery = currentSeason ? `?season_id=${currentSeason.id}` : ''
-      const teamsResponse = await fetch(`/api/teams${seasonTeamsQuery}`)
+      const seasonQuery = currentSeason ? `?season_id=${currentSeason.id}` : ''
+      const [teamsResponse, resultsResponse, playersResponse] = await Promise.all([
+        fetch(`/api/teams${seasonQuery}`),
+        fetch(`/api/results${seasonQuery}`),
+        fetch(`/api/players${seasonQuery}`),
+      ])
       if (!teamsResponse.ok) return
 
       const teams: Team[] = await teamsResponse.json()
@@ -189,12 +193,6 @@ export default function HeroSection() {
 
       setTeam1(firstTeam)
       setTeam2(secondTeam)
-
-      const seasonQuery = currentSeason ? `?season_id=${currentSeason.id}` : ''
-      const [resultsResponse, playersResponse] = await Promise.all([
-        fetch(`/api/results${seasonQuery}`),
-        fetch(`/api/players${seasonQuery}`),
-      ])
 
       if (resultsResponse.ok) {
         const results: Result[] = await resultsResponse.json()

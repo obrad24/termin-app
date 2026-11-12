@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { requireAuth } from '@/lib/auth'
 import { calculateFantasyForResult } from '@/lib/fantasy/calculate'
+import { jsonCached } from '@/lib/http-cache'
+
+export const revalidate = 20
 
 // GET - Prikaz svih rezultata (opciono filtrirano po sezoni)
 export async function GET(request: Request) {
@@ -39,7 +42,7 @@ export async function GET(request: Request) {
       )
     }
 
-    return NextResponse.json(data || [])
+    return jsonCached(data || [], { seconds: 20 })
   } catch (error: any) {
     console.error('Error:', error)
     

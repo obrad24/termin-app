@@ -1,10 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  poweredByHeader: false,
+  compress: true,
   typescript: {
     ignoreBuildErrors: true,
   },
   images: {
     unoptimized: true,
+    minimumCacheTTL: 60 * 60 * 24,
     remotePatterns: [
       {
         protocol: 'https',

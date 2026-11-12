@@ -170,18 +170,6 @@ export default function Header() {
             </SheetContent>
           </Sheet>
 
-          <Link href="/" className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden shrink-0 border border-white/15">
-            <Image
-              src="/termin-logo.png"
-              alt="Termin"
-              fill
-              className="object-cover"
-              sizes="40px"
-              priority
-              unoptimized
-            />
-          </Link>
-
           {seasons.length > 0 ? (
             <Select
               value={currentSeason ? String(currentSeason.id) : undefined}

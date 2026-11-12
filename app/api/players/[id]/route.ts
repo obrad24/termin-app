@@ -3,8 +3,7 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { requireAuth } from '@/lib/auth'
 
 // Onemogući cache-ovanje - osvježavaj podatke svaki put
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+export const revalidate = 15
 
 const parseSeasonId = (request: Request): number | null => {
   const { searchParams } = new URL(request.url)
@@ -60,97 +59,80 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       }
     }
 
-    // Prvo dobijamo sve postojeće rezultate (mečeve)
-    const { data: existingResults, error: resultsError } = await supabase
-      .from('results')
-      .select('id')
+    const toNum = (value: unknown) => {
+      const n = typeof value === 'string' ? parseInt(value, 10) : Number(value)
+      return Number.isFinite(n) ? n : null
+    }
+
+    // Parallel: existing matches + player goals + appearances
+    const [
+      { data: existingResults, error: resultsError },
+      { data: goalsData },
+      { data: matchPlayers },
+    ] = await Promise.all([
+      supabase.from('results').select('id'),
+      supabase
+        .from('match_goals')
+        .select('id, goal_minute, team_type, result_id')
+        .eq('player_id', id)
+        .not('result_id', 'is', null),
+      supabase
+        .from('match_players')
+        .select('result_id, team_type')
+        .eq('player_id', id)
+        .not('result_id', 'is', null),
+    ])
 
     if (resultsError) {
       console.error('Error fetching results:', resultsError)
     }
 
-    // Kreiraj Set sa ID-ovima postojećih rezultata za brže provere
     const existingResultIds = new Set<number>()
-    if (existingResults) {
-      existingResults.forEach((result: any) => {
-        const resultId = typeof result.id === 'string' 
-          ? parseInt(result.id, 10) 
-          : result.id
-        if (resultId != null && !isNaN(resultId) && typeof resultId === 'number') {
-          existingResultIds.add(resultId)
-        }
-      })
-    }
+    ;(existingResults || []).forEach((result: any) => {
+      const resultId = toNum(result.id)
+      if (resultId != null) existingResultIds.add(resultId)
+    })
 
-    // Brojanje golova - samo za postojeće mečeve
-    const { data: goals, error: goalsError } = await supabase
-      .from('match_goals')
-      .select('id, result_id')
-      .eq('player_id', id)
-      .not('result_id', 'is', null)
+    const validGoalsData =
+      goalsData?.filter((goal) => {
+        const resultId = toNum(goal.result_id)
+        return resultId != null && existingResultIds.has(resultId)
+      }) || []
 
-    // Filtriraj golove samo za postojeće mečeve
-    const validGoals = goals?.filter(goal => {
-      const resultId = typeof goal.result_id === 'string' 
-        ? parseInt(goal.result_id, 10) 
-        : goal.result_id
-      return resultId != null && !isNaN(resultId) && existingResultIds.has(resultId)
-    }) || []
+    const goalsCount = validGoalsData.length
 
-    const goalsCount = validGoals.length
+    const validMatchPlayers =
+      matchPlayers?.filter((mp) => {
+        const resultId = toNum(mp.result_id)
+        return resultId != null && existingResultIds.has(resultId)
+      }) || []
 
-    // Brojanje odigranih mečeva - samo za postojeće mečeve
-    const { data: matchPlayers, error: matchPlayersError } = await supabase
-      .from('match_players')
-      .select('result_id, team_type')
-      .eq('player_id', id)
-      .not('result_id', 'is', null)
-
-    // Filtriraj match_players samo za postojeće mečeve
-    const validMatchPlayers = matchPlayers?.filter(mp => {
-      const resultId = typeof mp.result_id === 'string' 
-        ? parseInt(mp.result_id, 10) 
-        : mp.result_id
-      return resultId != null && !isNaN(resultId) && existingResultIds.has(resultId)
-    }) || []
-
-    const uniqueMatches = new Set(validMatchPlayers.map(mp => mp.result_id))
+    const uniqueMatches = new Set(validMatchPlayers.map((mp) => mp.result_id))
     const matchesPlayed = uniqueMatches.size
 
-    // Dobijanje detalja o golovima - samo za postojeće mečeve
-    const { data: goalsData, error: goalsDataError } = await supabase
-      .from('match_goals')
-      .select('id, goal_minute, team_type, result_id')
-      .eq('player_id', id)
-      .not('result_id', 'is', null)
-
-    // Dobijanje informacija o utakmicama - samo za postojeće mečeve
     let goalsWithMatches: any[] = []
-    if (goalsData && goalsData.length > 0) {
-      // Filtriraj golove samo za postojeće mečeve
-      const validGoalsData = goalsData.filter(goal => {
-        const resultId = typeof goal.result_id === 'string' 
-          ? parseInt(goal.result_id, 10) 
-          : goal.result_id
-        return resultId != null && !isNaN(resultId) && existingResultIds.has(resultId)
-      })
+    if (validGoalsData.length > 0) {
+      const resultIds = [...new Set(validGoalsData.map((g) => g.result_id))]
+      const { data: resultsData } = await supabase
+        .from('results')
+        .select('id, home_team, away_team, home_score, away_score, date')
+        .in('id', resultIds)
+        .order('date', { ascending: false })
 
-      if (validGoalsData.length > 0) {
-        const resultIds = [...new Set(validGoalsData.map(g => g.result_id))]
-        const { data: resultsData } = await supabase
-          .from('results')
-          .select('id, home_team, away_team, home_score, away_score, date')
-          .in('id', resultIds)
-          .order('date', { ascending: false })
+      const resultById = new Map(
+        (resultsData || []).map((r: any) => [toNum(r.id) ?? r.id, r]),
+      )
 
-        goalsWithMatches = validGoalsData.map(goal => ({
+      goalsWithMatches = validGoalsData
+        .map((goal) => ({
           ...goal,
-          results: resultsData?.find(r => r.id === goal.result_id) || null,
-        })).filter(goal => goal.results !== null).sort((a, b) => {
+          results: resultById.get(toNum(goal.result_id) ?? goal.result_id) || null,
+        }))
+        .filter((goal) => goal.results !== null)
+        .sort((a, b) => {
           if (!a.results || !b.results) return 0
           return new Date(b.results.date).getTime() - new Date(a.results.date).getTime()
         })
-      }
     }
 
     // Form / fixtures: GW broj = redni broj meča u sezoni (po datumu)
@@ -350,20 +332,19 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       }
     }
 
-    const response = NextResponse.json({
-      ...player,
-      goals: goalsCount,
-      matches_played: matchesPlayed,
-      goals_details: goalsWithMatches,
-      match_form: matchForm,
-      next_fixture: nextFixture,
-      mvp_matches: mvpMatches,
-    })
-    // Dodaj headere da se osigura da se ne cache-uje
-    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
-    response.headers.set('Pragma', 'no-cache')
-    response.headers.set('Expires', '0')
-    return response
+    const { jsonCached } = await import('@/lib/http-cache')
+    return jsonCached(
+      {
+        ...player,
+        goals: goalsCount,
+        matches_played: matchesPlayed,
+        goals_details: goalsWithMatches,
+        match_form: matchForm,
+        next_fixture: nextFixture,
+        mvp_matches: mvpMatches,
+      },
+      { seconds: 15 },
+    )
   } catch (error: any) {
     console.error('Error:', error)
     return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 })

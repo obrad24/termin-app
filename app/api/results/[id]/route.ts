@@ -51,61 +51,52 @@ export async function GET(
       )
     }
 
-    // Dobijanje strijelaca
-    const { data: goals, error: goalsError } = await supabase
-      .from('match_goals')
-      .select('*')
-      .eq('result_id', id)
+    const [{ data: goals, error: goalsError }, { data: matchPlayers, error: playersError }] =
+      await Promise.all([
+        supabase.from('match_goals').select('*').eq('result_id', id),
+        supabase.from('match_players').select('*').eq('result_id', id),
+      ])
 
     if (goalsError) {
       console.error('Error fetching goals:', goalsError)
     }
-
-    // Dobijanje igrača koji su igrali
-    const { data: matchPlayers, error: playersError } = await supabase
-      .from('match_players')
-      .select('*')
-      .eq('result_id', id)
-
     if (playersError) {
       console.error('Error fetching match players:', playersError)
     }
 
-    // Dobijanje informacija o igračima za strijelce
-    let goalsWithPlayers = []
-    if (goals && goals.length > 0) {
-      const playerIds = [...new Set(goals.map(g => g.player_id))]
-      const { data: playersData } = await supabase
-        .from('players')
-        .select('*')
-        .in('id', playerIds)
+    const goalPlayerIds = [...new Set((goals || []).map((g) => g.player_id).filter(Boolean))]
+    const lineupPlayerIds = [
+      ...new Set((matchPlayers || []).map((mp) => mp.player_id).filter(Boolean)),
+    ]
+    const allPlayerIds = [...new Set([...goalPlayerIds, ...lineupPlayerIds])]
 
-      goalsWithPlayers = goals.map(goal => ({
-        ...goal,
-        players: playersData?.find(p => p.id === goal.player_id) || null
-      }))
+    let playersById = new Map<any, any>()
+    if (allPlayerIds.length > 0) {
+      const { data: playersData } = await supabase.from('players').select('*').in('id', allPlayerIds)
+      playersById = new Map((playersData || []).map((p: any) => [p.id, p]))
+      // also index by string id for neon bigint quirks
+      ;(playersData || []).forEach((p: any) => playersById.set(String(p.id), p))
     }
 
-    // Dobijanje informacija o igračima koji su igrali
-    let matchPlayersWithPlayers = []
-    if (matchPlayers && matchPlayers.length > 0) {
-      const playerIds = [...new Set(matchPlayers.map(mp => mp.player_id))]
-      const { data: playersData } = await supabase
-        .from('players')
-        .select('*')
-        .in('id', playerIds)
+    const goalsWithPlayers = (goals || []).map((goal) => ({
+      ...goal,
+      players: playersById.get(goal.player_id) || playersById.get(String(goal.player_id)) || null,
+    }))
 
-      matchPlayersWithPlayers = matchPlayers.map(mp => ({
-        ...mp,
-        players: playersData?.find(p => p.id === mp.player_id) || null
-      }))
-    }
+    const matchPlayersWithPlayers = (matchPlayers || []).map((mp) => ({
+      ...mp,
+      players: playersById.get(mp.player_id) || playersById.get(String(mp.player_id)) || null,
+    }))
 
-    return NextResponse.json({
-      ...result,
-      goals: goalsWithPlayers,
-      players: matchPlayersWithPlayers,
-    })
+    const { jsonCached } = await import('@/lib/http-cache')
+    return jsonCached(
+      {
+        ...result,
+        goals: goalsWithPlayers,
+        players: matchPlayersWithPlayers,
+      },
+      { seconds: 15 },
+    )
   } catch (error: any) {
     console.error('Error:', error)
     return NextResponse.json(

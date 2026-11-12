@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import {
-  ensureAccountsForAllPlayers,
   setPlayerSession,
   verifyPassword,
 } from '@/lib/player-auth'
@@ -20,13 +19,6 @@ export async function POST(request: Request) {
 
     if (!nickname || !password) {
       return NextResponse.json({ error: 'Nickname and password required' }, { status: 400 })
-    }
-
-    // Ensure all player accounts exist (idempotent seed)
-    try {
-      await ensureAccountsForAllPlayers()
-    } catch (e) {
-      console.warn('ensure accounts on login:', e)
     }
 
     const { data: account, error } = await supabase

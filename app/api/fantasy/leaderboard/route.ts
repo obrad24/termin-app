@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+export const revalidate = 15
 
 type SortKey = 'total' | 'last_gw' | 'avg' | 'goals'
 
@@ -139,13 +138,15 @@ export async function GET(request: Request) {
       return `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`)
     })
 
-    const response = NextResponse.json({
-      leaderboard,
-      last_gameweek: lastGw,
-      sort,
-    })
-    response.headers.set('Cache-Control', 'no-store')
-    return response
+    const { jsonCached } = await import('@/lib/http-cache')
+    return jsonCached(
+      {
+        leaderboard,
+        last_gameweek: lastGw,
+        sort,
+      },
+      { seconds: 15 },
+    )
   } catch (error: any) {
     console.error('Fantasy leaderboard error:', error)
     return NextResponse.json({ error: error.message || 'Internal error' }, { status: 500 })

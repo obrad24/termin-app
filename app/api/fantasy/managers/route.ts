@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { parsePlayerIds } from '@/lib/player-auth'
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+export const revalidate = 20
 
 function toId(value: unknown): number {
   const n = typeof value === 'string' ? parseInt(value, 10) : Number(value)
@@ -157,16 +156,24 @@ export async function GET(request: Request) {
       )
       const filtered = fallback.filter((m) => withSquad.has(m.account_id))
 
-      return NextResponse.json({
-        leaderboard: filtered,
-        last_gameweek: lastGw || null,
-      })
+      const { jsonCached } = await import('@/lib/http-cache')
+      return jsonCached(
+        {
+          leaderboard: filtered,
+          last_gameweek: lastGw || null,
+        },
+        { seconds: 20 },
+      )
     }
 
-    return NextResponse.json({
-      leaderboard,
-      last_gameweek: lastGw || null,
-    })
+    const { jsonCached } = await import('@/lib/http-cache')
+    return jsonCached(
+      {
+        leaderboard,
+        last_gameweek: lastGw || null,
+      },
+      { seconds: 20 },
+    )
   } catch (error: any) {
     console.error('Fantasy managers leaderboard error:', error)
     return NextResponse.json({ error: error.message || 'Internal error' }, { status: 500 })

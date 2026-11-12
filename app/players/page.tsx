@@ -25,25 +25,12 @@ export default function PlayersPage() {
 
   useEffect(() => {
     fetchPlayers()
-  }, [currentSeason])
-
-  useEffect(() => {
-    const handleFocus = () => {
-      fetchPlayers()
-    }
-    window.addEventListener('focus', handleFocus)
-    return () => window.removeEventListener('focus', handleFocus)
-  }, [])
+  }, [currentSeason?.id])
 
   const fetchPlayers = async () => {
     try {
       const seasonQuery = currentSeason ? `?season_id=${currentSeason.id}` : ''
-      const response = await fetch(`/api/players/stats${seasonQuery}`, {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache',
-        },
-      })
+      const response = await fetch(`/api/players/stats${seasonQuery}`)
       const contentType = response.headers.get('content-type')
 
       if (response.ok) {

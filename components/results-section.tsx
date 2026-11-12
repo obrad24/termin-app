@@ -23,42 +23,35 @@ export default function ResultsSection() {
   const { currentSeason } = useSeason()
 
   useEffect(() => {
-    fetchTeams()
-  }, [])
-
-  useEffect(() => {
-    fetchResults()
-  }, [currentSeason])
-
-  const fetchTeams = async () => {
-    try {
-      const response = await fetch('/api/teams')
-      if (response.ok) {
-        const data = await response.json()
-        setTeams(data || [])
+    let cancelled = false
+    const load = async () => {
+      try {
+        setLoading(true)
+        const seasonQuery = currentSeason ? `?season_id=${currentSeason.id}` : ''
+        const [teamsRes, resultsRes] = await Promise.all([
+          fetch('/api/teams'),
+          fetch(`/api/results${seasonQuery}`),
+        ])
+        if (cancelled) return
+        if (teamsRes.ok) setTeams((await teamsRes.json()) || [])
+        if (resultsRes.ok) {
+          const data = await resultsRes.json()
+          setResults(Array.isArray(data) ? data : [])
+        }
+      } catch (error) {
+        console.error('Error fetching results section:', error)
+      } finally {
+        if (!cancelled) setLoading(false)
       }
-    } catch (error) {
-      console.error('Error fetching teams:', error)
     }
-  }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [currentSeason?.id])
 
   const getTeam = (teamName: string) => teams.find((t) => t.name === teamName) || null
   const getTeamLogo = (teamName: string) => getTeam(teamName)?.logo_url || '/placeholder-logo.svg'
-
-  const fetchResults = async () => {
-    try {
-      const seasonQuery = currentSeason ? `?season_id=${currentSeason.id}` : ''
-      const response = await fetch(`/api/results${seasonQuery}`)
-      if (response.ok) {
-        const data = await response.json()
-        setResults(Array.isArray(data) ? data : [])
-      }
-    } catch (error) {
-      console.error('Error fetching results:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const sortedResults = [...results].sort((a, b) => {
     const dateA = new Date(a.date || a.created_at || 0).getTime()

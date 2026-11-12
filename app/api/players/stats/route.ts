@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
+import { jsonCached } from '@/lib/http-cache'
 
-// Onemogući cache-ovanje - osvježavaj podatke svaki put
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+export const revalidate = 20
 
 // GET - Statistike za sve igrače (golovi i odigrani mečevi), opcionalno po sezoni
 export async function GET(request: Request) {
@@ -235,12 +234,7 @@ export async function GET(request: Request) {
       }
     })
 
-    const response = NextResponse.json(playersWithStats)
-    // Dodaj headere da se osigura da se ne cache-uje
-    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
-    response.headers.set('Pragma', 'no-cache')
-    response.headers.set('Expires', '0')
-    return response
+    return jsonCached(playersWithStats, { seconds: 20 })
   } catch (error: any) {
     console.error('Error:', error)
     return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 })

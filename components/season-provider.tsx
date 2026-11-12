@@ -20,7 +20,7 @@ export function SeasonProvider({ children }: { children: React.ReactNode }) {
 
   const refreshSeasons = async () => {
     try {
-      const response = await fetch('/api/seasons', { cache: 'no-store' })
+      const response = await fetch('/api/seasons')
       if (!response.ok) return
       const data: Season[] = await response.json()
       setSeasons(data || [])

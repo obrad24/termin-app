@@ -138,10 +138,43 @@ export default function MatchDetailPage() {
   const [statsSortDir, setStatsSortDir] = useState<'asc' | 'desc'>('desc')
 
   useEffect(() => {
-    if (params.id) {
-      fetchMatch()
-      fetchTeams()
-      fetchComments()
+    if (!params.id) return
+    let cancelled = false
+    const load = async () => {
+      try {
+        setLoading(true)
+        const [matchRes, teamsRes, commentsRes] = await Promise.all([
+          fetch(`/api/results/${params.id}`),
+          fetch('/api/teams'),
+          fetch(`/api/matches/${params.id}/comments?limit=8&offset=0`),
+        ])
+        if (cancelled) return
+
+        if (teamsRes.ok) setTeams((await teamsRes.json()) || [])
+
+        if (matchRes.ok) {
+          const data = await matchRes.json()
+          setMatch(data)
+        } else if (matchRes.status === 404) {
+          router.push('/matches')
+          return
+        }
+
+        if (commentsRes.ok) {
+          const data = await commentsRes.json()
+          setComments(data.comments || [])
+          setHasMoreComments(!!data.hasMore)
+          setCommentsOffset((data.comments || []).length)
+        }
+      } catch (error) {
+        console.error('Error loading match page:', error)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
     }
   }, [params.id])
 

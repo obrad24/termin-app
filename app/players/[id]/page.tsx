@@ -103,12 +103,32 @@ export default function PlayerProfilePage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchTeams()
-  }, [])
-
-  useEffect(() => {
-    if (params.id) {
-      fetchPlayerData()
+    if (!params.id) return
+    let cancelled = false
+    const load = async () => {
+      try {
+        setLoading(true)
+        const seasonQuery = currentSeason?.id ? `?season_id=${currentSeason.id}` : ''
+        const [teamsRes, playerRes] = await Promise.all([
+          fetch('/api/teams'),
+          fetch(`/api/players/${params.id}${seasonQuery}`),
+        ])
+        if (cancelled) return
+        if (teamsRes.ok) setTeams((await teamsRes.json()) || [])
+        if (playerRes.ok) {
+          setPlayer(await playerRes.json())
+        } else if (playerRes.status === 404) {
+          router.push('/players')
+        }
+      } catch (error) {
+        console.error('Error fetching player data:', error)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
     }
   }, [params.id, currentSeason?.id])
 
@@ -120,18 +140,6 @@ export default function PlayerProfilePage() {
     }
     buildFormMatches(player, teams)
   }, [player, teams])
-
-  const fetchTeams = async () => {
-    try {
-      const response = await fetch('/api/teams')
-      if (response.ok) {
-        const data = await response.json()
-        setTeams(data || [])
-      }
-    } catch (error) {
-      console.error('Error fetching teams:', error)
-    }
-  }
 
   const getTeam = (teamName: string, teamList: Team[] = teams) =>
     teamList.find((t) => t.name === teamName) || null
@@ -209,24 +217,6 @@ export default function PlayerProfilePage() {
     if (forScore > againstScore) return 'bg-[var(--fpl-green)] text-[var(--fpl-purple)]'
     if (forScore < againstScore) return 'bg-[var(--fpl-pink)] text-white'
     return 'bg-orange-500 text-white'
-  }
-
-  const fetchPlayerData = async () => {
-    try {
-      setLoading(true)
-      const seasonQuery = currentSeason?.id ? `?season_id=${currentSeason.id}` : ''
-      const response = await fetch(`/api/players/${params.id}${seasonQuery}`)
-      if (response.ok) {
-        const data = await response.json()
-        setPlayer(data)
-      } else if (response.status === 404) {
-        router.push('/players')
-      }
-    } catch (error) {
-      console.error('Error fetching player data:', error)
-    } finally {
-      setLoading(false)
-    }
   }
 
   const overallRating = useMemo(() => {
