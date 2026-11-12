@@ -860,7 +860,7 @@ export default function MyTeamPage() {
             {data?.locked && (
               <p className="text-amber-300 text-xs mb-3">
                 {data.schedule_locked
-                  ? 'Locked Thu 16:00 → Fri 12:00 — squad cannot be changed.'
+                  ? 'Locked Thu 17:00 → Fri 12:00 — squad cannot be changed.'
                   : 'This gameweek is locked — squad cannot be changed.'}
               </p>
             )}

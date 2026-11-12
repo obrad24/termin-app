@@ -228,7 +228,7 @@ export async function PUT(request: Request) {
       return NextResponse.json(
         {
           error: lock.schedule_locked
-            ? 'Transfers locked from Thursday 16:00 until Friday 12:00'
+            ? 'Transfers locked from Thursday 17:00 until Friday 12:00'
             : `GW${gameweek} is locked`,
           locked: true,
           schedule_locked: lock.schedule_locked,

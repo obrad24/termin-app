@@ -1,12 +1,12 @@
 /** Weekly fantasy transfer window (Europe/Belgrade).
- * Open: Friday 12:00 → Thursday 16:00
- * Locked: Thursday 16:00 → Friday 12:00
+ * Open: Friday 12:00 → Thursday 17:00
+ * Locked: Thursday 17:00 → Friday 12:00
  * Max changes during open window: MAX_TRANSFERS_PER_GW (2)
  */
 
 export const TRANSFER_TZ = 'Europe/Belgrade'
 export const LOCK_WEEKDAY = 4 // Thursday (Sun=0)
-export const LOCK_HOUR = 16
+export const LOCK_HOUR = 17
 export const UNLOCK_WEEKDAY = 5 // Friday
 export const UNLOCK_HOUR = 12
 
@@ -138,7 +138,7 @@ export type TransferWindowStatus = {
   reason: 'schedule' | null
   timezone: string
   lock_weekday: 'Thursday'
-  lock_time: '16:00'
+  lock_time: '17:00'
   unlock_weekday: 'Friday'
   unlock_time: '12:00'
   /** When transfers next lock (deadline) */
@@ -169,13 +169,13 @@ export function getTransferWindowStatus(now: Date = new Date()): TransferWindowS
     reason: locked ? 'schedule' : null,
     timezone: TRANSFER_TZ,
     lock_weekday: 'Thursday',
-    lock_time: '16:00',
+    lock_time: '17:00',
     unlock_weekday: 'Friday',
     unlock_time: '12:00',
     next_deadline_at: nextDeadline.toISOString(),
     next_unlock_at: nextUnlock.toISOString(),
     message: locked
-      ? 'Transfers locked from Thursday 16:00 until Friday 12:00'
-      : 'Transfers open until Thursday 16:00 (max 2 changes)',
+      ? 'Transfers locked from Thursday 17:00 until Friday 12:00'
+      : 'Transfers open until Thursday 17:00 (max 2 changes)',
   }
 }
