@@ -4,6 +4,7 @@ import ResultsSection from "@/components/results-section"
 import HeroSection from "@/components/hero-section"
 import TeamsSection from "@/components/teams-section"
 import TopFantasySection from "@/components/top-fantasy-section"
+import FantasyManagersTable from "@/components/fantasy-managers-table"
 
 export default function Home() {
   return (
@@ -13,6 +14,7 @@ export default function Home() {
       {/* <LatestResult /> */}
       <ResultsSection />
       <TopFantasySection />
+      <FantasyManagersTable />
     </main>
   )
 }

@@ -52,9 +52,24 @@ function normalizePlayer(p: any): PlayerOpt {
   }
 }
 
+type TransferWindow = {
+  locked: boolean
+  timezone: string
+  lock_weekday: string
+  lock_time: string
+  unlock_weekday: string
+  unlock_time: string
+  next_deadline_at: string
+  next_unlock_at: string
+  message: string
+}
+
 type MyTeamData = {
   gameweek: number
   locked: boolean
+  schedule_locked?: boolean
+  admin_locked?: boolean
+  transfer_window?: TransferWindow
   squad_size: number
   max_transfers: number
   max_budget?: number
@@ -65,6 +80,22 @@ type MyTeamData = {
   player_ids: number[]
   previous_player_ids?: number[]
   available_players: PlayerOpt[]
+}
+
+function formatDeadline(iso: string, timeZone = 'Europe/Belgrade') {
+  try {
+    return new Intl.DateTimeFormat('sr-Latn', {
+      timeZone,
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(new Date(iso))
+  } catch {
+    return iso
+  }
 }
 
 function PitchCard({
@@ -84,9 +115,9 @@ function PitchCard({
         type="button"
         onClick={onClick}
         disabled={disabled}
-        className="relative flex flex-col items-center w-[96px] group disabled:opacity-60"
+        className="relative flex flex-col items-center w-[80px] sm:w-[88px] group disabled:opacity-60"
       >
-        <div className="relative z-0 w-[84px] h-[100px] rounded-lg border-2 border-dashed border-white/35 bg-black/20 flex items-center justify-center">
+        <div className="relative z-0 w-[68px] h-[80px] sm:w-[76px] sm:h-[90px] rounded-lg border-2 border-dashed border-white/35 bg-black/20 flex items-center justify-center">
           <span className="text-white/70 text-2xl font-light leading-none">+</span>
         </div>
         <div className="relative z-10 w-full -mt-1 overflow-hidden rounded-[4px] bg-white/90 shadow-sm leading-none">
@@ -106,9 +137,9 @@ function PitchCard({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="relative flex flex-col items-center w-[96px] group disabled:opacity-70"
+      className="relative flex flex-col items-center w-[80px] sm:w-[88px] group disabled:opacity-70"
     >
-      <div className="relative z-0 w-[84px] h-[100px]">
+      <div className="relative z-0 w-[68px] h-[80px] sm:w-[76px] sm:h-[90px]">
         <Image
           src={getPlayerImageUrl(player.image_url, true)}
           alt={`${player.first_name} ${player.last_name}`}
@@ -151,6 +182,14 @@ export default function MyTeamPage() {
   const [playerSheetOpen, setPlayerSheetOpen] = useState(false)
   const [replaceSheetOpen, setReplaceSheetOpen] = useState(false)
   const [replacingId, setReplacingId] = useState<number | null>(null)
+
+  const [passwordSheetOpen, setPasswordSheetOpen] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordSaving, setPasswordSaving] = useState(false)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [passwordMessage, setPasswordMessage] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/player-auth/me')
@@ -383,6 +422,43 @@ export default function MyTeamPage() {
     router.push('/login')
   }
 
+  const openPasswordSheet = () => {
+    setCurrentPassword('')
+    setNewPassword('')
+    setConfirmPassword('')
+    setPasswordError(null)
+    setPasswordMessage(null)
+    setPasswordSheetOpen(true)
+  }
+
+  const changePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setPasswordSaving(true)
+    setPasswordError(null)
+    setPasswordMessage(null)
+    try {
+      const response = await fetch('/api/player-auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          current_password: currentPassword,
+          new_password: newPassword,
+          confirm_password: confirmPassword,
+        }),
+      })
+      const json = await response.json()
+      if (!response.ok) throw new Error(json.error || 'Failed to change password')
+      setPasswordMessage('Password updated')
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch (err: any) {
+      setPasswordError(err.message || 'Failed to change password')
+    } finally {
+      setPasswordSaving(false)
+    }
+  }
+
   if (!authChecked) {
     return (
       <main className="min-h-screen bg-[var(--fpl-p120)]">
@@ -405,13 +481,22 @@ export default function MyTeamPage() {
               {data ? ` · GW${data.gameweek}` : ''}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={logout}
-            className="text-white/60 text-xs font-semibold hover:text-white shrink-0 mt-1"
-          >
-            Log out
-          </button>
+          <div className="flex flex-col items-end gap-1.5 shrink-0 mt-1">
+            <button
+              type="button"
+              onClick={openPasswordSheet}
+              className="text-white/60 text-xs font-semibold hover:text-white"
+            >
+              Change password
+            </button>
+            <button
+              type="button"
+              onClick={logout}
+              className="text-white/60 text-xs font-semibold hover:text-white"
+            >
+              Log out
+            </button>
+          </div>
         </div>
 
         <div className="mb-3 flex items-center justify-between gap-2">
@@ -462,6 +547,35 @@ export default function MyTeamPage() {
           </span>
         </div>
 
+        {data?.transfer_window && (
+          <div
+            className={`mb-3 rounded-xl px-3 py-2.5 border ${
+              data.locked
+                ? 'bg-amber-500/10 border-amber-400/30'
+                : 'bg-white/5 border-white/10'
+            }`}
+          >
+            <p
+              className={`text-sm font-semibold ${
+                data.locked ? 'text-amber-200' : 'text-white'
+              }`}
+            >
+              {data.locked ? 'Transfers locked' : 'Transfer window open'}
+            </p>
+            <p className="text-white/55 text-xs mt-0.5">
+              {data.locked
+                ? `Opens ${formatDeadline(
+                    data.transfer_window.next_unlock_at,
+                    data.transfer_window.timezone,
+                  )} · max ${data.max_transfers} changes/GW`
+                : `Deadline ${formatDeadline(
+                    data.transfer_window.next_deadline_at,
+                    data.transfer_window.timezone,
+                  )} · max ${data.max_transfers} changes`}
+            </p>
+          </div>
+        )}
+
         {loading ? (
           <p className="text-white/60 text-center py-12 text-sm">Loading squad...</p>
         ) : (
@@ -485,8 +599,8 @@ export default function MyTeamPage() {
                     unoptimized
                   />
 
-                  <div className="absolute inset-0 z-10">
-                    <div className="absolute left-1/2 -translate-x-1/2 top-[8%]">
+                  <div className="absolute inset-0 z-10 flex flex-col justify-between py-4 sm:py-5 px-2">
+                    <div className="relative z-[3] flex justify-center">
                       <PitchCard
                         player={top}
                         emptyLabel="Slot 1"
@@ -495,7 +609,7 @@ export default function MyTeamPage() {
                       />
                     </div>
 
-                    <div className="absolute inset-x-0 top-[28%] flex justify-between px-[8%] sm:px-[12%]">
+                    <div className="relative z-[2] flex justify-center gap-12 sm:gap-16">
                       {mid.map((p, i) => (
                         <PitchCard
                           key={p?.id ?? `mid-${i}`}
@@ -507,7 +621,7 @@ export default function MyTeamPage() {
                       ))}
                     </div>
 
-                    <div className="absolute inset-x-0 top-[58%] flex justify-between px-[10%] sm:px-[14%]">
+                    <div className="relative z-[1] flex justify-center gap-12 sm:gap-16 pb-1">
                       {bottom.map((p, i) => (
                         <PitchCard
                           key={p?.id ?? `bot-${i}`}
@@ -610,7 +724,11 @@ export default function MyTeamPage() {
               </p>
             )}
             {data?.locked && (
-              <p className="text-amber-300 text-xs mb-3">This gameweek is locked — squad cannot be changed.</p>
+              <p className="text-amber-300 text-xs mb-3">
+                {data.schedule_locked
+                  ? 'Locked Thu 15:00 → Fri 12:00 — squad cannot be changed.'
+                  : 'This gameweek is locked — squad cannot be changed.'}
+              </p>
             )}
 
             <div className="flex gap-2">
@@ -721,6 +839,91 @@ export default function MyTeamPage() {
               </Link>
             </div>
           )}
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={passwordSheetOpen} onOpenChange={setPasswordSheetOpen}>
+        <SheetContent
+          side="bottom"
+          className="!bg-[var(--fpl-p120)] border-t border-white/15 rounded-t-3xl p-0 gap-0 [&>button]:hidden"
+        >
+          <div className="px-4 pt-4 pb-5">
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div>
+                <SheetTitle className="text-white text-xl font-bold">
+                  Change password
+                </SheetTitle>
+                <SheetDescription className="text-white/50 text-xs mt-1">
+                  Enter your current password, then choose a new one.
+                </SheetDescription>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPasswordSheetOpen(false)}
+                className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white shrink-0"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={changePassword} className="space-y-3">
+              <div>
+                <label className="block text-white/60 text-xs mb-1.5">Current password</label>
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="w-full rounded-xl bg-[var(--fpl-purple)] border border-white/15 px-3 py-2.5 text-white placeholder:text-white/30 focus:outline-none focus:border-white/30"
+                  autoComplete="current-password"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-white/60 text-xs mb-1.5">New password</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full rounded-xl bg-[var(--fpl-purple)] border border-white/15 px-3 py-2.5 text-white placeholder:text-white/30 focus:outline-none focus:border-white/30"
+                  autoComplete="new-password"
+                  minLength={4}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-white/60 text-xs mb-1.5">Confirm new password</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full rounded-xl bg-[var(--fpl-purple)] border border-white/15 px-3 py-2.5 text-white placeholder:text-white/30 focus:outline-none focus:border-white/30"
+                  autoComplete="new-password"
+                  minLength={4}
+                  required
+                />
+              </div>
+
+              {passwordError && (
+                <p className="text-red-300 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">
+                  {passwordError}
+                </p>
+              )}
+              {passwordMessage && (
+                <p className="text-[var(--fpl-green)] text-sm bg-[var(--fpl-green)]/10 border border-[var(--fpl-green)]/20 rounded-xl px-3 py-2">
+                  {passwordMessage}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={passwordSaving}
+                className="w-full rounded-xl bg-[var(--fpl-green)] text-[var(--fpl-purple)] font-bold py-3 hover:opacity-90 transition disabled:opacity-60"
+              >
+                {passwordSaving ? 'Saving...' : 'Update password'}
+              </button>
+            </form>
+          </div>
         </SheetContent>
       </Sheet>
 

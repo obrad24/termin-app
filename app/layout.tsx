@@ -4,7 +4,6 @@ import { Sofia_Sans, Oswald } from 'next/font/google'
 import './globals.css'
 import { Toaster } from '@/components/ui/toaster'
 import { SeasonProvider } from '@/components/season-provider'
-import FantasyFloatButton from '@/components/fantasy-float-button'
 
 /* Closest public stand-ins for PremierSans / BudBold */
 const display = Sofia_Sans({
@@ -54,7 +53,6 @@ export default function RootLayout({
       <body className="font-sans antialiased" suppressHydrationWarning>
         <SeasonProvider>
           {children}
-          <FantasyFloatButton />
           <Toaster />
           <Analytics />
         </SeasonProvider>

@@ -104,7 +104,7 @@ export default function FantasyPage() {
           </div>
         ) : (
           <>
-            <FantasyPitch players={rows} />
+            <FantasyPitch players={rows} sortBy={sort} />
 
             <div className="rounded-2xl bg-[var(--fpl-purple)] border border-white/10 overflow-hidden">
               <div className="grid grid-cols-[24px_1fr_44px_44px_48px_48px] gap-x-1.5 px-2 sm:px-3 py-2 text-[10px] sm:text-[11px] text-white/45 font-semibold uppercase tracking-wide border-b border-white/10">
@@ -159,16 +159,32 @@ export default function FantasyPage() {
                       </div>
                     </div>
 
-                    <span className="text-center text-sm text-white/70 tabular-nums">
+                    <span
+                      className={`text-center text-sm tabular-nums ${
+                        sort === 'last_gw' ? 'text-white font-bold' : 'text-white/70'
+                      }`}
+                    >
                       {player.last_gw_points}
                     </span>
-                    <span className="text-center text-sm text-white/70 tabular-nums">
+                    <span
+                      className={`text-center text-sm tabular-nums ${
+                        sort === 'goals' ? 'text-white font-bold' : 'text-white/70'
+                      }`}
+                    >
                       {player.goals}
                     </span>
-                    <span className="text-center text-sm text-white/70 tabular-nums">
+                    <span
+                      className={`text-center text-sm tabular-nums ${
+                        sort === 'avg' ? 'text-white font-bold' : 'text-white/70'
+                      }`}
+                    >
                       {player.avg_points.toFixed(1)}
                     </span>
-                    <span className="text-center text-sm text-white font-bold tabular-nums">
+                    <span
+                      className={`text-center text-sm tabular-nums ${
+                        sort === 'total' ? 'text-white font-bold' : 'text-white/70'
+                      }`}
+                    >
                       {player.total_points}
                     </span>
                   </Link>

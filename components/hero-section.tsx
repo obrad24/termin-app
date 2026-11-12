@@ -335,21 +335,20 @@ export default function HeroSection() {
           </div>
         </div>
 
-        {SHOW_TERMINBET && (
-          <Link
-            href="/terminbet"
-            className="absolute bottom-0 left-0 bg-[var(--fpl-p120)] w-full h-8 flex items-center overflow-hidden hover:bg-[var(--fpl-p110)] transition-colors cursor-pointer z-40"
-          >
-            <div className="terminbet-scroll flex items-center font-bold text-2xl">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="flex items-center justify-center px-2">
-                  <span className="text-white">TERMIN</span>
-                  <span className="text-[var(--fpl-green)]">BET</span>
-                </div>
-              ))}
-            </div>
-          </Link>
-        )}
+        <Link
+          href="/my-team"
+          className="absolute bottom-0 left-0 bg-[var(--fpl-p120)] w-full h-8 flex items-center overflow-hidden hover:bg-[var(--fpl-p110)] transition-colors cursor-pointer z-40"
+        >
+          <div className="terminbet-scroll flex items-center font-bold text-2xl whitespace-nowrap">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="flex items-center justify-center px-3 gap-1">
+                <span className="text-white">MY</span>
+                <span className="text-[var(--fpl-green)]">FANTASY</span>
+                <span className="text-white">TEAM</span>
+              </div>
+            ))}
+          </div>
+        </Link>
       </div>
 
       {SHOW_TERMINBET && (

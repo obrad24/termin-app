@@ -9,11 +9,24 @@ import {
   parsePlayerIds,
   requirePlayerAuth,
 } from '@/lib/player-auth'
+import { isGameweekLocked } from '@/lib/fantasy/calculate'
+import { getTransferWindowStatus } from '@/lib/fantasy/transfer-window'
 
 function squadCost(players: Array<{ price?: number | null }>) {
   return players.reduce((sum, p) => sum + (Number(p.price) || 0), 0)
 }
-import { isGameweekLocked } from '@/lib/fantasy/calculate'
+
+async function resolveSquadLock(seasonId: number, gameweek: number) {
+  const window = getTransferWindowStatus()
+  const adminLocked = await isGameweekLocked(seasonId, gameweek)
+  const locked = adminLocked || window.locked
+  return {
+    locked,
+    admin_locked: adminLocked,
+    schedule_locked: window.locked,
+    transfer_window: window,
+  }
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -66,7 +79,7 @@ export async function GET(request: Request) {
     }
 
     const gameweek = await getNextGameweek(seasonId)
-    const locked = await isGameweekLocked(seasonId, gameweek)
+    const lock = await resolveSquadLock(seasonId, gameweek)
 
     const { data: currentRow } = await supabase
       .from('fantasy_user_squads')
@@ -107,7 +120,10 @@ export async function GET(request: Request) {
     return NextResponse.json({
       season_id: seasonId,
       gameweek,
-      locked,
+      locked: lock.locked,
+      admin_locked: lock.admin_locked,
+      schedule_locked: lock.schedule_locked,
+      transfer_window: lock.transfer_window,
       squad_size: SQUAD_SIZE,
       max_transfers: MAX_TRANSFERS_PER_GW,
       max_budget: MAX_BUDGET,
@@ -156,8 +172,19 @@ export async function PUT(request: Request) {
     }
 
     const gameweek = await getNextGameweek(seasonId)
-    if (await isGameweekLocked(seasonId, gameweek)) {
-      return NextResponse.json({ error: `GW${gameweek} is locked` }, { status: 403 })
+    const lock = await resolveSquadLock(seasonId, gameweek)
+    if (lock.locked) {
+      return NextResponse.json(
+        {
+          error: lock.schedule_locked
+            ? 'Transfers locked from Thursday 15:00 until Friday 12:00'
+            : `GW${gameweek} is locked`,
+          locked: true,
+          schedule_locked: lock.schedule_locked,
+          transfer_window: lock.transfer_window,
+        },
+        { status: 403 },
+      )
     }
 
     // Validate players exist + load prices

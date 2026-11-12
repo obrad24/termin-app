@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Menu, X, Users, Coins, Newspaper } from 'lucide-react'
 import { SHOW_TERMINBET } from '@/lib/features'
 import Link from 'next/link'
+import Image from 'next/image'
 import {
   Sheet,
   SheetContent,
@@ -36,6 +37,7 @@ function SeasonWordmark({ name }: { name: string }) {
 export default function Header() {
   const [open, setOpen] = useState(false)
   const [playerLoggedIn, setPlayerLoggedIn] = useState(false)
+  const [fantasyPinned, setFantasyPinned] = useState(false)
   const { seasons, currentSeason, setCurrentSeasonId } = useSeason()
   const seasonLabel = currentSeason?.name || 'TERMIN'
 
@@ -44,6 +46,13 @@ export default function Header() {
       .then((r) => r.json())
       .then((data) => setPlayerLoggedIn(!!data.authenticated))
       .catch(() => setPlayerLoggedIn(false))
+  }, [])
+
+  useEffect(() => {
+    const onScroll = () => setFantasyPinned(window.scrollY > 12)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
   const fantasyNav = playerLoggedIn
@@ -55,6 +64,8 @@ export default function Header() {
         { href: '/fantasy', label: 'Fantasy' },
         { href: '/login', label: 'Login' },
       ]
+
+  const fantasyHref = playerLoggedIn ? '/my-team' : '/login'
 
   return (
     <header className="relative z-50 bg-[var(--fpl-p120)] border-b border-white/10">
@@ -207,11 +218,34 @@ export default function Header() {
             Admin
           </Link>
         </nav>
+
+        {/* Spacer keeps nav layout; button pins on scroll */}
+        <div className="relative ml-auto md:ml-3 w-10 h-10 sm:w-11 sm:h-11 shrink-0">
+          <Link
+            href={fantasyHref}
+            aria-label="My Fantasy Team"
+            className={`rounded-full overflow-hidden border-2 border-white/80 shadow-md shadow-black/30 hover:scale-105 active:scale-95 transition-transform ${
+              fantasyPinned
+                ? 'fixed top-2 right-3 sm:top-2.5 sm:right-4 z-[120] w-10 h-10 sm:w-11 sm:h-11'
+                : 'absolute inset-0'
+            }`}
+          >
+            <Image
+              src="/pl-lion-button.png"
+              alt=""
+              fill
+              className="object-cover"
+              sizes="44px"
+              priority
+              unoptimized
+            />
+          </Link>
+        </div>
       </div>
 
-      <div className={`md:hidden fixed bottom-0 left-0 right-0 z-[100] px-2 pb-2 transition-opacity ${open ? 'pointer-events-none opacity-0' : 'opacity-100'}`}>
-        <div className="liquid-glass-strong rounded-2xl">
-          <div className="flex items-center justify-around px-2 py-2">
+      <div className={`md:hidden fixed bottom-0 left-0 right-0 z-[100] px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] transition-opacity ${open ? 'pointer-events-none opacity-0' : 'opacity-100'}`}>
+        <div className="liquid-glass-strong rounded-[1.35rem] overflow-hidden">
+          <div className="flex items-center justify-around px-1.5 py-1.5">
             <Link href="/" className="flex flex-col items-center gap-1 px-2 py-2 rounded-xl text-white/80 hover:text-[var(--fpl-cyan)] hover:bg-white/5 transition-all active:scale-95 flex-1">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
