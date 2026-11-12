@@ -1,8 +1,10 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { getPlayerImageUrl } from '@/lib/image-utils'
+import { useSeason } from '@/components/season-provider'
 
 export type PitchPlayer = {
   id: number
@@ -20,11 +22,15 @@ function PlayerCard({
   player,
   compact = false,
   value,
+  teamLogo,
 }: {
   player: PitchPlayer
   compact?: boolean
   value: string | number
+  teamLogo?: string | null
 }) {
+  const logoSize = compact ? 14 : 16
+
   return (
     <Link
       href={`/fantasy/players/${player.id}`}
@@ -46,6 +52,25 @@ function PlayerCard({
             target.src = '/no-image-player.png'
           }}
         />
+        {teamLogo && (
+          <span
+            className="absolute top-0 right-0 z-20 overflow-hidden flex items-center justify-center drop-shadow-md"
+            style={{ width: logoSize, height: logoSize }}
+          >
+            <Image
+              src={teamLogo}
+              alt={player.team || 'Team'}
+              width={logoSize}
+              height={logoSize}
+              className="object-contain"
+              unoptimized
+              onError={(e) => {
+                const target = e.target as HTMLImageElement
+                target.src = '/placeholder-logo.svg'
+              }}
+            />
+          </span>
+        )}
       </div>
       <div className="relative z-10 w-full -mt-1 overflow-hidden rounded-[4px] bg-white shadow-sm leading-none">
         <p className={`text-[var(--fpl-purple)] font-bold truncate text-center px-1 ${compact ? 'text-[10px] py-[2px]' : 'text-[10px] sm:text-[11px] py-[3px]'}`}>
@@ -66,6 +91,34 @@ export default function FantasyPitch({
   players: PitchPlayer[]
   sortBy?: 'total' | 'last_gw' | 'avg' | 'goals'
 }) {
+  const { currentSeason } = useSeason()
+  const [teamLogos, setTeamLogos] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      try {
+        const seasonQuery = currentSeason?.id != null ? `?season_id=${currentSeason.id}` : ''
+        const res = await fetch(`/api/teams${seasonQuery}`)
+        if (!res.ok) return
+        const teams = await res.json()
+        if (cancelled || !Array.isArray(teams)) return
+        const map: Record<string, string> = {}
+        for (const t of teams) {
+          if (t?.name && t?.logo_url) map[t.name] = t.logo_url
+        }
+        setTeamLogos(map)
+      } catch {
+        // ignore
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [currentSeason?.id])
+
+  const logoFor = (team: string | null) => (team ? teamLogos[team] || null : null)
   const ranked = [...players].sort((a, b) => {
     if (sortBy === 'last_gw') {
       if (b.last_gw_points !== a.last_gw_points) return b.last_gw_points - a.last_gw_points
@@ -130,18 +183,30 @@ export default function FantasyPitch({
 
         <div className="absolute inset-0 z-10 flex flex-col justify-between py-4 sm:py-5 px-2">
           <div className="relative z-[3] flex justify-center">
-            {top && <PlayerCard player={top} value={cardValue(top)} />}
+            {top && (
+              <PlayerCard player={top} value={cardValue(top)} teamLogo={logoFor(top.team)} />
+            )}
           </div>
 
           <div className="relative z-[2] flex justify-center gap-12 sm:gap-16">
             {mid.map((p) => (
-              <PlayerCard key={p.id} player={p} value={cardValue(p)} />
+              <PlayerCard
+                key={p.id}
+                player={p}
+                value={cardValue(p)}
+                teamLogo={logoFor(p.team)}
+              />
             ))}
           </div>
 
           <div className="relative z-[1] flex justify-center gap-12 sm:gap-16 pb-1">
             {bottom.map((p) => (
-              <PlayerCard key={p.id} player={p} value={cardValue(p)} />
+              <PlayerCard
+                key={p.id}
+                player={p}
+                value={cardValue(p)}
+                teamLogo={logoFor(p.team)}
+              />
             ))}
           </div>
         </div>
@@ -157,7 +222,12 @@ export default function FantasyPitch({
                 <span className="text-white/55 text-[10px] font-semibold">
                   {i + 1}. SUB
                 </span>
-                <PlayerCard player={p} compact value={cardValue(p)} />
+                <PlayerCard
+                  player={p}
+                  compact
+                  value={cardValue(p)}
+                  teamLogo={logoFor(p.team)}
+                />
               </div>
             ))}
           </div>

@@ -109,12 +109,14 @@ function PitchCard({
   emptyLabel,
   disabled,
   isCaptain,
+  teamLogo,
 }: {
   player?: PlayerOpt | null
   onClick?: () => void
   emptyLabel?: string
   disabled?: boolean
   isCaptain?: boolean
+  teamLogo?: string | null
 }) {
   if (!player) {
     return (
@@ -159,8 +161,24 @@ function PitchCard({
           }}
         />
         {isCaptain && (
-          <span className="absolute top-0 right-0 z-20 w-5 h-5 rounded-full bg-[var(--fpl-green)] text-[var(--fpl-purple)] text-[10px] font-black flex items-center justify-center shadow">
+          <span className="absolute top-0 left-0 z-20 w-5 h-5 rounded-full bg-[var(--fpl-green)] text-[var(--fpl-purple)] text-[10px] font-black flex items-center justify-center shadow">
             C
+          </span>
+        )}
+        {teamLogo && (
+          <span className="absolute top-0 right-0 z-20 w-4 h-4 sm:w-[18px] sm:h-[18px] overflow-hidden flex items-center justify-center drop-shadow-md">
+            <Image
+              src={teamLogo}
+              alt={player.team || 'Team'}
+              width={18}
+              height={18}
+              className="object-contain"
+              unoptimized
+              onError={(e) => {
+                const target = e.target as HTMLImageElement
+                target.src = '/placeholder-logo.svg'
+              }}
+            />
           </span>
         )}
       </div>
@@ -209,6 +227,7 @@ export default function MyTeamPage() {
   const [passwordSaving, setPasswordSaving] = useState(false)
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null)
+  const [teamLogos, setTeamLogos] = useState<Record<string, string>>({})
 
   useEffect(() => {
     fetch('/api/player-auth/me')
@@ -228,6 +247,33 @@ export default function MyTeamPage() {
     if (!authChecked || !currentSeason?.id) return
     loadTeam()
   }, [authChecked, currentSeason?.id])
+
+  useEffect(() => {
+    let cancelled = false
+    const loadTeams = async () => {
+      try {
+        const seasonQuery = currentSeason?.id != null ? `?season_id=${currentSeason.id}` : ''
+        const res = await fetch(`/api/teams${seasonQuery}`)
+        if (!res.ok) return
+        const teams = await res.json()
+        if (cancelled || !Array.isArray(teams)) return
+        const map: Record<string, string> = {}
+        for (const t of teams) {
+          if (t?.name && t?.logo_url) map[t.name] = t.logo_url
+        }
+        setTeamLogos(map)
+      } catch {
+        // ignore
+      }
+    }
+    loadTeams()
+    return () => {
+      cancelled = true
+    }
+  }, [currentSeason?.id])
+
+  const logoFor = (team: string | null | undefined) =>
+    team ? teamLogos[team] || null : null
 
   const loadTeam = async () => {
     try {
@@ -726,6 +772,7 @@ export default function MyTeamPage() {
                         player={top}
                         emptyLabel="Slot 1"
                         isCaptain={!!top && top.id === captainId}
+                        teamLogo={logoFor(top?.team)}
                         disabled={!!data?.locked && !!top}
                         onClick={() => (top ? openPlayerSheet(top) : openAddSheet())}
                       />
@@ -738,6 +785,7 @@ export default function MyTeamPage() {
                           player={p}
                           emptyLabel={`Slot ${i + 2}`}
                           isCaptain={!!p && p.id === captainId}
+                          teamLogo={logoFor(p?.team)}
                           disabled={!!data?.locked && !!p}
                           onClick={() => (p ? openPlayerSheet(p) : openAddSheet())}
                         />
@@ -751,6 +799,7 @@ export default function MyTeamPage() {
                           player={p}
                           emptyLabel={`Slot ${i + 4}`}
                           isCaptain={!!p && p.id === captainId}
+                          teamLogo={logoFor(p?.team)}
                           disabled={!!data?.locked && !!p}
                           onClick={() => (p ? openPlayerSheet(p) : openAddSheet())}
                         />
