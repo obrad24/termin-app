@@ -7,6 +7,7 @@ import { sameId, toId } from '@/lib/ids'
 interface SeasonContextValue {
   seasons: Season[]
   currentSeason: Season | null
+  loading: boolean
   setCurrentSeasonId: (id: number | string | null) => void
   refreshSeasons: () => Promise<void>
 }
@@ -28,8 +29,10 @@ function normalizeSeason(raw: any): Season | null {
 export function SeasonProvider({ children }: { children: React.ReactNode }) {
   const [seasons, setSeasons] = useState<Season[]>([])
   const [currentSeason, setCurrentSeason] = useState<Season | null>(null)
+  const [loading, setLoading] = useState(true)
 
   const refreshSeasons = async () => {
+    setLoading(true)
     try {
       const response = await fetch('/api/seasons')
       if (!response.ok) return
@@ -63,6 +66,8 @@ export function SeasonProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('Error fetching seasons:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -100,6 +105,7 @@ export function SeasonProvider({ children }: { children: React.ReactNode }) {
       value={{
         seasons,
         currentSeason,
+        loading,
         setCurrentSeasonId,
         refreshSeasons,
       }}

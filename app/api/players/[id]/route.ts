@@ -231,24 +231,45 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
           })
           .filter((m: any) => m && m.gameweek != null)
 
-        // Attach fantasy points per match
+        // Attach fantasy points + breakdown per match
         if (matchForm.length > 0) {
           const formResultIds = matchForm.map((m: any) => m.matchId)
           const { data: fantasyRows } = await supabase
             .from('fantasy_match_points')
-            .select('result_id, total_points')
+            .select(
+              'result_id, total_points, appearance_points, result_points, goals_points, team_scored_bonus, team_conceded_penalty, voting_points, manual_adjustment, manual_adjustment_reason, breakdown',
+            )
             .eq('player_id', id)
             .in('result_id', formResultIds)
 
-          const fantasyByResult = new Map<number, number>()
+          const fantasyByResult = new Map<number, any>()
           ;(fantasyRows || []).forEach((row: any) => {
             const rid = toNum(row.result_id)
-            if (rid != null) fantasyByResult.set(rid, Number(row.total_points) || 0)
+            if (rid == null) return
+            let breakdown = row.breakdown
+            if (typeof breakdown === 'string') {
+              try {
+                breakdown = JSON.parse(breakdown)
+              } catch {
+                breakdown = []
+              }
+            }
+            if (!Array.isArray(breakdown)) breakdown = []
+            fantasyByResult.set(rid, {
+              fantasyPoints: Number(row.total_points) || 0,
+              breakdown,
+              manual_adjustment_reason: row.manual_adjustment_reason || null,
+            })
           })
-          matchForm = matchForm.map((m: any) => ({
-            ...m,
-            fantasyPoints: fantasyByResult.get(m.matchId) || 0,
-          }))
+          matchForm = matchForm.map((m: any) => {
+            const fantasy = fantasyByResult.get(m.matchId)
+            return {
+              ...m,
+              fantasyPoints: fantasy?.fantasyPoints || 0,
+              breakdown: fantasy?.breakdown || [],
+              manual_adjustment_reason: fantasy?.manual_adjustment_reason || null,
+            }
+          })
         }
       }
     }

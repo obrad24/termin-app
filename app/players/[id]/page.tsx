@@ -5,12 +5,18 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Header from '@/components/header'
 import Image from 'next/image'
-import { ArrowLeft, Ambulance, X } from 'lucide-react'
+import { ArrowLeft, Ambulance, ChevronDown, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { Team } from '@/lib/supabase'
 import { getPlayerImageUrl } from '@/lib/image-utils'
 import { SHOW_PLAYER_RATINGS } from '@/lib/features'
 import { useSeason } from '@/components/season-provider'
+
+interface BreakdownItem {
+  key: string
+  label: string
+  points: number
+}
 
 interface MatchFormItem {
   matchId: number
@@ -24,6 +30,8 @@ interface MatchFormItem {
   opponent: string
   playerGoals: number
   fantasyPoints?: number
+  breakdown?: BreakdownItem[]
+  manual_adjustment_reason?: string | null
 }
 
 interface NextFixtureItem {
@@ -101,6 +109,7 @@ export default function PlayerProfilePage() {
   const [previousMatches, setPreviousMatches] = useState<PlayerMatch[]>([])
   const [nextFixture, setNextFixture] = useState<(NextFixtureItem & { opponentLogo: string; opponentShort: string }) | null>(null)
   const [loading, setLoading] = useState(true)
+  const [expandedGw, setExpandedGw] = useState<number | null>(null)
 
   useEffect(() => {
     if (!params.id) return
@@ -470,45 +479,9 @@ export default function PlayerProfilePage() {
           </div>
         )}
 
-        {player.mvp_matches && player.mvp_matches.length > 0 && (
-          <div className="rounded-xl bg-[var(--fpl-purple)] border border-[var(--fpl-green)]/30 px-2.5 py-2.5 mb-2">
-            <h2 className="text-white font-bold text-xs mb-1.5 px-0.5">MVP matches</h2>
-            <p className="text-white/45 text-[11px] mb-2 px-0.5">
-              Fan-vote MVP · +3 fantasy points
-            </p>
-            <div className="space-y-1">
-              {player.mvp_matches.map((m) => (
-                <Link
-                  key={m.result_id}
-                  href={`/matches/${m.result_id}`}
-                  className="flex items-center gap-2.5 px-2 py-2 rounded-xl border border-[var(--fpl-green)]/25 bg-[var(--fpl-green)]/10 hover:bg-[var(--fpl-green)]/15 transition"
-                >
-                  <div className="shrink-0 min-w-[52px] text-center rounded-lg border border-[var(--fpl-green)]/40 bg-[var(--fpl-green)]/20 px-1.5 py-1.5 text-[var(--fpl-green)]">
-                    <p className="text-[10px] font-semibold leading-none opacity-80">
-                      {m.gameweek ? `GW${m.gameweek}` : 'MVP'}
-                    </p>
-                    <p className="text-sm font-bold tabular-nums leading-tight mt-0.5">
-                      {m.home_score}-{m.away_score}
-                    </p>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-white text-xs font-semibold truncate leading-tight">
-                      {m.home_team} vs {m.away_team}
-                    </p>
-                    <p className="text-white/45 text-[10px] leading-tight mt-0.5">
-                      {format(new Date(m.date), 'd MMM yyyy')}
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-[var(--fpl-green)] text-xs font-bold">MVP</span>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Per-GW goals + points */}
+        {/* Per-GW goals + points (expand for fantasy breakdown) */}
         {previousMatches.length > 0 && (
-          <div className="rounded-xl bg-[var(--fpl-purple)] border border-white/10 px-2.5 py-2.5">
+          <div className="rounded-xl bg-[var(--fpl-purple)] border border-white/10 px-2.5 py-2.5 mb-2">
             <h2 className="text-white font-bold text-xs mb-1.5 px-0.5">Gameweeks</h2>
             <div className="space-y-1">
               {[...previousMatches].reverse().map((match) => {
@@ -521,40 +494,134 @@ export default function PlayerProfilePage() {
                   : lost
                     ? 'bg-red-500/20 text-red-300 border-red-400/35'
                     : 'bg-orange-500/20 text-orange-300 border-orange-400/35'
+                const isOpen = expandedGw === match.matchId
+                const breakdown = match.breakdown || []
 
                 return (
-                  <Link
+                  <div
                     key={match.matchId}
-                    href={`/matches/${match.matchId}`}
-                    className="flex items-center gap-2.5 px-2 py-2 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/5 transition"
+                    className="rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden"
                   >
-                    <div
-                      className={`shrink-0 min-w-[52px] text-center rounded-lg border px-1.5 py-1.5 ${scoreClass}`}
+                    <button
+                      type="button"
+                      onClick={() => setExpandedGw(isOpen ? null : match.matchId)}
+                      className="w-full flex items-center gap-2.5 px-2 py-2 hover:bg-white/5 transition text-left"
                     >
-                      <p className="text-[10px] font-semibold leading-none opacity-80">GW{match.gameweek}</p>
-                      <p className="text-sm font-bold tabular-nums leading-tight mt-0.5">
-                        {forScore}-{againstScore}
-                      </p>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-white text-xs font-semibold truncate leading-tight">
-                        {match.isHome ? 'vs' : '@'} {match.opponent}
-                      </p>
-                      <p className="text-white/45 text-[10px] leading-tight mt-0.5">
-                        {format(new Date(match.date), 'd MMM yyyy')}
-                      </p>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className="text-white text-xs font-bold tabular-nums leading-tight">
-                        {match.playerGoals}g
-                      </p>
-                      <p className="text-[var(--fpl-cyan)] text-[11px] font-semibold tabular-nums leading-tight mt-0.5">
-                        {match.fantasyPoints ?? 0} pts
-                      </p>
-                    </div>
-                  </Link>
+                      <div
+                        className={`shrink-0 min-w-[52px] text-center rounded-lg border px-1.5 py-1.5 ${scoreClass}`}
+                      >
+                        <p className="text-[10px] font-semibold leading-none opacity-80">
+                          GW{match.gameweek}
+                        </p>
+                        <p className="text-sm font-bold tabular-nums leading-tight mt-0.5">
+                          {forScore}-{againstScore}
+                        </p>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-white text-xs font-semibold truncate leading-tight">
+                          {match.isHome ? 'vs' : '@'} {match.opponent}
+                        </p>
+                        <p className="text-white/45 text-[10px] leading-tight mt-0.5">
+                          {format(new Date(match.date), 'd MMM yyyy')}
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="text-white text-xs font-bold tabular-nums leading-tight">
+                          {match.playerGoals}g
+                        </p>
+                        <p className="text-[var(--fpl-cyan)] text-[11px] font-semibold tabular-nums leading-tight mt-0.5">
+                          {match.fantasyPoints ?? 0} pts
+                        </p>
+                      </div>
+                      <ChevronDown
+                        className={`w-4 h-4 text-white/40 shrink-0 transition-transform ${
+                          isOpen ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+
+                    {isOpen && (
+                      <div className="px-2 pb-2">
+                        <div className="rounded-lg bg-[var(--fpl-p90)] border border-white/10 p-2.5 space-y-1.5">
+                          {breakdown.length > 0 ? (
+                            breakdown.map((item) => (
+                              <div
+                                key={item.key}
+                                className="flex items-center justify-between text-xs"
+                              >
+                                <span className="text-white/70">{item.label}</span>
+                                <span
+                                  className={`font-semibold tabular-nums ${
+                                    item.points > 0
+                                      ? 'text-[var(--fpl-green)]'
+                                      : item.points < 0
+                                        ? 'text-[var(--fpl-pink)]'
+                                        : 'text-white/50'
+                                  }`}
+                                >
+                                  {item.points > 0 ? '+' : ''}
+                                  {item.points}
+                                </span>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-white/45 text-[11px]">
+                              No fantasy breakdown for this gameweek
+                            </p>
+                          )}
+                          {match.manual_adjustment_reason && (
+                            <p className="text-white/40 text-[10px] pt-1 border-t border-white/10">
+                              Reason: {match.manual_adjustment_reason}
+                            </p>
+                          )}
+                          <Link
+                            href={`/matches/${match.matchId}`}
+                            className="inline-block text-[var(--fpl-cyan)] text-[11px] font-semibold pt-1"
+                          >
+                            View match →
+                          </Link>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )
               })}
+            </div>
+          </div>
+        )}
+
+        {player.mvp_matches && player.mvp_matches.length > 0 && (
+          <div className="rounded-xl bg-[var(--fpl-purple)] border border-[var(--fpl-green)]/30 px-2.5 py-2.5">
+            <div className="flex items-baseline justify-between gap-2 mb-2 px-0.5">
+              <h2 className="text-white font-bold text-xs">MVP matches</h2>
+              <p className="text-white/45 text-[10px]">Fan-vote · +3 pts</p>
+            </div>
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">
+              {player.mvp_matches.map((m) => (
+                <Link
+                  key={m.result_id}
+                  href={`/matches/${m.result_id}`}
+                  className="shrink-0 w-[108px] flex flex-col items-center gap-1 px-2 py-2 rounded-xl border border-[var(--fpl-green)]/25 bg-[var(--fpl-green)]/10 hover:bg-[var(--fpl-green)]/15 transition"
+                >
+                  <span className="text-[var(--fpl-green)] text-[10px] font-bold tracking-wide">
+                    MVP
+                  </span>
+                  <div className="w-full text-center rounded-lg border border-[var(--fpl-green)]/40 bg-[var(--fpl-green)]/20 px-1.5 py-1.5 text-[var(--fpl-green)]">
+                    <p className="text-[10px] font-semibold leading-none opacity-80">
+                      {m.gameweek ? `GW${m.gameweek}` : '—'}
+                    </p>
+                    <p className="text-sm font-bold tabular-nums leading-tight mt-0.5">
+                      {m.home_score}-{m.away_score}
+                    </p>
+                  </div>
+                  <p className="text-white/70 text-[10px] font-medium text-center leading-tight line-clamp-2">
+                    {m.home_team} vs {m.away_team}
+                  </p>
+                  <p className="text-white/40 text-[9px] leading-none">
+                    {format(new Date(m.date), 'd MMM')}
+                  </p>
+                </Link>
+              ))}
             </div>
           </div>
         )}

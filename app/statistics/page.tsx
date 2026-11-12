@@ -14,6 +14,8 @@ interface PlayerWithStats extends Player {
   matches_played: number
 }
 
+const PLACEHOLDER_SRC = '/no-image-player.png'
+
 function normalizePlayerStats(raw: any): PlayerWithStats | null {
   const id = toId(raw?.id)
   if (id == null) return null
@@ -22,18 +24,57 @@ function normalizePlayerStats(raw: any): PlayerWithStats | null {
     id,
     first_name: raw.first_name || '',
     last_name: raw.last_name || '',
+    image_url: raw.image_url ?? null,
     goals: Number(raw.goals) || 0,
     matches_played: Number(raw.matches_played) || 0,
   }
+}
+
+function PlayerAvatar({
+  imageUrl,
+  name,
+  className,
+  imageClassName,
+  priority = false,
+}: {
+  imageUrl?: string | null
+  name: string
+  className: string
+  imageClassName?: string
+  priority?: boolean
+}) {
+  const resolved = getPlayerImageUrl(imageUrl)
+  const [src, setSrc] = useState(resolved)
+
+  useEffect(() => {
+    setSrc(getPlayerImageUrl(imageUrl))
+  }, [imageUrl])
+
+  return (
+    <div className={className}>
+      <Image
+        src={src}
+        alt={name}
+        fill
+        className={imageClassName || 'object-cover'}
+        priority={priority}
+        loading="eager"
+        unoptimized
+        onError={() => setSrc(PLACEHOLDER_SRC)}
+      />
+    </div>
+  )
 }
 
 export default function StatisticsPage() {
   const [players, setPlayers] = useState<PlayerWithStats[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const { currentSeason } = useSeason()
+  const { currentSeason, loading: seasonLoading } = useSeason()
 
   useEffect(() => {
+    if (seasonLoading) return
+
     let cancelled = false
 
     const fetchPlayers = async () => {
@@ -79,7 +120,7 @@ export default function StatisticsPage() {
     return () => {
       cancelled = true
     }
-  }, [currentSeason?.id])
+  }, [currentSeason?.id, seasonLoading])
 
   const topScorers = players.filter((player) => player.goals > 0)
   const leader = topScorers[0]
@@ -114,20 +155,13 @@ export default function StatisticsPage() {
                 href={`/players/${leader.id}`}
                 className="block relative overflow-hidden rounded-2xl bg-gradient-to-r from-[var(--fpl-cyan)] via-[#7a5cff] to-[var(--fpl-lilac)] min-h-[148px] hover:opacity-95 transition"
               >
-                <div className="absolute left-0 bottom-0 w-[42%] h-full">
-                  <Image
-                    src={getPlayerImageUrl(leader.image_url)}
-                    alt={`${leader.first_name} ${leader.last_name}`}
-                    fill
-                    className="object-contain object-bottom"
-                    priority
-                    unoptimized
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement
-                      target.src = '/no-image-player.png'
-                    }}
-                  />
-                </div>
+                <PlayerAvatar
+                  imageUrl={leader.image_url}
+                  name={`${leader.first_name} ${leader.last_name}`}
+                  className="absolute left-0 bottom-0 w-[42%] h-full"
+                  imageClassName="object-contain object-bottom"
+                  priority
+                />
 
                 <div className="relative z-10 pl-[40%] pr-4 py-5 flex flex-col justify-center min-h-[148px]">
                   <p className="text-[var(--fpl-purple)]/80 text-xs font-semibold mb-0.5">
@@ -187,19 +221,12 @@ export default function StatisticsPage() {
                     </span>
 
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="relative w-9 h-9 rounded-full overflow-hidden bg-white/10 shrink-0">
-                        <Image
-                          src={getPlayerImageUrl(player.image_url)}
-                          alt={`${player.first_name} ${player.last_name}`}
-                          fill
-                          className="object-cover"
-                          unoptimized
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement
-                            target.src = '/no-image-player.png'
-                          }}
-                        />
-                      </div>
+                      <PlayerAvatar
+                        imageUrl={player.image_url}
+                        name={`${player.first_name} ${player.last_name}`}
+                        className="relative w-9 h-9 rounded-full overflow-hidden bg-white/10 shrink-0"
+                        imageClassName="object-cover object-top"
+                      />
                       <div className="min-w-0">
                         <p className="text-white text-sm font-semibold truncate">
                           {player.first_name} {player.last_name}

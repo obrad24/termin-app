@@ -479,13 +479,18 @@ class QueryBuilder<T = any> {
   }
 }
 
-class StorageBucket {
-  private uploadedUrls = new Map<string, string>()
+/** Shared across StorageBucket instances so getPublicUrl sees upload() results. */
+const uploadedPublicUrls = new Map<string, string>()
 
+class StorageBucket {
   constructor(private bucket: string) {}
 
   private blobEnabled() {
     return !!process.env.BLOB_READ_WRITE_TOKEN
+  }
+
+  private cacheKey(filePath: string) {
+    return `${this.bucket}/${filePath}`.replace(/\/+/g, '/')
   }
 
   async upload(
@@ -494,7 +499,7 @@ class StorageBucket {
     options?: { contentType?: string; upsert?: boolean },
   ) {
     try {
-      const objectKey = `${this.bucket}/${filePath}`.replace(/\/+/g, '/')
+      const objectKey = this.cacheKey(filePath)
 
       // Production (Vercel): local FS is read-only — use Vercel Blob
       if (this.blobEnabled()) {
@@ -505,7 +510,7 @@ class StorageBucket {
           addRandomSuffix: false,
           allowOverwrite: options?.upsert === true,
         })
-        this.uploadedUrls.set(filePath, blob.url)
+        uploadedPublicUrls.set(objectKey, blob.url)
         return {
           data: { path: filePath, url: blob.url },
           error: null as DbError | null,
@@ -519,8 +524,8 @@ class StorageBucket {
       const fullPath = path.join(uploadsRoot, filePath)
       await fs.mkdir(path.dirname(fullPath), { recursive: true })
       await fs.writeFile(fullPath, buffer)
-      const publicUrl = `/uploads/${this.bucket}/${filePath}`.replace(/\/+/g, '/')
-      this.uploadedUrls.set(filePath, publicUrl)
+      const publicUrl = `/uploads/${objectKey}`
+      uploadedPublicUrls.set(objectKey, publicUrl)
       return {
         data: { path: filePath, url: publicUrl },
         error: null as DbError | null,
@@ -532,11 +537,12 @@ class StorageBucket {
   }
 
   getPublicUrl(filePath: string) {
-    const cached = this.uploadedUrls.get(filePath)
+    const objectKey = this.cacheKey(filePath)
+    const cached = uploadedPublicUrls.get(objectKey)
     if (cached) {
       return { data: { publicUrl: cached } }
     }
-    const publicUrl = `/uploads/${this.bucket}/${filePath}`.replace(/\/+/g, '/')
+    const publicUrl = `/uploads/${objectKey}`
     return { data: { publicUrl } }
   }
 }

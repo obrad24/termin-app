@@ -232,9 +232,10 @@ export default function HeroSection() {
         const team1Players = players.filter((p) => p.team === firstTeam.name)
         const team2Players = players.filter((p) => p.team === secondTeam.name)
 
+        // Players flipped vs team id order; score mapping below stays as before
         const isSecondSeason = Number(currentSeason?.id) === 2
-        const leftPool = isSecondSeason ? team1Players : team2Players
-        const rightPool = isSecondSeason ? team2Players : team1Players
+        const leftPool = isSecondSeason ? team2Players : team1Players
+        const rightPool = isSecondSeason ? team1Players : team2Players
 
         setLeftPlayers(pickHeroPlayers(leftPool))
         setRightPlayers(pickHeroPlayers(rightPool))
@@ -285,6 +286,7 @@ export default function HeroSection() {
     )
   }
 
+  // Keep previous score sides (do not flip with player pools)
   const isSecondSeason = Number(currentSeason?.id) === 2
   const leftWins = isSecondSeason ? stats.team2Wins : stats.team1Wins
   const rightWins = isSecondSeason ? stats.team1Wins : stats.team2Wins

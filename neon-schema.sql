@@ -239,6 +239,7 @@ CREATE TABLE IF NOT EXISTS fantasy_user_squads (
   season_id BIGINT NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
   gameweek INTEGER NOT NULL,
   player_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+  captain_player_id BIGINT REFERENCES players(id) ON DELETE SET NULL,
   transfers_used INTEGER NOT NULL DEFAULT 0,
   updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   UNIQUE (account_id, season_id, gameweek)

@@ -80,6 +80,7 @@ type MyTeamData = {
   transfers_used: number
   transfers_remaining: number | null
   player_ids: number[]
+  captain_player_id?: number | null
   previous_player_ids?: number[]
   available_players: PlayerOpt[]
   team_limit_ok?: boolean
@@ -107,11 +108,13 @@ function PitchCard({
   onClick,
   emptyLabel,
   disabled,
+  isCaptain,
 }: {
   player?: PlayerOpt | null
   onClick?: () => void
   emptyLabel?: string
   disabled?: boolean
+  isCaptain?: boolean
 }) {
   if (!player) {
     return (
@@ -155,13 +158,24 @@ function PitchCard({
             target.src = '/no-image-player.png'
           }}
         />
+        {isCaptain && (
+          <span className="absolute top-0 right-0 z-20 w-5 h-5 rounded-full bg-[var(--fpl-green)] text-[var(--fpl-purple)] text-[10px] font-black flex items-center justify-center shadow">
+            C
+          </span>
+        )}
       </div>
       <div className="relative z-10 w-full -mt-1 overflow-hidden rounded-[4px] bg-white shadow-sm leading-none">
         <p className="text-[var(--fpl-purple)] text-[11px] font-bold truncate text-center px-1 py-[4px]">
           {player.last_name}
         </p>
-        <p className="bg-[#e8e8e8] text-[var(--fpl-purple)] text-[10px] font-semibold truncate text-center px-1 py-[4px]">
-          {formatPrice(player.price)}
+        <p
+          className={`text-[10px] font-semibold truncate text-center px-1 py-[4px] ${
+            isCaptain
+              ? 'bg-[var(--fpl-green)] text-[var(--fpl-purple)]'
+              : 'bg-[#e8e8e8] text-[var(--fpl-purple)]'
+          }`}
+        >
+          {isCaptain ? 'Captain · x2' : formatPrice(player.price)}
         </p>
       </div>
     </button>
@@ -175,6 +189,7 @@ export default function MyTeamPage() {
   const [authChecked, setAuthChecked] = useState(false)
   const [data, setData] = useState<MyTeamData | null>(null)
   const [selected, setSelected] = useState<number[]>([])
+  const [captainId, setCaptainId] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -230,13 +245,22 @@ export default function MyTeamPage() {
       const previous_player_ids = (json.previous_player_ids || [])
         .map(toId)
         .filter((n: number) => !Number.isNaN(n))
+      const captainRaw = json.captain_player_id
+      const captain =
+        captainRaw == null || captainRaw === '' ? null : toId(captainRaw)
+      const validCaptain =
+        captain != null && !Number.isNaN(captain) && player_ids.includes(captain)
+          ? captain
+          : null
       setData({
         ...json,
         available_players,
         player_ids,
         previous_player_ids,
+        captain_player_id: validCaptain,
       })
       setSelected(player_ids)
+      setCaptainId(validCaptain)
     } catch (err: any) {
       setError(err.message || 'Failed to load')
     } finally {
@@ -338,6 +362,17 @@ export default function MyTeamPage() {
     setMessage(null)
     setError(null)
     setSelected((prev) => prev.filter((x) => x !== id))
+    setCaptainId((prev) => (prev === id ? null : prev))
+    setPlayerSheetOpen(false)
+    setActivePlayer(null)
+  }
+
+  const makeCaptain = (id: number) => {
+    if (data?.locked) return
+    if (!selected.includes(id)) return
+    setCaptainId(id)
+    setMessage(null)
+    setError(null)
     setPlayerSheetOpen(false)
     setActivePlayer(null)
   }
@@ -392,11 +427,13 @@ export default function MyTeamPage() {
     setError(null)
 
     let next: number[]
+    let nextCaptain = captainId
     if (replacingId != null) {
       next = selected.map((id) => (id === replacingId ? newId : id))
       if (!selected.includes(replacingId)) {
         next = selected.includes(newId) ? selected : [...selected, newId]
       }
+      if (captainId === replacingId) nextCaptain = newId
     } else {
       if (selected.includes(newId)) return
       if (selected.length >= (data?.squad_size || 5)) {
@@ -404,6 +441,7 @@ export default function MyTeamPage() {
         return
       }
       next = [...selected, newId]
+      if (nextCaptain == null) nextCaptain = newId
     }
 
     const cost = next.reduce((sum, id) => {
@@ -437,6 +475,7 @@ export default function MyTeamPage() {
     }
 
     setSelected(next)
+    setCaptainId(nextCaptain != null && next.includes(nextCaptain) ? nextCaptain : null)
     setReplaceSheetOpen(false)
     setReplacingId(null)
     setActivePlayer(null)
@@ -448,13 +487,18 @@ export default function MyTeamPage() {
       setError(`Select exactly ${data.squad_size} players`)
       return
     }
+    if (captainId == null || !selected.includes(captainId)) {
+      setError('Select a captain — their points count double')
+      return
+    }
     if (budgetSpent > maxBudget + 0.05) {
       setError(`Budget exceeded: £${budgetSpent.toFixed(1)}m / £${maxBudget}m`)
       return
     }
-    const unchanged = sameIds(selected, data.player_ids || [])
+    const unchanged =
+      sameIds(selected, data.player_ids || []) && captainId === (data.captain_player_id ?? null)
     const teamHit = teamLimitViolation(selected)
-    if (teamHit && !unchanged) {
+    if (teamHit && !sameIds(selected, data.player_ids || [])) {
       setError(
         `Max ${maxPerTeam} players from the same team (${teamHit.team}). Reduce to ${maxPerTeam} before saving changes.`,
       )
@@ -467,7 +511,11 @@ export default function MyTeamPage() {
       const response = await fetch('/api/my-team', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ season_id: currentSeason.id, player_ids: selected }),
+        body: JSON.stringify({
+          season_id: currentSeason.id,
+          player_ids: selected,
+          captain_player_id: captainId,
+        }),
       })
       const json = await response.json()
       if (!response.ok) throw new Error(json.error || 'Save failed')
@@ -677,6 +725,7 @@ export default function MyTeamPage() {
                       <PitchCard
                         player={top}
                         emptyLabel="Slot 1"
+                        isCaptain={!!top && top.id === captainId}
                         disabled={!!data?.locked && !!top}
                         onClick={() => (top ? openPlayerSheet(top) : openAddSheet())}
                       />
@@ -688,6 +737,7 @@ export default function MyTeamPage() {
                           key={p?.id ?? `mid-${i}`}
                           player={p}
                           emptyLabel={`Slot ${i + 2}`}
+                          isCaptain={!!p && p.id === captainId}
                           disabled={!!data?.locked && !!p}
                           onClick={() => (p ? openPlayerSheet(p) : openAddSheet())}
                         />
@@ -700,6 +750,7 @@ export default function MyTeamPage() {
                           key={p?.id ?? `bot-${i}`}
                           player={p}
                           emptyLabel={`Slot ${i + 4}`}
+                          isCaptain={!!p && p.id === captainId}
                           disabled={!!data?.locked && !!p}
                           onClick={() => (p ? openPlayerSheet(p) : openAddSheet())}
                         />
@@ -711,8 +762,8 @@ export default function MyTeamPage() {
                 <div className="bg-black/35 border-t border-white/10 px-3 py-3">
                   <p className="text-center text-white/70 text-xs mb-2">
                     {data?.free_initial_pick
-                      ? 'First pick — choose any 5 players'
-                      : `Transfers left: ${transfersLeft}`}
+                      ? 'First pick — choose any 5 players + captain (x2)'
+                      : `Transfers left: ${transfersLeft} · captain change free until deadline`}
                   </p>
                   <button
                     type="button"
@@ -757,12 +808,22 @@ export default function MyTeamPage() {
                             className="object-contain object-bottom"
                             unoptimized
                           />
+                          {p.id === captainId && (
+                            <span className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-[var(--fpl-green)] text-[var(--fpl-purple)] text-[9px] font-black flex items-center justify-center">
+                              C
+                            </span>
+                          )}
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-white text-sm font-semibold truncate">
                             {p.first_name} {p.last_name}
+                            {p.id === captainId ? ' · C' : ''}
                           </p>
-                          <p className="text-white/45 text-xs truncate">{p.team || 'Free agent'}</p>
+                          <p className="text-white/45 text-xs truncate">
+                            {p.id === captainId
+                              ? 'Captain · points x2'
+                              : p.team || 'Free agent'}
+                          </p>
                         </div>
                         <span className="text-white font-bold text-sm tabular-nums shrink-0">
                           {formatPrice(p.price)}
@@ -862,7 +923,9 @@ export default function MyTeamPage() {
                   />
                 </div>
                 <div className="relative z-10 pl-[38%] pr-4 py-4">
-                  <p className="text-[var(--fpl-purple)]/75 text-xs font-semibold">Player</p>
+                  <p className="text-[var(--fpl-purple)]/75 text-xs font-semibold">
+                    {activePlayer.id === captainId ? 'Captain' : 'Player'}
+                  </p>
                   <p className="text-[var(--fpl-purple)] text-sm font-medium leading-tight">
                     {activePlayer.first_name}
                   </p>
@@ -876,6 +939,7 @@ export default function MyTeamPage() {
                   )}
                   <p className="text-[var(--fpl-purple)] text-sm font-bold mt-1">
                     Price: {formatPrice(activePlayer.price)}
+                    {activePlayer.id === captainId ? ' · x2 pts' : ''}
                   </p>
                 </div>
               </div>
@@ -889,6 +953,16 @@ export default function MyTeamPage() {
 
               {!data?.locked && (
                 <div className="grid grid-cols-2 gap-2 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => makeCaptain(activePlayer.id)}
+                    disabled={activePlayer.id === captainId}
+                    className="col-span-2 rounded-full bg-[var(--fpl-green)] text-[var(--fpl-purple)] font-bold text-sm py-3 disabled:opacity-60"
+                  >
+                    {activePlayer.id === captainId
+                      ? 'Already captain (x2 points)'
+                      : 'Make captain (x2 points)'}
+                  </button>
                   <button
                     type="button"
                     onClick={() => removePlayer(activePlayer.id)}

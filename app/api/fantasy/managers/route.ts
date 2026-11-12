@@ -39,7 +39,7 @@ export async function GET(request: Request) {
 
     let squadsQuery = supabase
       .from('fantasy_user_squads')
-      .select('account_id, season_id, gameweek, player_ids')
+      .select('account_id, season_id, gameweek, player_ids, captain_player_id')
     if (seasonId && !Number.isNaN(seasonId)) {
       squadsQuery = squadsQuery.eq('season_id', seasonId)
     }
@@ -104,9 +104,12 @@ export async function GET(request: Request) {
       if (lastGw && gw > lastGw) return
 
       const picked = parsePlayerIds(squad.player_ids)
+      const captainId = toId(squad.captain_player_id)
       let gwPoints = 0
       picked.forEach((pid) => {
-        gwPoints += pointsByPlayerGw.get(`${pid}:${gw}`) || 0
+        const pts = pointsByPlayerGw.get(`${pid}:${gw}`) || 0
+        // Captain scores double for the manager that gameweek
+        gwPoints += captainId && pid === captainId ? pts * 2 : pts
       })
 
       manager.total_points += gwPoints

@@ -159,6 +159,11 @@ export async function GET(request: Request) {
         : null,
       free_initial_pick: !hasPrevious,
       player_ids: currentIds,
+      captain_player_id: (() => {
+        const raw = currentRow?.captain_player_id
+        const n = typeof raw === 'string' ? parseInt(raw, 10) : Number(raw)
+        return Number.isFinite(n) && currentIds.includes(n) ? n : null
+      })(),
       players: currentPlayers,
       previous_player_ids: previousIds,
       available_players: (allPlayers || []).map(normalizePlayerRow).map(withSeasonTeam),
@@ -194,6 +199,25 @@ export async function PUT(request: Request) {
     if (playerIds.length !== SQUAD_SIZE) {
       return NextResponse.json(
         { error: `Select exactly ${SQUAD_SIZE} players` },
+        { status: 400 },
+      )
+    }
+
+    const captainRaw = body.captain_player_id
+    const captainPlayerId =
+      captainRaw === null || captainRaw === undefined || captainRaw === ''
+        ? null
+        : typeof captainRaw === 'string'
+          ? parseInt(captainRaw, 10)
+          : Number(captainRaw)
+
+    if (
+      captainPlayerId == null ||
+      Number.isNaN(captainPlayerId) ||
+      !playerIds.includes(captainPlayerId)
+    ) {
+      return NextResponse.json(
+        { error: 'Select a captain from your squad (captain scores double points)' },
         { status: 400 },
       )
     }
@@ -310,6 +334,7 @@ export async function PUT(request: Request) {
       season_id: seasonId,
       gameweek,
       player_ids: JSON.stringify(playerIds),
+      captain_player_id: captainPlayerId,
       transfers_used: transfersUsed,
       updated_at: new Date().toISOString(),
     }
@@ -328,6 +353,7 @@ export async function PUT(request: Request) {
       success: true,
       gameweek,
       player_ids: playerIds,
+      captain_player_id: captainPlayerId,
       transfers_used: transfersUsed,
       players: await loadPlayersByIds(playerIds),
       squad: data,

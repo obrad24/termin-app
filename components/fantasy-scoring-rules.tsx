@@ -32,8 +32,9 @@ export default function FantasyScoringRules({ className = '' }: { className?: st
         ))}
       </ul>
       <p className="mt-2 text-[9px] leading-snug text-white/30">
-        Squad: 5 players, £40m budget, max 3 from the same team, max 2 transfers per GW. Points apply
-        only if the player appeared in the match. Fan-vote points come from post-match ratings (top 3).
+        Squad: 5 players, £40m budget, max 3 from the same team, max 2 transfers per GW. Captain
+        scores double (change free until deadline). Points apply only if the player appeared in the
+        match. Fan-vote points come from post-match ratings (top 3).
       </p>
     </div>
   )
