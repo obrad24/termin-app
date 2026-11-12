@@ -26,15 +26,13 @@ function shuffle<T>(items: T[]): T[] {
   return arr
 }
 
-/** Prefer players with photos; pick 1 or up to 3 at random each visit. */
+/** Prefer players with photos; pick 1 at random each visit. */
 function pickHeroPlayers(players: Player[]): Player[] {
   if (players.length === 0) return []
 
   const withImage = players.filter((p) => p.image_url && p.image_url.trim() !== '')
   const pool = shuffle(withImage.length > 0 ? withImage : players)
-  const wantThree = pool.length >= 3 && Math.random() < 0.45
-  const count = wantThree ? 3 : 1
-  return pool.slice(0, count)
+  return pool.slice(0, 1)
 }
 
 function HeroPlayerSide({
@@ -234,7 +232,7 @@ export default function HeroSection() {
         const team1Players = players.filter((p) => p.team === firstTeam.name)
         const team2Players = players.filter((p) => p.team === secondTeam.name)
 
-        const isSecondSeason = currentSeason?.id === 2
+        const isSecondSeason = Number(currentSeason?.id) === 2
         const leftPool = isSecondSeason ? team1Players : team2Players
         const rightPool = isSecondSeason ? team2Players : team1Players
 
@@ -287,7 +285,7 @@ export default function HeroSection() {
     )
   }
 
-  const isSecondSeason = currentSeason?.id === 2
+  const isSecondSeason = Number(currentSeason?.id) === 2
   const leftWins = isSecondSeason ? stats.team2Wins : stats.team1Wins
   const rightWins = isSecondSeason ? stats.team1Wins : stats.team2Wins
 

@@ -2,12 +2,15 @@ import { NextResponse } from 'next/server'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import {
   MAX_BUDGET,
+  MAX_PLAYERS_PER_TEAM,
   MAX_TRANSFERS_PER_GW,
   SQUAD_SIZE,
   countTransfers,
+  findTeamLimitViolation,
   getNextGameweek,
   parsePlayerIds,
   requirePlayerAuth,
+  samePlayerIds,
 } from '@/lib/player-auth'
 import { isGameweekLocked } from '@/lib/fantasy/calculate'
 import { getTransferWindowStatus } from '@/lib/fantasy/transfer-window'
@@ -114,8 +117,27 @@ export async function GET(request: Request) {
       .select('id, first_name, last_name, team, image_url, price')
       .order('last_name', { ascending: true })
 
-    const currentPlayers = await loadPlayersByIds(currentIds)
+    const seasonalTeamByPlayer = new Map<number, string | null>()
+    {
+      const { data: seasonalTeams } = await supabase
+        .from('player_season_teams')
+        .select('player_id, team')
+        .eq('season_id', seasonId)
+      ;(seasonalTeams || []).forEach((row: any) => {
+        const pid =
+          typeof row.player_id === 'string' ? parseInt(row.player_id, 10) : Number(row.player_id)
+        if (Number.isFinite(pid)) seasonalTeamByPlayer.set(pid, row.team || null)
+      })
+    }
+
+    const withSeasonTeam = (p: ReturnType<typeof normalizePlayerRow>) =>
+      seasonalTeamByPlayer.has(p.id)
+        ? { ...p, team: seasonalTeamByPlayer.get(p.id) ?? null }
+        : p
+
+    const currentPlayers = (await loadPlayersByIds(currentIds)).map(withSeasonTeam)
     const spent = squadCost(currentPlayers as any[])
+    const teamViolation = findTeamLimitViolation(currentPlayers, MAX_PLAYERS_PER_TEAM)
 
     return NextResponse.json({
       season_id: seasonId,
@@ -126,6 +148,7 @@ export async function GET(request: Request) {
       transfer_window: lock.transfer_window,
       squad_size: SQUAD_SIZE,
       max_transfers: MAX_TRANSFERS_PER_GW,
+      max_per_team: MAX_PLAYERS_PER_TEAM,
       max_budget: MAX_BUDGET,
       budget_spent: Math.round(spent * 10) / 10,
       budget_remaining: Math.round((MAX_BUDGET - spent) * 10) / 10,
@@ -138,9 +161,13 @@ export async function GET(request: Request) {
       player_ids: currentIds,
       players: currentPlayers,
       previous_player_ids: previousIds,
-      available_players: (allPlayers || []).map(normalizePlayerRow),
+      available_players: (allPlayers || []).map(normalizePlayerRow).map(withSeasonTeam),
       updated_at: currentRow?.updated_at || null,
       transfersRemaining,
+      team_limit_ok: !teamViolation,
+      team_limit_warning: teamViolation
+        ? `Your squad has ${teamViolation.count} players from ${teamViolation.team}. Max is ${MAX_PLAYERS_PER_TEAM} — fix with transfers before the next change.`
+        : null,
     })
   } catch (error: any) {
     console.error('my-team GET:', error)
@@ -177,7 +204,7 @@ export async function PUT(request: Request) {
       return NextResponse.json(
         {
           error: lock.schedule_locked
-            ? 'Transfers locked from Thursday 15:00 until Friday 12:00'
+            ? 'Transfers locked from Thursday 16:00 until Friday 12:00'
             : `GW${gameweek} is locked`,
           locked: true,
           schedule_locked: lock.schedule_locked,
@@ -187,16 +214,63 @@ export async function PUT(request: Request) {
       )
     }
 
-    // Validate players exist + load prices
+    // Validate players exist + load prices/teams
     const { data: found } = await supabase
       .from('players')
-      .select('id, price')
+      .select('id, price, team')
       .in('id', playerIds)
     if ((found || []).length !== SQUAD_SIZE) {
       return NextResponse.json({ error: 'One or more players not found' }, { status: 400 })
     }
 
-    const spent = squadCost((found || []).map(normalizePlayerRow))
+    const normalizedFound = (found || []).map(normalizePlayerRow)
+
+    // Prefer seasonal club names when available
+    const { data: seasonalTeams } = await supabase
+      .from('player_season_teams')
+      .select('player_id, team')
+      .eq('season_id', seasonId)
+      .in('player_id', playerIds)
+
+    if (seasonalTeams?.length) {
+      const teamByPlayer = new Map<number, string | null>()
+      seasonalTeams.forEach((row: any) => {
+        const pid =
+          typeof row.player_id === 'string' ? parseInt(row.player_id, 10) : Number(row.player_id)
+        if (Number.isFinite(pid)) teamByPlayer.set(pid, row.team || null)
+      })
+      normalizedFound.forEach((p) => {
+        if (teamByPlayer.has(p.id)) p.team = teamByPlayer.get(p.id) ?? null
+      })
+    }
+
+    const { data: currentGwRow } = await supabase
+      .from('fantasy_user_squads')
+      .select('*')
+      .eq('account_id', auth.session!.accountId)
+      .eq('season_id', seasonId)
+      .eq('gameweek', gameweek)
+      .maybeSingle()
+
+    const currentGwIds = parsePlayerIds(currentGwRow?.player_ids)
+    const unchangedSquad = samePlayerIds(currentGwIds, playerIds)
+
+    // Grandfather pre-limit squads: keep them if unchanged.
+    // Any edited squad must satisfy max-per-team.
+    const teamViolation = findTeamLimitViolation(normalizedFound, MAX_PLAYERS_PER_TEAM)
+    if (teamViolation && !unchangedSquad) {
+      return NextResponse.json(
+        {
+          error: `Max ${MAX_PLAYERS_PER_TEAM} players from the same team (you have ${teamViolation.count} from ${teamViolation.team}). Existing over-limit squads are kept until you change them.`,
+          max_per_team: MAX_PLAYERS_PER_TEAM,
+          team: teamViolation.team,
+          count: teamViolation.count,
+        },
+        { status: 400 },
+      )
+    }
+
+    const spent = squadCost(normalizedFound)
     if (spent > MAX_BUDGET + 0.05) {
       return NextResponse.json(
         {

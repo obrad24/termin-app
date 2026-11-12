@@ -7,6 +7,49 @@ export const SESSION_COOKIE = 'player_session'
 export const MAX_TRANSFERS_PER_GW = 2
 export const SQUAD_SIZE = 5
 export const MAX_BUDGET = 40
+/** Max players from the same club in one fantasy squad */
+export const MAX_PLAYERS_PER_TEAM = 3
+
+export function countPlayersByTeam(
+  players: Array<{ team?: string | null }>,
+): Record<string, number> {
+  const counts: Record<string, number> = {}
+  for (const p of players) {
+    const team = (p.team || '').trim()
+    if (!team) continue
+    counts[team] = (counts[team] || 0) + 1
+  }
+  return counts
+}
+
+export function maxPlayersFromOneTeam(
+  players: Array<{ team?: string | null }>,
+): number {
+  const counts = countPlayersByTeam(players)
+  return Object.values(counts).reduce((max, n) => Math.max(max, n), 0)
+}
+
+export function findTeamLimitViolation(
+  players: Array<{ team?: string | null }>,
+  maxPerTeam = MAX_PLAYERS_PER_TEAM,
+): { team: string; count: number } | null {
+  const counts = countPlayersByTeam(players)
+  let worst: { team: string; count: number } | null = null
+  for (const [team, count] of Object.entries(counts)) {
+    if (count > maxPerTeam && (!worst || count > worst.count)) {
+      worst = { team, count }
+    }
+  }
+  return worst
+}
+
+/** Same squad membership (order ignored). */
+export function samePlayerIds(a: number[], b: number[]) {
+  if (a.length !== b.length) return false
+  const left = [...a].map(Number).sort((x, y) => x - y)
+  const right = [...b].map(Number).sort((x, y) => x - y)
+  return left.every((id, i) => id === right[i])
+}
 
 export type PlayerAccountSession = {
   accountId: number

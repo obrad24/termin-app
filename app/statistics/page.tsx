@@ -7,47 +7,79 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { getPlayerImageUrl } from '@/lib/image-utils'
 import { useSeason } from '@/components/season-provider'
+import { toId } from '@/lib/ids'
 
 interface PlayerWithStats extends Player {
   goals: number
   matches_played: number
 }
 
+function normalizePlayerStats(raw: any): PlayerWithStats | null {
+  const id = toId(raw?.id)
+  if (id == null) return null
+  return {
+    ...raw,
+    id,
+    first_name: raw.first_name || '',
+    last_name: raw.last_name || '',
+    goals: Number(raw.goals) || 0,
+    matches_played: Number(raw.matches_played) || 0,
+  }
+}
+
 export default function StatisticsPage() {
   const [players, setPlayers] = useState<PlayerWithStats[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const { currentSeason } = useSeason()
 
   useEffect(() => {
-    fetchPlayers()
-  }, [currentSeason])
+    let cancelled = false
 
-  const fetchPlayers = async () => {
-    try {
-      const seasonQuery = currentSeason ? `?season_id=${currentSeason.id}` : ''
-      const response = await fetch(`/api/players/stats${seasonQuery}`)
-      const contentType = response.headers.get('content-type')
+    const fetchPlayers = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const seasonQuery = currentSeason?.id != null ? `?season_id=${currentSeason.id}` : ''
+        const response = await fetch(`/api/players/stats${seasonQuery}`, {
+          cache: 'no-store',
+        })
 
-      if (response.ok) {
-        if (contentType && contentType.includes('application/json')) {
-          const data = await response.json()
-          const sortedData = (data || []).sort((a: PlayerWithStats, b: PlayerWithStats) => {
+        if (!response.ok) {
+          if (response.status !== 503) {
+            setError('Could not load statistics')
+          }
+          if (!cancelled) setPlayers([])
+          return
+        }
+
+        const data = await response.json()
+        const list = (Array.isArray(data) ? data : [])
+          .map(normalizePlayerStats)
+          .filter((p): p is PlayerWithStats => !!p)
+          .sort((a, b) => {
             if (b.goals !== a.goals) return b.goals - a.goals
+            if (b.matches_played !== a.matches_played) return b.matches_played - a.matches_played
             return `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`)
           })
-          setPlayers(sortedData)
+
+        if (!cancelled) setPlayers(list)
+      } catch (err) {
+        console.error('Error fetching players:', err)
+        if (!cancelled) {
+          setPlayers([])
+          setError('Could not load statistics')
         }
-      } else if (response.status !== 503) {
-        console.error('Error fetching players:', response.statusText)
+      } finally {
+        if (!cancelled) setLoading(false)
       }
-    } catch (error) {
-      if (error instanceof Error) {
-        console.error('Error fetching players:', error.message)
-      }
-    } finally {
-      setLoading(false)
     }
-  }
+
+    fetchPlayers()
+    return () => {
+      cancelled = true
+    }
+  }, [currentSeason?.id])
 
   const topScorers = players.filter((player) => player.goals > 0)
   const leader = topScorers[0]
@@ -65,6 +97,11 @@ export default function StatisticsPage() {
 
         {loading ? (
           <div className="text-white/60 text-center py-12 text-sm">Loading statistics...</div>
+        ) : error ? (
+          <div className="text-white text-center py-12">
+            <p className="text-lg mb-2">{error}</p>
+            <p className="text-white/50 text-sm">Refresh the page or try again later</p>
+          </div>
         ) : topScorers.length === 0 ? (
           <div className="text-white text-center py-12">
             <p className="text-lg mb-2">No scorers data</p>
@@ -72,7 +109,6 @@ export default function StatisticsPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {/* Top scorer hero */}
             {leader && (
               <Link
                 href={`/players/${leader.id}`}
@@ -118,7 +154,6 @@ export default function StatisticsPage() {
               </Link>
             )}
 
-            {/* Leaderboard */}
             <div className="rounded-2xl bg-[var(--fpl-purple)] border border-white/10 overflow-hidden">
               <div className="px-3 sm:px-4 py-3 border-b border-white/10 flex items-center justify-between">
                 <h2 className="text-white font-bold text-sm">Goal scorers</h2>

@@ -692,14 +692,28 @@ export default function AdminPage() {
         const uploadResponse = await fetch('/api/players/upload', {
           method: 'POST',
           body: uploadFormData,
+          credentials: 'include',
         })
 
-        if (!uploadResponse.ok) {
-          const error = await uploadResponse.json()
-          throw new Error(error.error || 'Error uploading image')
+        let uploadData: any = null
+        try {
+          uploadData = await uploadResponse.json()
+        } catch {
+          uploadData = null
         }
 
-        const uploadData = await uploadResponse.json()
+        if (uploadResponse.status === 401) {
+          throw new Error('Admin session expired. Please log in again.')
+        }
+        if (!uploadResponse.ok) {
+          throw new Error(
+            uploadData?.details || uploadData?.error || uploadData?.message || 'Error uploading image'
+          )
+        }
+        if (!uploadData?.url) {
+          throw new Error('Image URL was not returned from the server')
+        }
+
         imageUrl = uploadData.url
       }
 
@@ -783,14 +797,28 @@ export default function AdminPage() {
         const uploadResponse = await fetch('/api/teams/upload', {
           method: 'POST',
           body: uploadFormData,
+          credentials: 'include',
         })
 
-        if (!uploadResponse.ok) {
-          const error = await uploadResponse.json()
-          throw new Error(error.error || 'Error uploading image')
+        let uploadData: any = null
+        try {
+          uploadData = await uploadResponse.json()
+        } catch {
+          uploadData = null
         }
 
-        const uploadData = await uploadResponse.json()
+        if (uploadResponse.status === 401) {
+          throw new Error('Admin session expired. Please log in again.')
+        }
+        if (!uploadResponse.ok) {
+          throw new Error(
+            uploadData?.details || uploadData?.error || uploadData?.message || 'Error uploading image'
+          )
+        }
+        if (!uploadData?.url) {
+          throw new Error('Logo URL was not returned from the server')
+        }
+
         logoUrl = uploadData.url
       }
 
@@ -2383,24 +2411,28 @@ export default function AdminPage() {
                         const uploadResponse = await fetch('/api/players/upload', {
                           method: 'POST',
                           body: uploadFormData,
+                          credentials: 'include',
                         })
 
-                        if (!uploadResponse.ok) {
-                          let errorMessage = 'Error uploading image'
-                          try {
-                            const error = await uploadResponse.json()
-                            errorMessage = error.error || error.message || errorMessage
-                            console.error('Upload error:', error)
-                          } catch (parseError) {
-                            const text = await uploadResponse.text()
-                            console.error('Upload error (text):', text)
-                            errorMessage = text || errorMessage
-                          }
-                          throw new Error(errorMessage)
+                        let uploadData: any = null
+                        try {
+                          uploadData = await uploadResponse.json()
+                        } catch {
+                          uploadData = null
                         }
 
-                        const uploadData = await uploadResponse.json()
-                        if (!uploadData.url) {
+                        if (uploadResponse.status === 401) {
+                          throw new Error('Admin session expired. Please log in again.')
+                        }
+                        if (!uploadResponse.ok) {
+                          throw new Error(
+                            uploadData?.details ||
+                              uploadData?.error ||
+                              uploadData?.message ||
+                              'Error uploading image'
+                          )
+                        }
+                        if (!uploadData?.url) {
                           throw new Error('Image URL was not returned from the server')
                         }
                         imageUrl = uploadData.url
@@ -2714,7 +2746,6 @@ export default function AdminPage() {
                     let logoUrl: string | null = null
 
                     if (teamLogoFile) {
-                      // Upload slike preko API rute
                       const uploadFormData = new FormData()
                       uploadFormData.append('file', teamLogoFile)
 
@@ -2722,24 +2753,28 @@ export default function AdminPage() {
                         const uploadResponse = await fetch('/api/teams/upload', {
                           method: 'POST',
                           body: uploadFormData,
+                          credentials: 'include',
                         })
 
-                        if (!uploadResponse.ok) {
-                          let errorMessage = 'Error uploading logo'
-                          try {
-                            const error = await uploadResponse.json()
-                            errorMessage = error.error || error.message || errorMessage
-                            console.error('Upload error:', error)
-                          } catch (parseError) {
-                            const text = await uploadResponse.text()
-                            console.error('Upload error (text):', text)
-                            errorMessage = text || errorMessage
-                          }
-                          throw new Error(errorMessage)
+                        let uploadData: any = null
+                        try {
+                          uploadData = await uploadResponse.json()
+                        } catch {
+                          uploadData = null
                         }
 
-                        const uploadData = await uploadResponse.json()
-                        if (!uploadData.url) {
+                        if (uploadResponse.status === 401) {
+                          throw new Error('Admin session expired. Please log in again.')
+                        }
+                        if (!uploadResponse.ok) {
+                          throw new Error(
+                            uploadData?.details ||
+                              uploadData?.error ||
+                              uploadData?.message ||
+                              'Error uploading logo'
+                          )
+                        }
+                        if (!uploadData?.url) {
                           throw new Error('Logo URL was not returned from the server')
                         }
                         logoUrl = uploadData.url

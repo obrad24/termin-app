@@ -253,7 +253,7 @@ export default function Header() {
             <Link
               href={fantasyHref}
               aria-label="My Fantasy Team"
-              className={`rounded-full overflow-hidden border-2 border-white/80 shadow-md shadow-black/30 hover:scale-105 active:scale-95 transition-transform ${
+              className={`fantasy-pulse rounded-full overflow-hidden border-2 border-white/80 shadow-md shadow-black/30 hover:scale-105 active:scale-95 ${
                 fantasyPinned
                   ? 'fixed top-2 right-3 sm:top-2.5 sm:right-4 z-[120] w-10 h-10 sm:w-11 sm:h-11'
                   : 'absolute inset-0'

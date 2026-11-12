@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { jsonCached } from '@/lib/http-cache'
+import { toId } from '@/lib/ids'
 
 export const revalidate = 20
 
@@ -17,7 +18,6 @@ export async function GET(request: Request) {
       )
     }
 
-    // Dobijanje svih igrača
     const { data: players, error: playersError } = await supabase
       .from('players')
       .select('*')
@@ -35,16 +35,12 @@ export async function GET(request: Request) {
       return NextResponse.json([])
     }
 
-    // Prvo dobijamo sve postojeće rezultate (mečeve), opcionalno filtrirano po sezoni
     const { searchParams } = new URL(request.url)
-    const seasonIdParam = searchParams.get('season_id')
-    const seasonId = seasonIdParam ? parseInt(seasonIdParam, 10) : null
+    const seasonId = toId(searchParams.get('season_id'))
 
-    let resultsQuery = supabase
-      .from('results')
-      .select('id, season_id')
+    let resultsQuery = supabase.from('results').select('id, season_id')
 
-    if (seasonId && !isNaN(seasonId)) {
+    if (seasonId != null) {
       resultsQuery = resultsQuery.eq('season_id', seasonId)
     }
 
@@ -54,41 +50,36 @@ export async function GET(request: Request) {
       console.error('Error fetching results:', resultsError)
     }
 
-    // Kreiraj Set sa ID-ovima postojećih rezultata za brže provere
     const existingResultIds = new Set<number>()
     if (existingResults) {
       existingResults.forEach((result: any) => {
-        const resultId = typeof result.id === 'string'
-          ? parseInt(result.id, 10)
-          : result.id
-        if (resultId != null && !isNaN(resultId) && typeof resultId === 'number') {
-          existingResultIds.add(resultId)
-        }
+        const resultId = toId(result.id)
+        if (resultId != null) existingResultIds.add(resultId)
       })
     }
 
-    // Sezonski timovi (ako tabela postoji)
-    let seasonalTeamByPlayer: Record<number, string | null> = {}
-    if (seasonId && !isNaN(seasonId)) {
+    const seasonalTeamByPlayer: Record<number, string | null> = {}
+    if (seasonId != null) {
       const { data: seasonalTeams, error: seasonalTeamsError } = await supabase
         .from('player_season_teams')
         .select('player_id, team')
         .eq('season_id', seasonId)
 
       if (seasonalTeamsError) {
-        console.warn('Failed to load player_season_teams, using players.team fallback:', seasonalTeamsError.message)
+        console.warn(
+          'Failed to load player_season_teams, using players.team fallback:',
+          seasonalTeamsError.message,
+        )
       } else if (seasonalTeams) {
-        seasonalTeamByPlayer = seasonalTeams.reduce((acc: Record<number, string | null>, row: any) => {
-          const playerId = typeof row.player_id === 'string' ? parseInt(row.player_id, 10) : row.player_id
-          if (typeof playerId === 'number' && !isNaN(playerId)) {
-            acc[playerId] = row.team || null
+        seasonalTeams.forEach((row: any) => {
+          const playerId = toId(row.player_id)
+          if (playerId != null) {
+            seasonalTeamByPlayer[playerId] = row.team || null
           }
-          return acc
-        }, {})
+        })
       }
     }
 
-    // Dobijanje svih golova samo za postojeće mečeve
     const { data: allGoals, error: goalsError } = await supabase
       .from('match_goals')
       .select('player_id, result_id')
@@ -99,80 +90,46 @@ export async function GET(request: Request) {
       console.error('Error fetching goals:', goalsError)
     }
 
-    // Brojanje golova po igraču - samo za postojeće mečeve
     const goalsByPlayer: Record<number, number> = {}
     if (allGoals) {
       allGoals.forEach((goal) => {
-        // Proveri da li meč još uvek postoji
-        const resultId = typeof goal.result_id === 'string' 
-          ? parseInt(goal.result_id, 10) 
-          : goal.result_id
-        
-        if (resultId != null && !isNaN(resultId) && existingResultIds.has(resultId)) {
-          // Filtriraj samo validne player_id vrednosti (brojevi, ne null/undefined)
-          const playerId = typeof goal.player_id === 'string' 
-            ? parseInt(goal.player_id, 10) 
-            : goal.player_id
-          
-          if (playerId != null && !isNaN(playerId) && typeof playerId === 'number') {
-            goalsByPlayer[playerId] = (goalsByPlayer[playerId] || 0) + 1
-          }
-        }
+        const resultId = toId(goal.result_id)
+        if (resultId == null || !existingResultIds.has(resultId)) return
+        const playerId = toId(goal.player_id)
+        if (playerId == null) return
+        goalsByPlayer[playerId] = (goalsByPlayer[playerId] || 0) + 1
       })
     }
 
-    // Dobijanje svih igrača koji su igrali
-    const { data: allMatchPlayers, error: matchPlayersError } = await supabase
-      .from('match_players')
-      .select('player_id')
-      .not('player_id', 'is', null)
-
-    if (matchPlayersError) {
-      console.error('Error fetching match players:', matchPlayersError)
-    }
-
-    // Brojanje odigranih mečeva po igraču (brojimo unique result_id za svakog igrača)
     const matchesByPlayer: Record<number, Set<number>> = {}
-    if (allMatchPlayers) {
-      // Prvo dobijamo sve match_players sa result_id
+    {
       const { data: matchPlayersWithResults, error: matchPlayersWithResultsError } = await supabase
         .from('match_players')
         .select('player_id, result_id')
         .not('player_id', 'is', null)
         .not('result_id', 'is', null)
 
-      if (!matchPlayersWithResultsError && matchPlayersWithResults) {
+      if (matchPlayersWithResultsError) {
+        console.error('Error fetching match players:', matchPlayersWithResultsError)
+      } else if (matchPlayersWithResults) {
         matchPlayersWithResults.forEach((mp: any) => {
-          // Proveri da li meč još uvek postoji
-          const resultId = typeof mp.result_id === 'string' 
-            ? parseInt(mp.result_id, 10) 
-            : mp.result_id
-          
-          if (resultId != null && !isNaN(resultId) && existingResultIds.has(resultId)) {
-            // Filtriraj samo validne player_id vrednosti
-            const playerId = typeof mp.player_id === 'string' 
-              ? parseInt(mp.player_id, 10) 
-              : mp.player_id
-            
-            if (playerId != null && !isNaN(playerId) && typeof playerId === 'number') {
-              if (!matchesByPlayer[playerId]) {
-                matchesByPlayer[playerId] = new Set()
-              }
-              matchesByPlayer[playerId].add(resultId)
-            }
-          }
+          const resultId = toId(mp.result_id)
+          if (resultId == null || !existingResultIds.has(resultId)) return
+          const playerId = toId(mp.player_id)
+          if (playerId == null) return
+          if (!matchesByPlayer[playerId]) matchesByPlayer[playerId] = new Set()
+          matchesByPlayer[playerId].add(resultId)
         })
       }
     }
 
-    // Fantasy points total (season-scoped when season_id is set)
     const fantasyPointsByPlayer: Record<number, number> = {}
     {
       let fantasyQuery = supabase
         .from('fantasy_match_points')
         .select('player_id, total_points, result_id')
 
-      if (seasonId && !isNaN(seasonId)) {
+      if (seasonId != null) {
         fantasyQuery = fantasyQuery.eq('season_id', seasonId)
       }
 
@@ -183,24 +140,18 @@ export async function GET(request: Request) {
         }
       } else if (fantasyRows) {
         fantasyRows.forEach((row: any) => {
-          const resultId =
-            typeof row.result_id === 'string' ? parseInt(row.result_id, 10) : row.result_id
-          if (resultId != null && !isNaN(resultId) && !existingResultIds.has(resultId)) {
-            return
-          }
-          const playerId =
-            typeof row.player_id === 'string' ? parseInt(row.player_id, 10) : row.player_id
-          if (playerId != null && !isNaN(playerId) && typeof playerId === 'number') {
-            fantasyPointsByPlayer[playerId] =
-              (fantasyPointsByPlayer[playerId] || 0) + (row.total_points || 0)
-          }
+          const resultId = toId(row.result_id)
+          if (resultId != null && !existingResultIds.has(resultId)) return
+          const playerId = toId(row.player_id)
+          if (playerId == null) return
+          fantasyPointsByPlayer[playerId] =
+            (fantasyPointsByPlayer[playerId] || 0) + (Number(row.total_points) || 0)
         })
       }
     }
 
-    // Kombinovanje podataka sa ocenama
     const playersWithStats = players.map((player) => {
-      // Izračunaj prosečnu ocenu
+      const playerId = toId(player.id)
       const ratings = [
         player.pace,
         player.shooting,
@@ -210,27 +161,33 @@ export async function GET(request: Request) {
         player.physical,
         player.stamina,
       ].filter((r): r is number => r !== null && r !== undefined)
-      
-      let averageRating = ratings.length > 0
-        ? Math.round(ratings.reduce((sum, r) => sum + r, 0) / ratings.length)
-        : null
 
-      // Dodaj rating_bonus na prosječni rating
+      let averageRating =
+        ratings.length > 0
+          ? Math.round(ratings.reduce((sum, r) => sum + r, 0) / ratings.length)
+          : null
+
       if (averageRating !== null && player.rating_bonus !== null && player.rating_bonus !== undefined) {
         averageRating = Math.max(0, Math.min(100, averageRating + player.rating_bonus))
       }
 
+      const hasSeasonTeam =
+        seasonId != null && playerId != null && Object.prototype.hasOwnProperty.call(seasonalTeamByPlayer, playerId)
+
       return {
         ...player,
-        team:
-          seasonId && !isNaN(seasonId) && Object.prototype.hasOwnProperty.call(seasonalTeamByPlayer, player.id)
-            ? seasonalTeamByPlayer[player.id]
-            : player.team,
-        injury: player.injury === true || player.injury === 'true' ? true : (player.injury === false || player.injury === 'false' ? false : null),
-        goals: goalsByPlayer[player.id] || 0,
-        matches_played: matchesByPlayer[player.id]?.size || 0,
+        id: playerId ?? player.id,
+        team: hasSeasonTeam ? seasonalTeamByPlayer[playerId!] : player.team,
+        injury:
+          player.injury === true || player.injury === 'true'
+            ? true
+            : player.injury === false || player.injury === 'false'
+              ? false
+              : null,
+        goals: playerId != null ? goalsByPlayer[playerId] || 0 : 0,
+        matches_played: playerId != null ? matchesByPlayer[playerId]?.size || 0 : 0,
         average_rating: averageRating,
-        fantasy_points: fantasyPointsByPlayer[player.id] || 0,
+        fantasy_points: playerId != null ? fantasyPointsByPlayer[playerId] || 0 : 0,
       }
     })
 

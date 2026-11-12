@@ -7,6 +7,7 @@ import Header from '@/components/header'
 import { getPlayerImageUrl } from '@/lib/image-utils'
 import { useSeason } from '@/components/season-provider'
 import FantasyPitch from '@/components/fantasy-pitch'
+import FantasyScoringRules from '@/components/fantasy-scoring-rules'
 
 type SortKey = 'total' | 'last_gw' | 'avg' | 'goals'
 
@@ -206,6 +207,8 @@ export default function FantasyPage() {
             </div>
           </>
         )}
+
+        <FantasyScoringRules className="mt-4" />
       </section>
     </main>
   )

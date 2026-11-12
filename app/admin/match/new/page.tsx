@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -59,7 +59,9 @@ export default function NewMatchPage() {
   const [teams, setTeams] = useState<Team[]>([])
   const [players, setPlayers] = useState<Player[]>([])
   const [loadingData, setLoadingData] = useState(true)
+  const [authChecked, setAuthChecked] = useState(false)
   const { currentSeason } = useSeason()
+  const matchImageInputRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState({
     home_team: '',
@@ -70,6 +72,8 @@ export default function NewMatchPage() {
     summary_comment: '',
     image_url: '',
   })
+  const [imagePreview, setImagePreview] = useState<string>('')
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null)
   const [uploadingImage, setUploadingImage] = useState(false)
 
   const [goals, setGoals] = useState<Goal[]>([])
@@ -87,8 +91,38 @@ export default function NewMatchPage() {
   const [officialResult, setOfficialResult] = useState(false)
 
   useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('/api/admin/check', { credentials: 'include' })
+        if (!response.ok) {
+          router.replace('/admin')
+          return
+        }
+        const data = await response.json()
+        if (!data.authenticated) {
+          router.replace('/admin')
+          return
+        }
+        setAuthChecked(true)
+      } catch {
+        router.replace('/admin')
+      }
+    }
+    checkAuth()
+  }, [router])
+
+  useEffect(() => {
+    if (!authChecked) return
     fetchData()
-  }, [currentSeason?.id])
+  }, [authChecked, currentSeason?.id])
+
+  useEffect(() => {
+    return () => {
+      if (imagePreview.startsWith('blob:')) {
+        URL.revokeObjectURL(imagePreview)
+      }
+    }
+  }, [imagePreview])
 
   const fetchData = async () => {
     try {
@@ -115,6 +149,77 @@ export default function NewMatchPage() {
       })
     } finally {
       setLoadingData(false)
+    }
+  }
+
+  const clearMatchImage = () => {
+    if (imagePreview.startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreview)
+    }
+    setImagePreview('')
+    setPendingImageFile(null)
+    setFormData((prev) => ({ ...prev, image_url: '' }))
+    if (matchImageInputRef.current) {
+      matchImageInputRef.current.value = ''
+    }
+  }
+
+  const uploadMatchImage = async (file: File): Promise<string> => {
+    const fd = new FormData()
+    fd.append('file', file)
+    const res = await fetch('/api/matches/upload', {
+      method: 'POST',
+      body: fd,
+      credentials: 'include',
+    })
+
+    let data: any = null
+    try {
+      data = await res.json()
+    } catch {
+      data = null
+    }
+
+    if (res.status === 401) {
+      throw new Error('Admin session expired. Please log in again.')
+    }
+    if (!res.ok) {
+      throw new Error(data?.details || data?.error || data?.message || 'Upload failed')
+    }
+    if (!data?.url) {
+      throw new Error('Upload succeeded but no image URL was returned')
+    }
+    return data.url as string
+  }
+
+  const handleMatchImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (imagePreview.startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreview)
+    }
+
+    const localPreview = URL.createObjectURL(file)
+    setPendingImageFile(file)
+    setImagePreview(localPreview)
+    setUploadingImage(true)
+
+    try {
+      const url = await uploadMatchImage(file)
+      setFormData((prev) => ({ ...prev, image_url: url }))
+      setPendingImageFile(null)
+      toast({ title: 'Image uploaded' })
+    } catch (err: any) {
+      toast({
+        title: 'Upload failed',
+        description: err.message || 'Could not upload image',
+        variant: 'destructive',
+      })
+      // Keep local preview + pending file so submit can retry upload
+    } finally {
+      setUploadingImage(false)
+      e.target.value = ''
     }
   }
 
@@ -291,11 +396,24 @@ export default function NewMatchPage() {
         }
       }
 
+      let imageUrl = formData.image_url.trim()
+      if (!imageUrl && pendingImageFile) {
+        setUploadingImage(true)
+        try {
+          imageUrl = await uploadMatchImage(pendingImageFile)
+          setFormData((prev) => ({ ...prev, image_url: imageUrl }))
+          setPendingImageFile(null)
+        } finally {
+          setUploadingImage(false)
+        }
+      }
+
       const response = await fetch('/api/results', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           home_team: formData.home_team,
           away_team: formData.away_team,
@@ -303,7 +421,7 @@ export default function NewMatchPage() {
           home_score: parseInt(formData.home_score),
           away_score: parseInt(formData.away_score),
           summary_comment: formData.summary_comment.trim() || null,
-          image_url: formData.image_url.trim() || null,
+          image_url: imageUrl || null,
           goals: validGoals.map((g) => ({
             player_id: parseInt(g.player_id),
             team_type: g.team_type,
@@ -339,7 +457,7 @@ export default function NewMatchPage() {
     }
   }
 
-  if (loadingData) {
+  if (!authChecked || loadingData) {
     return (
       <div className="min-h-screen bg-[var(--fpl-p120)] flex items-center justify-center px-4">
         <Card className={`w-full max-w-md ${adminPanel}`}>
@@ -900,47 +1018,29 @@ export default function NewMatchPage() {
                     <div className="space-y-2">
                       <Label htmlFor="match_image">Match image</Label>
                       <div className="flex flex-col sm:flex-row gap-4 items-start">
-                        <label className="flex items-center justify-center gap-2 h-11 px-4 rounded-lg border border-dashed cursor-pointer hover:bg-white/5 transition">
+                        <input
+                          ref={matchImageInputRef}
+                          id="match_image"
+                          type="file"
+                          accept="image/*"
+                          className="sr-only"
+                          disabled={uploadingImage}
+                          onChange={handleMatchImageChange}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={uploadingImage}
+                          className={`${adminOutlineBtn} border-dashed`}
+                          onClick={() => matchImageInputRef.current?.click()}
+                        >
                           <ImagePlus className="w-4 h-4" />
-                          <span className="text-sm">{uploadingImage ? 'Uploading...' : 'Upload image'}</span>
-                          <input
-                            id="match_image"
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            disabled={uploadingImage}
-                            onChange={async (e) => {
-                              const file = e.target.files?.[0]
-                              if (!file) return
-                              setUploadingImage(true)
-                              try {
-                                const fd = new FormData()
-                                fd.append('file', file)
-                                const res = await fetch('/api/matches/upload', {
-                                  method: 'POST',
-                                  body: fd,
-                                })
-                                const data = await res.json()
-                                if (!res.ok) throw new Error(data.error || 'Upload failed')
-                                setFormData((prev) => ({ ...prev, image_url: data.url }))
-                                toast({ title: 'Image uploaded' })
-                              } catch (err: any) {
-                                toast({
-                                  title: 'Upload failed',
-                                  description: err.message || 'Could not upload image',
-                                  variant: 'destructive',
-                                })
-                              } finally {
-                                setUploadingImage(false)
-                                e.target.value = ''
-                              }
-                            }}
-                          />
-                        </label>
-                        {formData.image_url && (
-                          <div className="relative w-28 h-20 rounded-lg overflow-hidden border">
+                          {uploadingImage ? 'Uploading...' : formData.image_url || imagePreview ? 'Change image' : 'Upload image'}
+                        </Button>
+                        {(imagePreview || formData.image_url) && (
+                          <div className="relative w-28 h-20 rounded-lg overflow-hidden border border-white/20">
                             <NextImage
-                              src={formData.image_url}
+                              src={imagePreview || formData.image_url}
                               alt="Match preview"
                               fill
                               className="object-cover"
@@ -949,13 +1049,19 @@ export default function NewMatchPage() {
                             <button
                               type="button"
                               className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center"
-                              onClick={() => setFormData({ ...formData, image_url: '' })}
+                              onClick={clearMatchImage}
+                              aria-label="Remove match image"
                             >
                               <X className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         )}
                       </div>
+                      {pendingImageFile && !formData.image_url && (
+                        <p className="text-xs text-amber-300">
+                          Preview ready — image will upload when you save the match.
+                        </p>
+                      )}
                     </div>
                   </div>
 

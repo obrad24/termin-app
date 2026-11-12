@@ -2,17 +2,28 @@
 
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { Season } from '@/lib/supabase'
+import { sameId, toId } from '@/lib/ids'
 
 interface SeasonContextValue {
   seasons: Season[]
   currentSeason: Season | null
-  setCurrentSeasonId: (id: number | null) => void
+  setCurrentSeasonId: (id: number | string | null) => void
   refreshSeasons: () => Promise<void>
 }
 
 const SeasonContext = createContext<SeasonContextValue | undefined>(undefined)
 
 const STORAGE_KEY = 'termin_current_season_id'
+
+function normalizeSeason(raw: any): Season | null {
+  const id = toId(raw?.id)
+  if (id == null || !raw?.name) return null
+  return {
+    ...raw,
+    id,
+    name: String(raw.name),
+  }
+}
 
 export function SeasonProvider({ children }: { children: React.ReactNode }) {
   const [seasons, setSeasons] = useState<Season[]>([])
@@ -22,27 +33,27 @@ export function SeasonProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await fetch('/api/seasons')
       if (!response.ok) return
-      const data: Season[] = await response.json()
-      setSeasons(data || [])
+      const data = await response.json()
+      const normalized = (Array.isArray(data) ? data : [])
+        .map(normalizeSeason)
+        .filter((s): s is Season => !!s)
+      setSeasons(normalized)
 
-      // Ako već imamo izabranu sezonu, pokušaj da je zadržiš
       const storedId =
         typeof window !== 'undefined'
-          ? window.localStorage.getItem(STORAGE_KEY)
+          ? toId(window.localStorage.getItem(STORAGE_KEY))
           : null
-      const storedSeasonId = storedId ? parseInt(storedId, 10) : null
 
-      if (storedSeasonId && data?.length) {
-        const found = data.find((s) => s.id === storedSeasonId) || null
+      if (storedId != null && normalized.length) {
+        const found = normalized.find((s) => sameId(s.id, storedId)) || null
         if (found) {
           setCurrentSeason(found)
           return
         }
       }
 
-      // U suprotnom, uzmi najnoviju sezonu (po id-u)
-      if (data && data.length > 0) {
-        const sorted = [...data].sort((a, b) => b.id - a.id)
+      if (normalized.length > 0) {
+        const sorted = [...normalized].sort((a, b) => b.id - a.id)
         setCurrentSeason(sorted[0])
         if (typeof window !== 'undefined') {
           window.localStorage.setItem(STORAGE_KEY, String(sorted[0].id))
@@ -59,10 +70,11 @@ export function SeasonProvider({ children }: { children: React.ReactNode }) {
     refreshSeasons()
   }, [])
 
-  const setCurrentSeasonId = (id: number | null) => {
+  const setCurrentSeasonId = (id: number | string | null) => {
     const previousSeasonId = currentSeason?.id ?? null
+    const nextId = id == null || id === '' ? null : toId(id)
 
-    if (!id) {
+    if (nextId == null) {
       setCurrentSeason(null)
       if (typeof window !== 'undefined') {
         window.localStorage.removeItem(STORAGE_KEY)
@@ -73,11 +85,11 @@ export function SeasonProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    const found = seasons.find((s) => s.id === id) || null
+    const found = seasons.find((s) => sameId(s.id, nextId)) || null
     setCurrentSeason(found)
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem(STORAGE_KEY, String(id))
-      if (previousSeasonId !== id) {
+      window.localStorage.setItem(STORAGE_KEY, String(nextId))
+      if (!sameId(previousSeasonId, nextId)) {
         window.location.reload()
       }
     }
@@ -104,4 +116,3 @@ export function useSeason() {
   }
   return ctx
 }
-

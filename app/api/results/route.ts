@@ -156,16 +156,25 @@ export async function POST(request: Request) {
     resultData = result.data
     resultError = result.error
 
-    // Ako greška kaže da kolone ne postoje, probaj ponovo bez odds polja
+    // Ako greška kaže da kolone ne postoje, probaj ponovo bez odds polja (zadrži image/comment)
     if (resultError && resultError.message?.includes('odds')) {
       console.warn('Odds kolone ne postoje, pokušavam bez njih:', resultError.message)
-      
-      const insertDataWithoutOdds = {
+
+      const insertDataWithoutOdds: Record<string, unknown> = {
         home_team,
         away_team,
         home_score: parseInt(home_score),
         away_score: parseInt(away_score),
         date,
+      }
+      if (insertData.season_id !== undefined) {
+        insertDataWithoutOdds.season_id = insertData.season_id
+      }
+      if (insertData.summary_comment) {
+        insertDataWithoutOdds.summary_comment = insertData.summary_comment
+      }
+      if (insertData.image_url) {
+        insertDataWithoutOdds.image_url = insertData.image_url
       }
 
       const retryResult = await supabase

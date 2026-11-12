@@ -8,6 +8,7 @@ import { X } from 'lucide-react'
 import Header from '@/components/header'
 import { useSeason } from '@/components/season-provider'
 import { getPlayerImageUrl } from '@/lib/image-utils'
+import FantasyScoringRules from '@/components/fantasy-scoring-rules'
 import {
   Sheet,
   SheetContent,
@@ -72,6 +73,7 @@ type MyTeamData = {
   transfer_window?: TransferWindow
   squad_size: number
   max_transfers: number
+  max_per_team?: number
   max_budget?: number
   has_previous_squad: boolean
   free_initial_pick: boolean
@@ -80,6 +82,8 @@ type MyTeamData = {
   player_ids: number[]
   previous_player_ids?: number[]
   available_players: PlayerOpt[]
+  team_limit_ok?: boolean
+  team_limit_warning?: string | null
 }
 
 function formatDeadline(iso: string, timeZone = 'Europe/Belgrade') {
@@ -338,50 +342,101 @@ export default function MyTeamPage() {
     setActivePlayer(null)
   }
 
+  const maxPerTeam = data?.max_per_team || 3
+
+  const maxFromOneTeam = (ids: number[]) => {
+    const counts: Record<string, number> = {}
+    let max = 0
+    for (const id of ids) {
+      const team = (playersById.get(id)?.team || '').trim()
+      if (!team) continue
+      counts[team] = (counts[team] || 0) + 1
+      max = Math.max(max, counts[team])
+    }
+    return max
+  }
+
+  const teamLimitViolation = (ids: number[]) => {
+    const counts: Record<string, number> = {}
+    let worst: { team: string; count: number } | null = null
+    for (const id of ids) {
+      const team = (playersById.get(id)?.team || '').trim()
+      if (!team) continue
+      counts[team] = (counts[team] || 0) + 1
+      if (counts[team] > maxPerTeam && (!worst || counts[team] > worst.count)) {
+        worst = { team, count: counts[team] }
+      }
+    }
+    return worst
+  }
+
+  /** Allow repair of grandfathered over-limit squads; never create/worsen a violation. */
+  const isTeamChangeAllowed = (prevIds: number[], nextIds: number[]) => {
+    const prevMax = maxFromOneTeam(prevIds)
+    const nextMax = maxFromOneTeam(nextIds)
+    if (nextMax <= maxPerTeam) return true
+    if (prevMax <= maxPerTeam) return false
+    return nextMax <= prevMax
+  }
+
+  const sameIds = (a: number[], b: number[]) => {
+    if (a.length !== b.length) return false
+    const left = [...a].sort((x, y) => x - y)
+    const right = [...b].sort((x, y) => x - y)
+    return left.every((id, i) => id === right[i])
+  }
+
   const applySelection = (newId: number) => {
     if (data?.locked) return
     setMessage(null)
     setError(null)
 
-    setSelected((prev) => {
-      let next: number[]
-      if (replacingId != null) {
-        next = prev.map((id) => (id === replacingId ? newId : id))
-        if (!prev.includes(replacingId)) {
-          next = prev.includes(newId) ? prev : [...prev, newId]
-        }
-      } else {
-        if (prev.includes(newId)) return prev
-        if (prev.length >= (data?.squad_size || 5)) {
-          setError(`Squad is full (${data?.squad_size || 5})`)
-          return prev
-        }
-        next = [...prev, newId]
+    let next: number[]
+    if (replacingId != null) {
+      next = selected.map((id) => (id === replacingId ? newId : id))
+      if (!selected.includes(replacingId)) {
+        next = selected.includes(newId) ? selected : [...selected, newId]
       }
-
-      const cost = next.reduce((sum, id) => {
-        const p = playersById.get(id)
-        return sum + (Number(p?.price) || 0)
-      }, 0)
-      if (cost > maxBudget + 0.05) {
-        setError(`Budget exceeded: £${cost.toFixed(1)}m / £${maxBudget}m`)
-        return prev
+    } else {
+      if (selected.includes(newId)) return
+      if (selected.length >= (data?.squad_size || 5)) {
+        setError(`Squad is full (${data?.squad_size || 5})`)
+        return
       }
+      next = [...selected, newId]
+    }
 
-      if (!data?.free_initial_pick) {
-        let incoming = 0
-        for (const pid of next) {
-          if (!baselineIds.has(pid)) incoming += 1
-        }
-        if (incoming > (data?.max_transfers || 2)) {
-          setError(`Max ${data?.max_transfers || 2} changes this gameweek`)
-          return prev
-        }
+    const cost = next.reduce((sum, id) => {
+      const p = playersById.get(id)
+      return sum + (Number(p?.price) || 0)
+    }, 0)
+    if (cost > maxBudget + 0.05) {
+      setError(`Budget exceeded: £${cost.toFixed(1)}m / £${maxBudget}m`)
+      return
+    }
+
+    if (!isTeamChangeAllowed(selected, next)) {
+      const teamHit = teamLimitViolation(next)
+      setError(
+        teamHit
+          ? `Max ${maxPerTeam} players from the same team (${teamHit.team})`
+          : `Max ${maxPerTeam} players from the same team`,
+      )
+      return
+    }
+
+    if (!data?.free_initial_pick) {
+      let incoming = 0
+      for (const pid of next) {
+        if (!baselineIds.has(pid)) incoming += 1
       }
+      if (incoming > (data?.max_transfers || 2)) {
+        setError(`Max ${data?.max_transfers || 2} changes this gameweek`)
+        return
+      }
+    }
 
-      return next
-    })
-
+    setSelected(next)
     setReplaceSheetOpen(false)
     setReplacingId(null)
     setActivePlayer(null)
@@ -395,6 +450,14 @@ export default function MyTeamPage() {
     }
     if (budgetSpent > maxBudget + 0.05) {
       setError(`Budget exceeded: £${budgetSpent.toFixed(1)}m / £${maxBudget}m`)
+      return
+    }
+    const unchanged = sameIds(selected, data.player_ids || [])
+    const teamHit = teamLimitViolation(selected)
+    if (teamHit && !unchanged) {
+      setError(
+        `Max ${maxPerTeam} players from the same team (${teamHit.team}). Reduce to ${maxPerTeam} before saving changes.`,
+      )
       return
     }
     setSaving(true)
@@ -529,6 +592,7 @@ export default function MyTeamPage() {
             {data?.free_initial_pick
               ? ' · pick any 5'
               : ` · ${transfersUsedNow}/${data?.max_transfers || 2} transfers`}
+            {` · max ${data?.max_per_team || 3}/team`}
           </p>
         </div>
 
@@ -546,6 +610,15 @@ export default function MyTeamPage() {
             £{budgetSpent.toFixed(1)}m / £{maxBudget}m
           </span>
         </div>
+
+        {(data?.team_limit_warning || teamLimitViolation(selected)) && (
+          <div className="mb-3 rounded-xl px-3 py-2.5 border border-amber-400/30 bg-amber-500/10">
+            <p className="text-amber-200 text-xs leading-snug">
+              {data?.team_limit_warning ||
+                `Max ${maxPerTeam} players from the same team. Your current pick is over the limit — reduce it before saving changes.`}
+            </p>
+          </div>
+        )}
 
         {data?.transfer_window && (
           <div
@@ -726,7 +799,7 @@ export default function MyTeamPage() {
             {data?.locked && (
               <p className="text-amber-300 text-xs mb-3">
                 {data.schedule_locked
-                  ? 'Locked Thu 15:00 → Fri 12:00 — squad cannot be changed.'
+                  ? 'Locked Thu 16:00 → Fri 12:00 — squad cannot be changed.'
                   : 'This gameweek is locked — squad cannot be changed.'}
               </p>
             )}
@@ -747,6 +820,8 @@ export default function MyTeamPage() {
                 Fantasy
               </Link>
             </div>
+
+            <FantasyScoringRules className="mt-4" />
           </>
         )}
       </section>
@@ -981,12 +1056,18 @@ export default function MyTeamPage() {
                   const projected =
                     Math.round((budgetSpent - outgoing + (Number(p.price) || 0)) * 10) / 10
                   const overBudget = projected > maxBudget + 0.05
+                  const previewIds =
+                    replacingId != null
+                      ? selected.map((id) => (id === replacingId ? p.id : id))
+                      : [...selected, p.id]
+                  const overTeam = !isTeamChangeAllowed(selected, previewIds)
+                  const blocked = overBudget || overTeam
                   return (
                   <button
                     key={p.id}
                     type="button"
                     onClick={() => applySelection(p.id)}
-                    disabled={overBudget}
+                    disabled={blocked}
                     className="w-full flex items-center gap-3 px-4 py-2.5 border-b border-white/10 text-left hover:bg-white/5 transition disabled:opacity-40"
                   >
                     <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-gradient-to-b from-[var(--fpl-cyan)] to-[var(--fpl-lilac)] shrink-0">
@@ -1008,7 +1089,7 @@ export default function MyTeamPage() {
                       {formatPrice(p.price)}
                     </span>
                     <span className="w-8 h-8 rounded-full bg-[var(--fpl-purple)] border border-white/15 text-white flex items-center justify-center text-lg font-light shrink-0">
-                      {overBudget ? '!' : '+'}
+                      {blocked ? '!' : '+'}
                     </span>
                   </button>
                   )

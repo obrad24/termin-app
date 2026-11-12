@@ -354,9 +354,11 @@ class QueryBuilder<T = any> {
           const relatedQuery = `SELECT * FROM ${quoteIdent(nested.alias)} WHERE id = ANY($1)`
           related = await runQuery(db, relatedQuery, [ids])
         }
-        const byId = new Map(related.map((r) => [r.id, r]))
+        const byId = new Map(
+          related.map((r) => [String(r.id), r] as const),
+        )
         data = rows.map((row) => {
-          const relatedRow = byId.get(row[fk]) || null
+          const relatedRow = byId.get(String(row[fk])) || null
           if (!relatedRow) return { ...row, [nested.alias]: null }
           if (nested.columns.includes('*')) {
             return { ...row, [nested.alias]: relatedRow }
@@ -480,7 +482,7 @@ class QueryBuilder<T = any> {
 class StorageBucket {
   constructor(private bucket: string) {}
 
-  async upload(filePath: string, buffer: Buffer, options?: { contentType?: string; upsert?: boolean }) {
+  async upload(filePath: string, buffer: Buffer, _options?: { contentType?: string; upsert?: boolean }) {
     try {
       const fs = await import('fs/promises')
       const path = await import('path')
@@ -493,6 +495,7 @@ class StorageBucket {
         error: null as DbError | null,
       }
     } catch (error) {
+      console.error(`Storage upload failed for ${this.bucket}/${filePath}:`, error)
       return { data: null, error: toError(error) }
     }
   }

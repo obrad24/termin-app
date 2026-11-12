@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { requireAuth } from '@/lib/auth'
+import {
+  buildUploadFileName,
+  getUploadFileFromFormData,
+  isImageFile,
+  resolveImageContentType,
+} from '@/lib/upload-image'
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,17 +22,20 @@ export async function POST(request: NextRequest) {
 
     const authCheck = await requireAuth()
     if (authCheck.error) {
-      return authCheck.response
+      return NextResponse.json(
+        { error: 'Unauthorized', message: 'Admin login required to upload images' },
+        { status: 401 }
+      )
     }
 
     const formData = await request.formData()
-    const file = formData.get('file') as File
+    const file = getUploadFileFromFormData(formData)
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    if (!file.type.startsWith('image/')) {
+    if (!isImageFile(file)) {
       return NextResponse.json({ error: 'File must be an image' }, { status: 400 })
     }
 
@@ -35,17 +44,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'File size too large. Maximum size is 10MB' }, { status: 400 })
     }
 
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`
-    const filePath = `matches/${fileName}`
-
+    const filePath = buildUploadFileName(file, 'matches')
+    const contentType = resolveImageContentType(file)
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
     const { error: uploadError } = await supabase.storage
       .from('team-logos')
       .upload(filePath, buffer, {
-        contentType: file.type,
+        contentType,
         upsert: false,
       })
 
