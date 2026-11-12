@@ -49,12 +49,11 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
-    const { error: uploadError } = await supabase.storage
-      .from('team-logos')
-      .upload(filePath, buffer, {
-        contentType,
-        upsert: false,
-      })
+    const storage = supabase.storage.from('team-logos')
+    const { data: uploadData, error: uploadError } = await storage.upload(filePath, buffer, {
+      contentType,
+      upsert: false,
+    })
 
     if (uploadError) {
       console.error('Error uploading match image:', uploadError)
@@ -64,12 +63,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { data: urlData } = supabase.storage.from('team-logos').getPublicUrl(filePath)
+    const publicUrl =
+      (uploadData as any)?.url || storage.getPublicUrl(filePath).data.publicUrl
 
     return NextResponse.json(
       {
         success: true,
-        url: urlData.publicUrl,
+        url: publicUrl,
         path: filePath,
       },
       { status: 200 }
