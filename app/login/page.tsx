@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import Header from '@/components/header'
 
 export default function LoginPage() {
@@ -45,7 +46,19 @@ export default function LoginPage() {
     <main className="min-h-screen bg-[var(--fpl-p120)] pb-20 md:pb-0">
       <Header />
       <section className="relative px-3 sm:px-6 py-8 max-w-md mx-auto">
-        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Player login</h1>
+        <div className="flex items-center gap-3 mb-2">
+          <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-white/15 shrink-0">
+            <Image
+              src="/termin-logo.png"
+              alt="Termin"
+              fill
+              className="object-cover"
+              sizes="48px"
+              unoptimized
+            />
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Player login</h1>
+        </div>
         <p className="text-white/45 text-sm mb-6">
           Nickname = first name (e.g. Filip). Password = first name + 123 (e.g. Filip123).
         </p>

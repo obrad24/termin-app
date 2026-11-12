@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { scorePlayerMatch, BreakdownItem } from '@/lib/fantasy/scoring'
+import { votingPointsByPlayerId } from '@/lib/fantasy/voting-points'
 
 type ResultRow = {
   id: number
@@ -128,7 +129,8 @@ export async function calculateFantasyForResult(
 
   const goalsByPlayer = new Map<number, number>()
   ;(goals || []).forEach((g: any) => {
-    const pid = typeof g.player_id === 'string' ? parseInt(g.player_id, 10) : g.player_id
+    const pid = typeof g.player_id === 'string' ? parseInt(g.player_id, 10) : Number(g.player_id)
+    if (!Number.isFinite(pid)) return
     goalsByPlayer.set(pid, (goalsByPlayer.get(pid) || 0) + 1)
   })
 
@@ -143,22 +145,39 @@ export async function calculateFantasyForResult(
     { manual_adjustment: number; manual_adjustment_reason: string | null }
   >()
   ;(existingRows || []).forEach((row: any) => {
-    manualByPlayer.set(row.player_id, {
+    const pid =
+      typeof row.player_id === 'string' ? parseInt(row.player_id, 10) : Number(row.player_id)
+    if (!Number.isFinite(pid)) return
+    manualByPlayer.set(pid, {
       manual_adjustment: row.manual_adjustment || 0,
       manual_adjustment_reason: row.manual_adjustment_reason || null,
     })
   })
 
+  const toId = (value: unknown) => {
+    const n = typeof value === 'string' ? parseInt(value, 10) : Number(value)
+    return Number.isFinite(n) ? n : NaN
+  }
+
   const appearedIds = new Set(
-    (matchPlayers || []).map((mp: any) =>
-      typeof mp.player_id === 'string' ? parseInt(mp.player_id, 10) : mp.player_id
-    )
+    (matchPlayers || []).map((mp: any) => toId(mp.player_id)).filter((n) => !Number.isNaN(n)),
   )
+
+  // Fan-vote podium points (MVP 3 / 2nd 2 / 3rd 1) — only among players who appeared
+  const { data: ratingRows } = await supabase
+    .from('match_player_ratings')
+    .select('player_id, rating')
+    .eq('match_id', resultId)
+  const lineupRatings = (ratingRows || []).filter((row: any) => {
+    const pid = toId(row.player_id)
+    return !Number.isNaN(pid) && appearedIds.has(pid)
+  })
+  const votingByPlayer = votingPointsByPlayerId(lineupRatings)
 
   // Remove fantasy rows for players no longer in lineup (except keep if only manual? — delete)
   if (existingRows && existingRows.length > 0) {
     const toDelete = existingRows
-      .filter((row: any) => !appearedIds.has(row.player_id))
+      .filter((row: any) => !appearedIds.has(toId(row.player_id)))
       .map((row: any) => row.player_id)
     if (toDelete.length > 0) {
       await supabase
@@ -172,17 +191,19 @@ export async function calculateFantasyForResult(
   const rows: Record<string, unknown>[] = []
 
   for (const mp of matchPlayers || []) {
-    const playerId =
-      typeof mp.player_id === 'string' ? parseInt(mp.player_id, 10) : mp.player_id
+    const playerId = toId(mp.player_id)
+    if (Number.isNaN(playerId)) continue
     const teamType = mp.team_type as 'home' | 'away'
-    const prev = manualByPlayer.get(playerId)
+    const prev = manualByPlayer.get(playerId) || manualByPlayer.get(Number(mp.player_id))
+    const voting = votingByPlayer.get(playerId)
     const scored = scorePlayerMatch({
       appeared: true,
       teamType,
-      homeScore: typedResult.home_score,
-      awayScore: typedResult.away_score,
+      homeScore: Number(typedResult.home_score) || 0,
+      awayScore: Number(typedResult.away_score) || 0,
       goalsScored: goalsByPlayer.get(playerId) || 0,
       manualAdjustment: prev?.manual_adjustment || 0,
+      votingPoints: voting?.points || 0,
     })
 
     rows.push({
@@ -195,6 +216,7 @@ export async function calculateFantasyForResult(
       goals_points: scored.goals_points,
       team_scored_bonus: scored.team_scored_bonus,
       team_conceded_penalty: scored.team_conceded_penalty,
+      voting_points: scored.voting_points,
       manual_adjustment: scored.manual_adjustment,
       manual_adjustment_reason: prev?.manual_adjustment_reason ?? null,
       total_points: scored.total_points,
@@ -321,6 +343,7 @@ export async function applyManualAdjustment(params: {
     awayScore: result.away_score,
     goalsScored: row.goals_scored || 0,
     manualAdjustment: params.points,
+    votingPoints: row.voting_points || 0,
   })
 
   const { error } = await supabase
@@ -333,6 +356,7 @@ export async function applyManualAdjustment(params: {
       goals_points: scored.goals_points,
       team_scored_bonus: scored.team_scored_bonus,
       team_conceded_penalty: scored.team_conceded_penalty,
+      voting_points: scored.voting_points,
       total_points: scored.total_points,
       breakdown: JSON.stringify(scored.breakdown),
       calculated_at: new Date().toISOString(),

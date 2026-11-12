@@ -166,29 +166,37 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         seasonResultsQuery = seasonResultsQuery.eq('season_id', seasonId)
       }
 
+      const toNum = (value: unknown): number | null => {
+        const n = typeof value === 'string' ? parseInt(value, 10) : Number(value)
+        return Number.isFinite(n) ? n : null
+      }
+
       const { data: seasonResults } = await seasonResultsQuery
       const gwByResultId = new Map<number, number>()
       ;(seasonResults || []).forEach((result: any, index: number) => {
-        gwByResultId.set(result.id, index + 1)
+        const rid = toNum(result.id)
+        if (rid != null) gwByResultId.set(rid, index + 1)
       })
 
       const goalsByResultId = new Map<number, number>()
       ;(goalsData || []).forEach((goal: any) => {
-        const resultId =
-          typeof goal.result_id === 'string' ? parseInt(goal.result_id, 10) : goal.result_id
-        if (resultId == null || isNaN(resultId) || !existingResultIds.has(resultId)) return
+        const resultId = toNum(goal.result_id)
+        if (resultId == null || !existingResultIds.has(resultId)) return
         goalsByResultId.set(resultId, (goalsByResultId.get(resultId) || 0) + 1)
       })
 
       const playedResultIds = [
         ...new Set(
-          validMatchPlayers.map((mp) => {
-            const resultId =
-              typeof mp.result_id === 'string' ? parseInt(mp.result_id, 10) : mp.result_id
-            return resultId
-          })
+          validMatchPlayers
+            .map((mp) => toNum(mp.result_id))
+            .filter((id): id is number => id != null),
         ),
-      ].filter((id): id is number => id != null && !isNaN(id))
+      ]
+
+      // Also include matches where the player scored (even if match_players row is missing)
+      goalsByResultId.forEach((_count, resultId) => {
+        if (!playedResultIds.includes(resultId)) playedResultIds.push(resultId)
+      })
 
       if (playedResultIds.length > 0) {
         const { data: playedResults } = await supabase
@@ -200,33 +208,46 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
         const teamTypeByResultId = new Map<number, 'home' | 'away'>()
         validMatchPlayers.forEach((mp: any) => {
-          const resultId =
-            typeof mp.result_id === 'string' ? parseInt(mp.result_id, 10) : mp.result_id
-          if (resultId != null && !isNaN(resultId) && mp.team_type) {
+          const resultId = toNum(mp.result_id)
+          if (resultId != null && mp.team_type) {
             teamTypeByResultId.set(resultId, mp.team_type)
+          }
+        })
+        // Infer side from goals when appearance row is missing
+        ;(goalsData || []).forEach((goal: any) => {
+          const resultId = toNum(goal.result_id)
+          if (resultId == null || teamTypeByResultId.has(resultId)) return
+          if (goal.team_type === 'home' || goal.team_type === 'away') {
+            teamTypeByResultId.set(resultId, goal.team_type)
           }
         })
 
         matchForm = (playedResults || [])
-          .filter((result: any) => !seasonId || result.season_id === seasonId)
+          .filter((result: any) => {
+            if (!seasonId) return true
+            const sid = toNum(result.season_id)
+            return sid === seasonId
+          })
           .map((result: any) => {
-            const teamType = teamTypeByResultId.get(result.id) || 'home'
+            const matchId = toNum(result.id)
+            if (matchId == null) return null
+            const teamType = teamTypeByResultId.get(matchId) || 'home'
             const isHome = teamType === 'home'
             return {
-              matchId: result.id,
-              gameweek: gwByResultId.get(result.id) ?? null,
+              matchId,
+              gameweek: gwByResultId.get(matchId) ?? null,
               date: result.date,
               home_team: result.home_team,
               away_team: result.away_team,
-              home_score: result.home_score,
-              away_score: result.away_score,
+              home_score: Number(result.home_score) || 0,
+              away_score: Number(result.away_score) || 0,
               isHome,
               opponent: isHome ? result.away_team : result.home_team,
-              playerGoals: goalsByResultId.get(result.id) || 0,
+              playerGoals: goalsByResultId.get(matchId) || 0,
               fantasyPoints: 0,
             }
           })
-          .filter((m: any) => m.gameweek != null)
+          .filter((m: any) => m && m.gameweek != null)
 
         // Attach fantasy points per match
         if (matchForm.length > 0) {
@@ -239,7 +260,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
           const fantasyByResult = new Map<number, number>()
           ;(fantasyRows || []).forEach((row: any) => {
-            fantasyByResult.set(row.result_id, row.total_points || 0)
+            const rid = toNum(row.result_id)
+            if (rid != null) fantasyByResult.set(rid, Number(row.total_points) || 0)
           })
           matchForm = matchForm.map((m: any) => ({
             ...m,
@@ -276,6 +298,58 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       }
     }
 
+    // Matches where this player finished as fan-vote MVP (+3 fantasy pts)
+    let mvpMatches: any[] = []
+    {
+      let mvpQuery = supabase
+        .from('fantasy_match_points')
+        .select('result_id, gameweek, voting_points, total_points, season_id')
+        .eq('player_id', id)
+        .eq('voting_points', 3)
+        .order('gameweek', { ascending: false })
+
+      if (seasonId) mvpQuery = mvpQuery.eq('season_id', seasonId)
+
+      const { data: mvpRows } = await mvpQuery
+      if (mvpRows && mvpRows.length > 0) {
+        const resultIds = [
+          ...new Set(
+            mvpRows
+              .map((r: any) =>
+                typeof r.result_id === 'string' ? parseInt(r.result_id, 10) : Number(r.result_id),
+              )
+              .filter((n: number) => Number.isFinite(n)),
+          ),
+        ]
+        const { data: mvpResults } = await supabase
+          .from('results')
+          .select('id, home_team, away_team, home_score, away_score, date')
+          .in('id', resultIds)
+
+        const resultById = new Map(
+          (mvpResults || []).map((r: any) => [Number(r.id), r]),
+        )
+
+        mvpMatches = mvpRows
+          .map((row: any) => {
+            const rid = Number(row.result_id)
+            const result = resultById.get(rid)
+            if (!result) return null
+            return {
+              result_id: rid,
+              gameweek: Number(row.gameweek) || null,
+              date: result.date,
+              home_team: result.home_team,
+              away_team: result.away_team,
+              home_score: result.home_score,
+              away_score: result.away_score,
+              fantasy_points: Number(row.total_points) || 0,
+            }
+          })
+          .filter(Boolean)
+      }
+    }
+
     const response = NextResponse.json({
       ...player,
       goals: goalsCount,
@@ -283,6 +357,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       goals_details: goalsWithMatches,
       match_form: matchForm,
       next_fixture: nextFixture,
+      mvp_matches: mvpMatches,
     })
     // Dodaj headere da se osigura da se ne cache-uje
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')

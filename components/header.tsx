@@ -78,7 +78,7 @@ export default function Header() {
   return (
     <header className="relative z-50 bg-[var(--fpl-p120)] border-b border-white/10">
       <div className="mx-auto max-w-7xl h-14 sm:h-16 px-3 sm:px-6 flex items-center gap-3">
-        {/* PL-style: menu left + season name */}
+        {/* PL-style: menu left + logo + season name */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
@@ -98,7 +98,17 @@ export default function Header() {
               </SheetHeader>
               <div className="relative z-10 flex flex-col h-full bg-[var(--fpl-p120)]">
                 <div className="flex items-center justify-between p-4 pb-2">
-                  <span className="font-display text-xl text-white tracking-[0.08em]">TERMIN</span>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Image
+                      src="/termin-logo.png"
+                      alt="Termin"
+                      width={40}
+                      height={40}
+                      className="w-10 h-10 rounded-xl object-cover shrink-0"
+                      unoptimized
+                    />
+                    <span className="font-display text-xl text-white tracking-[0.08em]">TERMIN</span>
+                  </div>
                   <button
                     onClick={() => setOpen(false)}
                     className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/15 transition"
@@ -159,6 +169,18 @@ export default function Header() {
               </div>
             </SheetContent>
           </Sheet>
+
+          <Link href="/" className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden shrink-0 border border-white/15">
+            <Image
+              src="/termin-logo.png"
+              alt="Termin"
+              fill
+              className="object-cover"
+              sizes="40px"
+              priority
+              unoptimized
+            />
+          </Link>
 
           {seasons.length > 0 ? (
             <Select
@@ -250,8 +272,8 @@ export default function Header() {
               }`}
             >
               <Image
-                src="/pl-lion-button.png"
-                alt=""
+                src="/termin-logo.png"
+                alt="Termin Fantasy"
                 fill
                 className="object-cover"
                 sizes="44px"

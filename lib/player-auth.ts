@@ -10,6 +10,7 @@ export const MAX_BUDGET = 40
 
 export type PlayerAccountSession = {
   accountId: number
+  /** 0 when account is fantasy-only (not linked to a footballer) */
   playerId: number
   nickname: string
 }
@@ -62,7 +63,8 @@ function parseSession(value: string | undefined): PlayerAccountSession | null {
   const [accountIdRaw, playerIdRaw, nickRaw] = payload.split(':')
   const accountId = parseInt(accountIdRaw, 10)
   const playerId = parseInt(playerIdRaw, 10)
-  if (!accountId || !playerId || Number.isNaN(accountId) || Number.isNaN(playerId)) return null
+  // playerId may be 0 for fantasy-only (non-footballer) accounts
+  if (!accountId || Number.isNaN(accountId) || Number.isNaN(playerId) || playerId < 0) return null
   return {
     accountId,
     playerId,
@@ -145,6 +147,61 @@ export async function ensureAccountForPlayer(player: {
   }
 
   return null
+}
+
+/** Create a fantasy login for someone who is not in the players table. */
+export async function createGuestFantasyAccount(params: {
+  nickname: string
+  password: string
+}) {
+  const nickname = params.nickname.trim()
+  const password = params.password
+  if (!nickname) throw new Error('Nickname required')
+  if (!password || password.length < 4) {
+    throw new Error('Password must be at least 4 characters')
+  }
+
+  const { data: existing } = await supabase
+    .from('player_accounts')
+    .select('id')
+    .eq('nickname', nickname)
+    .maybeSingle()
+
+  if (existing?.id) {
+    throw new Error('Nickname already taken')
+  }
+
+  const password_hash = hashPassword(password)
+  const { data, error } = await supabase
+    .from('player_accounts')
+    .insert([{ player_id: null, nickname, password_hash }])
+    .select('id, nickname, player_id, created_at')
+    .single()
+
+  if (error) {
+    const msg = (error.message || '').toLowerCase()
+    if (msg.includes('unique') || error.code === '23505') {
+      throw new Error('Nickname already taken')
+    }
+    if (msg.includes('not-null') || msg.includes('null value') || msg.includes('player_id')) {
+      throw new Error(
+        'Database still requires player_id. Run fantasy-guest-accounts.sql (ALTER player_id DROP NOT NULL).',
+      )
+    }
+    throw new Error(error.message)
+  }
+
+  return data
+}
+
+export async function listFantasyAccounts() {
+  const { data, error } = await supabase
+    .from('player_accounts')
+    .select('id, nickname, player_id, created_at')
+    .order('created_at', { ascending: false })
+
+  if (error) throw new Error(error.message)
+  return data || []
 }
 
 export async function ensureAccountsForAllPlayers() {

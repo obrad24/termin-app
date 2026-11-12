@@ -32,6 +32,7 @@ export type DbError = {
 export type DbResult<T> = {
   data: T | null
   error: DbError | null
+  count?: number | null
 }
 
 function toError(error: unknown): DbError {
@@ -163,23 +164,28 @@ class QueryBuilder<T = any> {
   private filters: Filter[] = []
   private orders: Order[] = []
   private limitCount: number | null = null
+  private offsetCount: number | null = null
   private insertRows: Record<string, any>[] = []
   private updateValues: Record<string, any> | null = null
   private upsertConflict: string | null = null
   private wantSingle = false
   private wantMaybeSingle = false
   private returning = false
+  private countExact = false
+  private headOnly = false
 
   constructor(table: string) {
     this.table = table
   }
 
-  select(columns = '*') {
+  select(columns = '*', options?: { count?: 'exact'; head?: boolean }) {
     this.action = this.action === 'insert' || this.action === 'update' || this.action === 'upsert'
       ? this.action
       : 'select'
     this.selectRaw = columns
     this.returning = true
+    this.countExact = options?.count === 'exact'
+    this.headOnly = options?.head === true
     return this
   }
 
@@ -249,6 +255,15 @@ class QueryBuilder<T = any> {
     return this
   }
 
+  /** Supabase-compatible inclusive range pagination. */
+  range(from: number, to: number) {
+    const start = Math.max(0, Math.floor(from))
+    const end = Math.max(start, Math.floor(to))
+    this.offsetCount = start
+    this.limitCount = end - start + 1
+    return this
+  }
+
   single() {
     this.wantSingle = true
     this.limitCount = 1
@@ -295,20 +310,32 @@ class QueryBuilder<T = any> {
   }
 
   private async executeSelect(db: NeonQueryFunction<false, false>): Promise<DbResult<any>> {
+    const { clause, values } = buildWhere(this.filters)
+
+    let totalCount: number | null = null
+    if (this.countExact || this.headOnly) {
+      const countQuery = `SELECT COUNT(*)::int AS count FROM ${quoteIdent(this.table)} ${clause}`
+      const countRows = await runQuery(db, countQuery, values)
+      totalCount = Number(countRows[0]?.count) || 0
+      if (this.headOnly) {
+        return { data: null, error: null, count: totalCount }
+      }
+    }
+
     const { columns, nested } = parseSelect(this.selectRaw)
     const selectCols = columns.includes('*')
       ? `${quoteIdent(this.table)}.*`
       : columns.map((c) => `${quoteIdent(this.table)}.${quoteIdent(c)}`).join(', ')
 
-    const { clause, values } = buildWhere(this.filters)
     const orderSql = this.orders.length
       ? `ORDER BY ${this.orders
           .map((o) => `${quoteIdent(this.table)}.${quoteIdent(o.column)} ${o.ascending ? 'ASC' : 'DESC'}`)
           .join(', ')}`
       : ''
     const limitSql = this.limitCount != null ? `LIMIT ${this.limitCount}` : ''
+    const offsetSql = this.offsetCount != null ? `OFFSET ${this.offsetCount}` : ''
 
-    const query = `SELECT ${selectCols} FROM ${quoteIdent(this.table)} ${clause} ${orderSql} ${limitSql}`
+    const query = `SELECT ${selectCols} FROM ${quoteIdent(this.table)} ${clause} ${orderSql} ${limitSql} ${offsetSql}`
     const rows = await runQuery(db, query, values)
 
     let data = rows
@@ -345,13 +372,13 @@ class QueryBuilder<T = any> {
 
     if (this.wantSingle || this.wantMaybeSingle) {
       if (!data.length) {
-        if (this.wantMaybeSingle) return { data: null, error: null }
-        return { data: null, error: { message: 'Row not found', code: 'PGRST116' } }
+        if (this.wantMaybeSingle) return { data: null, error: null, count: totalCount }
+        return { data: null, error: { message: 'Row not found', code: 'PGRST116' }, count: totalCount }
       }
-      return { data: data[0], error: null }
+      return { data: data[0], error: null, count: totalCount }
     }
 
-    return { data, error: null }
+    return { data, error: null, count: totalCount }
   }
 
   private async executeInsert(db: NeonQueryFunction<false, false>): Promise<DbResult<any>> {

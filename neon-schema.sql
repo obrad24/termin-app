@@ -184,6 +184,7 @@ CREATE TABLE IF NOT EXISTS fantasy_match_points (
   goals_points INTEGER NOT NULL DEFAULT 0,
   team_scored_bonus INTEGER NOT NULL DEFAULT 0,
   team_conceded_penalty INTEGER NOT NULL DEFAULT 0,
+  voting_points INTEGER NOT NULL DEFAULT 0,
   manual_adjustment INTEGER NOT NULL DEFAULT 0,
   manual_adjustment_reason TEXT,
   total_points INTEGER NOT NULL DEFAULT 0,
@@ -223,7 +224,8 @@ CREATE INDEX IF NOT EXISTS idx_fantasy_calc_logs_season_id ON fantasy_calc_logs(
 
 CREATE TABLE IF NOT EXISTS player_accounts (
   id BIGSERIAL PRIMARY KEY,
-  player_id BIGINT NOT NULL UNIQUE REFERENCES players(id) ON DELETE CASCADE,
+  -- NULL = fantasy-only manager (not a footballer)
+  player_id BIGINT UNIQUE REFERENCES players(id) ON DELETE CASCADE,
   nickname TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL

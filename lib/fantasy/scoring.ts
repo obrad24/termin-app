@@ -11,6 +11,8 @@ export type PlayerMatchScoreInput = {
   awayScore: number
   goalsScored: number
   manualAdjustment?: number
+  /** Fan-vote podium points: MVP 3 / 2nd 2 / 3rd 1 */
+  votingPoints?: number
 }
 
 export type PlayerMatchScore = {
@@ -19,6 +21,7 @@ export type PlayerMatchScore = {
   goals_points: number
   team_scored_bonus: number
   team_conceded_penalty: number
+  voting_points: number
   manual_adjustment: number
   total_points: number
   goals_scored: number
@@ -44,6 +47,8 @@ export function scorePlayerMatch(input: PlayerMatchScoreInput): PlayerMatchScore
   const manual = input.manualAdjustment || 0
   const goalsScored = Math.max(0, input.goalsScored || 0)
 
+  const voting_points = Math.max(0, input.votingPoints || 0)
+
   if (!input.appeared) {
     const breakdown: BreakdownItem[] = [
       { key: 'appearance', label: 'Did not play', points: 0 },
@@ -57,6 +62,7 @@ export function scorePlayerMatch(input: PlayerMatchScoreInput): PlayerMatchScore
       goals_points: 0,
       team_scored_bonus: 0,
       team_conceded_penalty: 0,
+      voting_points: 0,
       manual_adjustment: manual,
       total_points: manual,
       goals_scored: 0,
@@ -108,6 +114,17 @@ export function scorePlayerMatch(input: PlayerMatchScoreInput): PlayerMatchScore
       points: team_conceded_penalty,
     })
   }
+  if (voting_points !== 0) {
+    const label =
+      voting_points === 3
+        ? 'MVP (fan vote)'
+        : voting_points === 2
+          ? '2nd fan vote'
+          : voting_points === 1
+            ? '3rd fan vote'
+            : 'Fan vote'
+    breakdown.push({ key: 'voting', label, points: voting_points })
+  }
   if (manual !== 0) {
     breakdown.push({ key: 'manual', label: 'Manual adjustment', points: manual })
   }
@@ -118,6 +135,7 @@ export function scorePlayerMatch(input: PlayerMatchScoreInput): PlayerMatchScore
     goals_points +
     team_scored_bonus +
     team_conceded_penalty +
+    voting_points +
     manual
 
   return {
@@ -126,6 +144,7 @@ export function scorePlayerMatch(input: PlayerMatchScoreInput): PlayerMatchScore
     goals_points,
     team_scored_bonus,
     team_conceded_penalty,
+    voting_points,
     manual_adjustment: manual,
     total_points,
     goals_scored: goalsScored,

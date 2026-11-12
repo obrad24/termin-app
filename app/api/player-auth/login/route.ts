@@ -43,9 +43,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid nickname or password' }, { status: 401 })
     }
 
+    const playerId = account.player_id ? Number(account.player_id) : 0
+
     await setPlayerSession({
       accountId: account.id,
-      playerId: account.player_id,
+      playerId,
       nickname: account.nickname,
     })
 
@@ -53,7 +55,7 @@ export async function POST(request: Request) {
       success: true,
       account: {
         id: account.id,
-        player_id: account.player_id,
+        player_id: playerId || null,
         nickname: account.nickname,
       },
     })

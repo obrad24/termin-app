@@ -120,6 +120,8 @@ export default function MatchDetailPage() {
   const [teams, setTeams] = useState<Team[]>([])
   const [loading, setLoading] = useState(true)
   const [averageRatings, setAverageRatings] = useState<Record<number, { average: number; count: number }>>({})
+  const [votingLocked, setVotingLocked] = useState(false)
+  const [ratingLocksAt, setRatingLocksAt] = useState<string | null>(null)
   const [ratingDialogOpen, setRatingDialogOpen] = useState(false)
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
   const [comments, setComments] = useState<MatchComment[]>([])
@@ -151,13 +153,16 @@ export default function MatchDetailPage() {
 
   const handlePlayerClick = (e: React.MouseEvent, player: Player | null) => {
     e.preventDefault()
-    if (!player) return
-    if (SHOW_PLAYER_RATINGS) {
-      setSelectedPlayer(player)
-      setRatingDialogOpen(true)
-      return
-    }
+    if (!player?.id) return
     router.push(`/players/${player.id}`)
+  }
+
+  const handleRatePlayer = (e: React.MouseEvent, player: Player | null) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!player || !SHOW_PLAYER_RATINGS || votingLocked) return
+    setSelectedPlayer(player)
+    setRatingDialogOpen(true)
   }
 
   const handleRatingSubmitted = () => {
@@ -184,7 +189,31 @@ export default function MatchDetailPage() {
       const response = await fetch(`/api/match-ratings?match_id=${match.id}`)
       if (response.ok) {
         const data = await response.json()
-        setAverageRatings(data || {})
+        const averages = data.averages && typeof data.averages === 'object' ? data.averages : {}
+        // Keep only numeric player-id keys for the ratings map
+        const cleaned: Record<number, { average: number; count: number }> = {}
+        Object.entries(averages).forEach(([key, value]) => {
+          const id = parseInt(key, 10)
+          if (!Number.isFinite(id) || !value || typeof value !== 'object') return
+          const v = value as { average?: number; count?: number }
+          cleaned[id] = { average: Number(v.average) || 0, count: Number(v.count) || 0 }
+        })
+        // Fallback if API returned legacy flat map
+        if (Object.keys(cleaned).length === 0) {
+          Object.entries(data || {}).forEach(([key, value]) => {
+            const id = parseInt(key, 10)
+            if (!Number.isFinite(id) || !value || typeof value !== 'object') return
+            if ('average' in (value as any)) {
+              cleaned[id] = {
+                average: Number((value as any).average) || 0,
+                count: Number((value as any).count) || 0,
+              }
+            }
+          })
+        }
+        setAverageRatings(cleaned)
+        setVotingLocked(!!(data.voting_locked ?? data.rating_window?.locked))
+        setRatingLocksAt(data.rating_window?.locks_at || null)
       }
     } catch (error) {
       console.error('Error fetching average ratings:', error)
@@ -303,11 +332,21 @@ export default function MatchDetailPage() {
   const homePlayers = match?.players?.filter((p) => p.team_type === 'home') || []
   const awayPlayers = match?.players?.filter((p) => p.team_type === 'away') || []
 
+  const getAverageRating = (playerId: number | string | null | undefined) => {
+    if (playerId == null) return undefined
+    const n = typeof playerId === 'string' ? parseInt(playerId, 10) : Number(playerId)
+    if (!Number.isFinite(n)) return undefined
+    return averageRatings[n] || averageRatings[String(n) as any]
+  }
+
   const goalsByPlayerId = useMemo(() => {
     const map = new Map<number, number>()
     ;(match?.goals || []).forEach((g) => {
       if (!g.player_id) return
-      map.set(g.player_id, (map.get(g.player_id) || 0) + 1)
+      const pid =
+        typeof g.player_id === 'string' ? parseInt(g.player_id, 10) : Number(g.player_id)
+      if (!Number.isFinite(pid)) return
+      map.set(pid, (map.get(pid) || 0) + 1)
     })
     return map
   }, [match?.goals])
@@ -319,8 +358,10 @@ export default function MatchDetailPage() {
 
     const rows = pool.map((mp) => {
       const player = mp.players
-      const id = player?.id || mp.player_id
-      const rating = averageRatings[id]
+      const rawId = player?.id ?? mp.player_id
+      const id =
+        typeof rawId === 'string' ? parseInt(rawId, 10) : Number(rawId)
+      const rating = getAverageRating(id)
       const pts = rating?.average || 0
       const gs = goalsByPlayerId.get(id) || 0
       const name = player ? `${player.last_name}` : `Player #${id}`
@@ -393,10 +434,31 @@ export default function MatchDetailPage() {
       }
     })
     if (bestId) {
-      mvpPlayer = match.players.find((mp) => mp.players?.id === bestId) || null
-      mvpRating = averageRatings[bestId]
+      mvpPlayer =
+        match.players.find((mp) => Number(mp.players?.id ?? mp.player_id) === bestId) || null
+      mvpRating = getAverageRating(bestId) || null
     }
   }
+
+  const allPlayerRatingRows = (match.players || [])
+    .map((mp) => {
+      const player = mp.players
+      const id = Number(player?.id ?? mp.player_id)
+      const rating = getAverageRating(id)
+      return {
+        mp,
+        player,
+        id,
+        name: player ? `${player.first_name} ${player.last_name}` : `Player #${id}`,
+        teamName: mp.team_type === 'home' ? match.home_team : match.away_team,
+        average: rating?.average || 0,
+        count: rating?.count || 0,
+      }
+    })
+    .sort((a, b) => {
+      if (b.average !== a.average) return b.average - a.average
+      return a.name.localeCompare(b.name)
+    })
 
   return (
     <main className="min-h-screen bg-[var(--fpl-p120)] pb-24 md:pb-8">
@@ -573,6 +635,79 @@ export default function MatchDetailPage() {
                           </button>
                         ))}
                       </div>
+                    </div>
+                  </div>
+                )}
+
+                {SHOW_PLAYER_RATINGS && allPlayerRatingRows.length > 0 && (
+                  <div className="py-4 border-t border-white/10">
+                    <h3 className="text-center text-white font-bold text-base mb-1">Player ratings</h3>
+                    <p className="text-center text-white/45 text-xs mb-3">
+                      {votingLocked
+                        ? 'Voting locked · MVP 3pts · 2nd 2pts · 3rd 1pt'
+                        : ratingLocksAt
+                          ? `Open profile, or tap stars · closes ${new Date(ratingLocksAt).toLocaleString('sr-Latn', {
+                              day: 'numeric',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}`
+                          : 'Open profile, or tap stars to rate this termin'}
+                    </p>
+                    <div className="space-y-1.5">
+                      {allPlayerRatingRows.map((row) => (
+                        <div
+                          key={row.mp.id}
+                          className="w-full flex items-center gap-3 px-2 py-2.5 rounded-xl border border-white/10 bg-white/[0.03]"
+                        >
+                          <button
+                            type="button"
+                            onClick={(e) => handlePlayerClick(e, row.player || null)}
+                            className="flex items-center gap-3 min-w-0 flex-1 text-left hover:opacity-90 transition"
+                          >
+                            <div className="relative w-9 h-9 rounded-full overflow-hidden bg-white/10 shrink-0">
+                              <Image
+                                src={getPlayerImageUrl(row.player?.image_url)}
+                                alt={row.name}
+                                fill
+                                className="object-cover"
+                                unoptimized
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement
+                                  target.src = '/no-image-player.png'
+                                }}
+                              />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-white text-sm font-semibold truncate">{row.name}</p>
+                              <p className="text-white/45 text-[11px] truncate">{row.teamName}</p>
+                            </div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleRatePlayer(e, row.player || null)}
+                            disabled={votingLocked}
+                            className="shrink-0 text-right hover:opacity-90 transition disabled:opacity-70 disabled:cursor-not-allowed"
+                            aria-label={votingLocked ? `${row.name} rating locked` : `Rate ${row.name}`}
+                          >
+                            <div className="flex items-center gap-0.5 justify-end">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
+                                  className={`w-3 h-3 ${
+                                    row.average > 0 && star <= Math.round(row.average)
+                                      ? 'fill-[var(--fpl-green)] text-[var(--fpl-green)]'
+                                      : 'fill-transparent text-white/25'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <p className="text-white/70 text-[11px] mt-0.5 tabular-nums">
+                              {row.average > 0 ? `${row.average.toFixed(1)} · ${row.count}` : 'Rate'}
+                            </p>
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -789,6 +924,7 @@ export default function MatchDetailPage() {
           matchId={match.id}
           currentAverageRating={selectedPlayer.id ? averageRatings[selectedPlayer.id]?.average : 0}
           ratingCount={selectedPlayer.id ? averageRatings[selectedPlayer.id]?.count : 0}
+          votingLocked={votingLocked}
           onRatingSubmitted={handleRatingSubmitted}
         />
       )}

@@ -68,6 +68,16 @@ interface PlayerWithStats {
       date: string
     }
   }>
+  mvp_matches?: Array<{
+    result_id: number
+    gameweek: number | null
+    date: string
+    home_team: string
+    away_team: string
+    home_score: number
+    away_score: number
+    fantasy_points: number
+  }>
 }
 
 interface PlayerMatch extends MatchFormItem {
@@ -103,9 +113,12 @@ export default function PlayerProfilePage() {
   }, [params.id, currentSeason?.id])
 
   useEffect(() => {
-    if (player && teams.length > 0) {
-      buildFormMatches()
+    if (!player) {
+      setPreviousMatches([])
+      setNextFixture(null)
+      return
     }
+    buildFormMatches(player, teams)
   }, [player, teams])
 
   const fetchTeams = async () => {
@@ -120,30 +133,64 @@ export default function PlayerProfilePage() {
     }
   }
 
-  const getTeam = (teamName: string) => teams.find((t) => t.name === teamName) || null
-  const getTeamLogo = (teamName: string) => getTeam(teamName)?.logo_url || '/placeholder-logo.svg'
+  const getTeam = (teamName: string, teamList: Team[] = teams) =>
+    teamList.find((t) => t.name === teamName) || null
+  const getTeamLogo = (teamName: string, teamList: Team[] = teams) =>
+    getTeam(teamName, teamList)?.logo_url || '/placeholder-logo.svg'
 
-  const buildFormMatches = () => {
-    if (!player?.match_form) {
-      setPreviousMatches([])
-    } else {
-      const enriched = player.match_form.map((match) => {
-        const opponentTeam = getTeam(match.opponent)
-        return {
-          ...match,
-          opponentLogo: getTeamLogo(match.opponent),
-          opponentShort: shortName(match.opponent, opponentTeam),
-        }
+  const matchesFromGoals = (p: PlayerWithStats): MatchFormItem[] => {
+    const byMatch = new Map<number, MatchFormItem>()
+    for (const goal of p.goals_details || []) {
+      const match = goal.results
+      if (!match?.id) continue
+      const matchId = typeof match.id === 'string' ? parseInt(match.id, 10) : Number(match.id)
+      if (!Number.isFinite(matchId)) continue
+      const isHome = goal.team_type === 'home'
+      const existing = byMatch.get(matchId)
+      if (existing) {
+        existing.playerGoals += 1
+        continue
+      }
+      byMatch.set(matchId, {
+        matchId,
+        gameweek: 0,
+        date: match.date,
+        home_team: match.home_team,
+        away_team: match.away_team,
+        home_score: match.home_score,
+        away_score: match.away_score,
+        isHome,
+        opponent: isHome ? match.away_team : match.home_team,
+        playerGoals: 1,
+        fantasyPoints: 0,
       })
-      setPreviousMatches(enriched)
     }
+    return Array.from(byMatch.values()).sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    )
+  }
 
-    if (player?.next_fixture) {
-      const opponentTeam = getTeam(player.next_fixture.opponent)
+  const buildFormMatches = (p: PlayerWithStats, teamList: Team[]) => {
+    const source =
+      p.match_form && p.match_form.length > 0 ? p.match_form : matchesFromGoals(p)
+
+    const enriched = source.map((match, index) => {
+      const opponentTeam = getTeam(match.opponent, teamList)
+      return {
+        ...match,
+        gameweek: match.gameweek || index + 1,
+        opponentLogo: getTeamLogo(match.opponent, teamList),
+        opponentShort: shortName(match.opponent, opponentTeam),
+      }
+    })
+    setPreviousMatches(enriched)
+
+    if (p.next_fixture) {
+      const opponentTeam = getTeam(p.next_fixture.opponent, teamList)
       setNextFixture({
-        ...player.next_fixture,
-        opponentLogo: getTeamLogo(player.next_fixture.opponent),
-        opponentShort: shortName(player.next_fixture.opponent, opponentTeam),
+        ...p.next_fixture,
+        opponentLogo: getTeamLogo(p.next_fixture.opponent, teamList),
+        opponentShort: shortName(p.next_fixture.opponent, opponentTeam),
       })
     } else {
       setNextFixture(null)
@@ -433,36 +480,88 @@ export default function PlayerProfilePage() {
           </div>
         )}
 
-        {/* Goal details list */}
-        {player.goals_details && player.goals_details.length > 0 && (
+        {player.mvp_matches && player.mvp_matches.length > 0 && (
+          <div className="rounded-xl bg-[var(--fpl-purple)] border border-[var(--fpl-green)]/30 px-2.5 py-2.5 mb-2">
+            <h2 className="text-white font-bold text-xs mb-1.5 px-0.5">MVP matches</h2>
+            <p className="text-white/45 text-[11px] mb-2 px-0.5">
+              Fan-vote MVP · +3 fantasy points
+            </p>
+            <div className="space-y-1">
+              {player.mvp_matches.map((m) => (
+                <Link
+                  key={m.result_id}
+                  href={`/matches/${m.result_id}`}
+                  className="flex items-center gap-2.5 px-2 py-2 rounded-xl border border-[var(--fpl-green)]/25 bg-[var(--fpl-green)]/10 hover:bg-[var(--fpl-green)]/15 transition"
+                >
+                  <div className="shrink-0 min-w-[52px] text-center rounded-lg border border-[var(--fpl-green)]/40 bg-[var(--fpl-green)]/20 px-1.5 py-1.5 text-[var(--fpl-green)]">
+                    <p className="text-[10px] font-semibold leading-none opacity-80">
+                      {m.gameweek ? `GW${m.gameweek}` : 'MVP'}
+                    </p>
+                    <p className="text-sm font-bold tabular-nums leading-tight mt-0.5">
+                      {m.home_score}-{m.away_score}
+                    </p>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-white text-xs font-semibold truncate leading-tight">
+                      {m.home_team} vs {m.away_team}
+                    </p>
+                    <p className="text-white/45 text-[10px] leading-tight mt-0.5">
+                      {format(new Date(m.date), 'd MMM yyyy')}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-[var(--fpl-green)] text-xs font-bold">MVP</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Per-GW goals + points */}
+        {previousMatches.length > 0 && (
           <div className="rounded-xl bg-[var(--fpl-purple)] border border-white/10 px-2.5 py-2.5">
-            <h2 className="text-white font-bold text-xs mb-1.5 px-0.5">Goal details</h2>
-            <div className="space-y-0.5">
-              {player.goals_details.map((goal) => {
-                const match = goal.results
-                if (!match) return null
-                const isHome = goal.team_type === 'home'
-                const opponent = isHome ? match.away_team : match.home_team
-                const playerScore = isHome ? match.home_score : match.away_score
-                const opponentScore = isHome ? match.away_score : match.home_score
+            <h2 className="text-white font-bold text-xs mb-1.5 px-0.5">Gameweeks</h2>
+            <div className="space-y-1">
+              {[...previousMatches].reverse().map((match) => {
+                const forScore = match.isHome ? match.home_score : match.away_score
+                const againstScore = match.isHome ? match.away_score : match.home_score
+                const won = forScore > againstScore
+                const lost = forScore < againstScore
+                const scoreClass = won
+                  ? 'bg-[var(--fpl-green)]/20 text-[var(--fpl-green)] border-[var(--fpl-green)]/35'
+                  : lost
+                    ? 'bg-red-500/20 text-red-300 border-red-400/35'
+                    : 'bg-orange-500/20 text-orange-300 border-orange-400/35'
 
                 return (
                   <Link
-                    key={goal.id}
-                    href={`/matches/${match.id}`}
-                    className="flex items-center justify-between gap-2 px-1.5 py-1.5 rounded-lg hover:bg-white/5 transition"
+                    key={match.matchId}
+                    href={`/matches/${match.matchId}`}
+                    className="flex items-center gap-2.5 px-2 py-2 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/5 transition"
                   >
-                    <div className="min-w-0">
-                      <p className="text-white text-xs font-semibold truncate leading-tight">
-                        vs {opponent}
+                    <div
+                      className={`shrink-0 min-w-[52px] text-center rounded-lg border px-1.5 py-1.5 ${scoreClass}`}
+                    >
+                      <p className="text-[10px] font-semibold leading-none opacity-80">GW{match.gameweek}</p>
+                      <p className="text-sm font-bold tabular-nums leading-tight mt-0.5">
+                        {forScore}-{againstScore}
                       </p>
-                      <p className="text-white/45 text-[10px] leading-tight">
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-white text-xs font-semibold truncate leading-tight">
+                        {match.isHome ? 'vs' : '@'} {match.opponent}
+                      </p>
+                      <p className="text-white/45 text-[10px] leading-tight mt-0.5">
                         {format(new Date(match.date), 'd MMM yyyy')}
                       </p>
                     </div>
-                    <span className="text-white text-sm font-bold tabular-nums shrink-0">
-                      {playerScore}-{opponentScore}
-                    </span>
+                    <div className="shrink-0 text-right">
+                      <p className="text-white text-xs font-bold tabular-nums leading-tight">
+                        {match.playerGoals}g
+                      </p>
+                      <p className="text-[var(--fpl-cyan)] text-[11px] font-semibold tabular-nums leading-tight mt-0.5">
+                        {match.fantasyPoints ?? 0} pts
+                      </p>
+                    </div>
                   </Link>
                 )
               })}

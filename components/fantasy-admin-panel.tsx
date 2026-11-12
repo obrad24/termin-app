@@ -49,13 +49,30 @@ export default function FantasyAdminPanel({
     points: '0',
     reason: '',
   })
+  const [accountForm, setAccountForm] = useState({ nickname: '', password: '' })
+  const [accounts, setAccounts] = useState<
+    Array<{ id: number; nickname: string; player_id: number | null; created_at: string }>
+  >([])
 
   useEffect(() => {
     if (seasonId) {
       fetchGameweeks()
       fetchLogs()
     }
+    fetchAccounts()
   }, [seasonId])
+
+  const fetchAccounts = async () => {
+    try {
+      const res = await fetch('/api/player-auth/accounts')
+      if (res.ok) {
+        const data = await res.json()
+        setAccounts(data.accounts || [])
+      }
+    } catch (error) {
+      console.error(error)
+    }
+  }
 
   const fetchGameweeks = async () => {
     if (!seasonId) return
@@ -164,6 +181,30 @@ export default function FantasyAdminPanel({
     }
   }
 
+  const createAccount = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      const res = await fetch('/api/player-auth/accounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(accountForm),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to create account')
+      toast({
+        title: 'Account created',
+        description: `${data.account?.nickname} can now log in to Fantasy`,
+      })
+      setAccountForm({ nickname: '', password: '' })
+      await fetchAccounts()
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <Card className={adminPanel}>
       <CardHeader>
@@ -172,11 +213,61 @@ export default function FantasyAdminPanel({
           Fantasy admin
         </CardTitle>
         <CardDescription className="text-white/50">
-          Recalculate points, lock gameweeks, and apply manual adjustments
+          Recalculate points, lock gameweeks, create guest managers, and apply adjustments
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="flex flex-col sm:flex-row gap-2">
+        <form onSubmit={createAccount} className="space-y-3">
+          <h3 className="text-white font-semibold text-sm">Create fantasy account</h3>
+          <p className="text-white/45 text-xs">
+            For someone who is not a footballer — nickname + password, then they log in on /login.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <Label className="text-white/70">Nickname</Label>
+              <Input
+                value={accountForm.nickname}
+                onChange={(e) => setAccountForm({ ...accountForm, nickname: e.target.value })}
+                placeholder="e.g. Marko"
+                className="mt-1 bg-[var(--fpl-p90)] border-white/15 text-white placeholder:text-white/35"
+                required
+              />
+            </div>
+            <div>
+              <Label className="text-white/70">Password</Label>
+              <Input
+                type="text"
+                value={accountForm.password}
+                onChange={(e) => setAccountForm({ ...accountForm, password: e.target.value })}
+                placeholder="min 4 characters"
+                className="mt-1 bg-[var(--fpl-p90)] border-white/15 text-white placeholder:text-white/35"
+                minLength={4}
+                required
+              />
+            </div>
+          </div>
+          <Button type="submit" disabled={loading} className={adminPrimaryBtn}>
+            Create account
+          </Button>
+
+          {accounts.length > 0 && (
+            <div className="max-h-40 overflow-y-auto space-y-1.5 pt-1">
+              {accounts.map((acc) => (
+                <div
+                  key={acc.id}
+                  className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-md bg-white/5 border border-white/10 text-xs"
+                >
+                  <span className="text-white font-semibold truncate">{acc.nickname}</span>
+                  <span className="text-white/40 shrink-0">
+                    {acc.player_id ? `player #${acc.player_id}` : 'guest'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </form>
+
+        <div className="flex flex-col sm:flex-row gap-2 border-t border-white/10 pt-4">
           <Button
             type="button"
             disabled={loading || !seasonId}

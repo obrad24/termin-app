@@ -16,6 +16,7 @@ interface PlayerRatingDialogProps {
   matchId: number
   currentAverageRating?: number
   ratingCount?: number
+  votingLocked?: boolean
   onRatingSubmitted?: () => void
 }
 
@@ -26,6 +27,7 @@ export default function PlayerRatingDialog({
   matchId,
   currentAverageRating = 0,
   ratingCount = 0,
+  votingLocked = false,
   onRatingSubmitted
 }: PlayerRatingDialogProps) {
   const [hoveredRating, setHoveredRating] = useState<number | null>(null)
@@ -71,7 +73,7 @@ export default function PlayerRatingDialog({
   if (!player) return null
 
   const handleStarClick = async (rating: number) => {
-    if (isSubmitting) return
+    if (isSubmitting || votingLocked) return
 
     setIsSubmitting(true)
     try {
@@ -93,13 +95,13 @@ export default function PlayerRatingDialog({
         if (onRatingSubmitted) {
           onRatingSubmitted()
         }
-        // Zatvori dialog nakon kratke pauze
         setTimeout(() => {
           onOpenChange(false)
         }, 1000)
       } else {
         const error = await response.json()
         console.error('Error submitting rating:', error)
+        alert(error.error || 'Could not save rating')
       }
     } catch (error) {
       console.error('Error submitting rating:', error)
@@ -159,49 +161,57 @@ export default function PlayerRatingDialog({
 
           {/* Star Rating */}
           <div className="flex flex-col items-center gap-4">
-            {userRating && (
-              <p className="text-white/80 text-sm">
-                Your rating: {userRating} {userRating === 1 ? 'star' : 'stars'}
+            {votingLocked ? (
+              <p className="text-amber-300 text-sm text-center px-2">
+                Voting locked — ratings close 12 hours after the match is added.
               </p>
-            )}
-            <div 
-              className="flex items-center gap-2"
-              onMouseLeave={() => setHoveredRating(null)}
-            >
-              {[1, 2, 3, 4, 5].map((star) => {
-                const isFilled = star <= displayRating
-                return (
-                  <button
-                    key={star}
-                    type="button"
-                    onClick={() => handleStarClick(star)}
-                    onMouseEnter={() => !isSubmitting && setHoveredRating(star)}
-                    disabled={isSubmitting}
-                    className={cn(
-                      "transition-all duration-150",
-                      !isSubmitting && "cursor-pointer hover:scale-125",
-                      isSubmitting && "cursor-not-allowed opacity-60"
-                    )}
-                  >
-                    <Star
-                      className={cn(
-                        "w-10 h-10",
-                        isFilled
-                          ? "fill-yellow-400 text-yellow-400"
-                          : "fill-transparent text-white/30"
-                      )}
-                    />
-                  </button>
-                )
-              })}
-            </div>
-            {selectedRating && (
-              <p className="text-green-400 text-sm font-semibold animate-in fade-in">
-                Thanks for rating!
-              </p>
-            )}
-            {isSubmitting && (
-              <p className="text-white/60 text-sm">Submitting...</p>
+            ) : (
+              <>
+                {userRating && (
+                  <p className="text-white/80 text-sm">
+                    Your rating: {userRating} {userRating === 1 ? 'star' : 'stars'}
+                  </p>
+                )}
+                <div
+                  className="flex items-center gap-2"
+                  onMouseLeave={() => setHoveredRating(null)}
+                >
+                  {[1, 2, 3, 4, 5].map((star) => {
+                    const isFilled = star <= displayRating
+                    return (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => handleStarClick(star)}
+                        onMouseEnter={() => !isSubmitting && setHoveredRating(star)}
+                        disabled={isSubmitting}
+                        className={cn(
+                          'transition-all duration-150',
+                          !isSubmitting && 'cursor-pointer hover:scale-125',
+                          isSubmitting && 'cursor-not-allowed opacity-60',
+                        )}
+                      >
+                        <Star
+                          className={cn(
+                            'w-10 h-10',
+                            isFilled
+                              ? 'fill-yellow-400 text-yellow-400'
+                              : 'fill-transparent text-white/30',
+                          )}
+                        />
+                      </button>
+                    )
+                  })}
+                </div>
+                {selectedRating && (
+                  <p className="text-green-400 text-sm font-semibold animate-in fade-in">
+                    Thanks for rating!
+                  </p>
+                )}
+                {isSubmitting && (
+                  <p className="text-white/60 text-sm">Submitting...</p>
+                )}
+              </>
             )}
           </div>
         </div>

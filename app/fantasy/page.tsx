@@ -69,13 +69,26 @@ export default function FantasyPage() {
     <main className="min-h-screen bg-[var(--fpl-p120)] pb-20 md:pb-0">
       <Header />
       <section className="relative px-3 sm:px-6 lg:px-8 py-6 sm:py-10 max-w-3xl mx-auto pt-4 sm:pt-28">
-        <div className="mb-5">
-          <h1 className="text-2xl sm:text-3xl font-bold text-white">Fantasy</h1>
-          <p className="text-white/45 text-sm mt-1">
-            {currentSeason?.name ? `${currentSeason.name} · ` : ''}
-            Automatic player scoring
-            {lastGw ? ` · GW${lastGw}` : ''}
-          </p>
+        <div className="mb-5 flex items-center gap-3">
+          <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden border border-white/15 shrink-0 shadow-lg shadow-black/30">
+            <Image
+              src="/termin-logo.png"
+              alt="Termin Fantasy"
+              fill
+              className="object-cover"
+              sizes="64px"
+              priority
+              unoptimized
+            />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">Fantasy</h1>
+            <p className="text-white/45 text-sm mt-1">
+              {currentSeason?.name ? `${currentSeason.name} · ` : ''}
+              Automatic player scoring
+              {lastGw ? ` · GW${lastGw}` : ''}
+            </p>
+          </div>
         </div>
 
         <div className="mb-4 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">

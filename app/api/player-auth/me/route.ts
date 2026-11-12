@@ -15,20 +15,24 @@ export async function GET() {
       return NextResponse.json({ authenticated: false })
     }
 
-    const { data: player } = await supabase
-      .from('players')
-      .select('id, first_name, last_name, team, image_url')
-      .eq('id', session.playerId)
-      .maybeSingle()
+    let player = null
+    if (session.playerId > 0) {
+      const { data } = await supabase
+        .from('players')
+        .select('id, first_name, last_name, team, image_url')
+        .eq('id', session.playerId)
+        .maybeSingle()
+      player = data || null
+    }
 
     return NextResponse.json({
       authenticated: true,
       account: {
         id: session.accountId,
-        player_id: session.playerId,
+        player_id: session.playerId > 0 ? session.playerId : null,
         nickname: session.nickname,
       },
-      player: player || null,
+      player,
     })
   } catch (error: any) {
     return NextResponse.json({ authenticated: false, error: error.message })
