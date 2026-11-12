@@ -37,6 +37,7 @@ function SeasonWordmark({ name }: { name: string }) {
 export default function Header() {
   const [open, setOpen] = useState(false)
   const [playerLoggedIn, setPlayerLoggedIn] = useState(false)
+  const [playerNickname, setPlayerNickname] = useState<string | null>(null)
   const [fantasyPinned, setFantasyPinned] = useState(false)
   const { seasons, currentSeason, setCurrentSeasonId } = useSeason()
   const seasonLabel = currentSeason?.name || 'TERMIN'
@@ -44,8 +45,15 @@ export default function Header() {
   useEffect(() => {
     fetch('/api/player-auth/me')
       .then((r) => r.json())
-      .then((data) => setPlayerLoggedIn(!!data.authenticated))
-      .catch(() => setPlayerLoggedIn(false))
+      .then((data) => {
+        const loggedIn = !!data.authenticated
+        setPlayerLoggedIn(loggedIn)
+        setPlayerNickname(loggedIn ? data.account?.nickname || null : null)
+      })
+      .catch(() => {
+        setPlayerLoggedIn(false)
+        setPlayerNickname(null)
+      })
   }, [])
 
   useEffect(() => {
@@ -219,27 +227,39 @@ export default function Header() {
           </Link>
         </nav>
 
-        {/* Spacer keeps nav layout; button pins on scroll */}
-        <div className="relative ml-auto md:ml-3 w-10 h-10 sm:w-11 sm:h-11 shrink-0">
-          <Link
-            href={fantasyHref}
-            aria-label="My Fantasy Team"
-            className={`rounded-full overflow-hidden border-2 border-white/80 shadow-md shadow-black/30 hover:scale-105 active:scale-95 transition-transform ${
-              fantasyPinned
-                ? 'fixed top-2 right-3 sm:top-2.5 sm:right-4 z-[120] w-10 h-10 sm:w-11 sm:h-11'
-                : 'absolute inset-0'
-            }`}
-          >
-            <Image
-              src="/pl-lion-button.png"
-              alt=""
-              fill
-              className="object-cover"
-              sizes="44px"
-              priority
-              unoptimized
-            />
-          </Link>
+        <div className="ml-auto md:ml-3 flex items-center gap-2 shrink-0">
+          {playerNickname && (
+            <Link
+              href="/my-team"
+              className="max-w-[7.5rem] sm:max-w-[10rem] truncate text-white text-sm font-semibold hover:text-[var(--fpl-cyan)] transition"
+              title={playerNickname}
+            >
+              {playerNickname}
+            </Link>
+          )}
+
+          {/* Spacer keeps nav layout; button pins on scroll */}
+          <div className="relative w-10 h-10 sm:w-11 sm:h-11 shrink-0">
+            <Link
+              href={fantasyHref}
+              aria-label="My Fantasy Team"
+              className={`rounded-full overflow-hidden border-2 border-white/80 shadow-md shadow-black/30 hover:scale-105 active:scale-95 transition-transform ${
+                fantasyPinned
+                  ? 'fixed top-2 right-3 sm:top-2.5 sm:right-4 z-[120] w-10 h-10 sm:w-11 sm:h-11'
+                  : 'absolute inset-0'
+              }`}
+            >
+              <Image
+                src="/pl-lion-button.png"
+                alt=""
+                fill
+                className="object-cover"
+                sizes="44px"
+                priority
+                unoptimized
+              />
+            </Link>
+          </div>
         </div>
       </div>
 
