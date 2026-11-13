@@ -3,6 +3,7 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { getRatingWindowStatus } from '@/lib/fantasy/rating-window'
 import { computeVotingStandings } from '@/lib/fantasy/voting-points'
 import { calculateFantasyForResult } from '@/lib/fantasy/calculate'
+import { resolveVoterKey } from '@/lib/request-voter'
 
 export const dynamic = 'force-dynamic'
 
@@ -116,7 +117,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { match_id, player_id, rating } = body
+    const { match_id, player_id, rating, voter_id } = body
 
     if (!match_id || !player_id || rating === undefined) {
       return NextResponse.json(
@@ -156,15 +157,20 @@ export async function POST(request: Request) {
       )
     }
 
-    const forwarded = request.headers.get('x-forwarded-for')
-    const ip = forwarded ? forwarded.split(',')[0] : request.headers.get('x-real-ip') || 'unknown'
+    const voterKey = resolveVoterKey(request, voter_id)
+    if (voterKey === 'unknown') {
+      return NextResponse.json(
+        { error: 'Missing voter identity — refresh the page and try again' },
+        { status: 400 },
+      )
+    }
 
     const { data: existingRating, error: checkError } = await supabase
       .from('match_player_ratings')
       .select('id')
       .eq('match_id', matchIdNum)
       .eq('player_id', playerIdNum)
-      .eq('user_ip', ip)
+      .eq('user_ip', voterKey)
       .maybeSingle()
 
     if (checkError) {
@@ -202,7 +208,7 @@ export async function POST(request: Request) {
           match_id: matchIdNum,
           player_id: playerIdNum,
           rating: ratingNum,
-          user_ip: ip,
+          user_ip: voterKey,
         })
         .select()
         .single()

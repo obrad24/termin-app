@@ -1,72 +1,75 @@
 import { NextResponse } from 'next/server'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
+import { resolveVoterKey } from '@/lib/request-voter'
+import { toId } from '@/lib/ids'
 
-// GET - Dobijanje korisnikove ocjene za određenog igrača u meču
+export const dynamic = 'force-dynamic'
+
+// GET - this voter's rating(s) for a match (optionally one player)
 export async function GET(request: Request) {
   try {
     if (!isSupabaseConfigured()) {
       return NextResponse.json(
-        { 
+        {
           error: 'Supabase not configured',
-          message: 'Please set SUPABASE_URL and SUPABASE_ANON_KEY environment variables'
+          message: 'Please set DATABASE_URL environment variable',
         },
-        { status: 503 }
+        { status: 503 },
       )
     }
 
     const { searchParams } = new URL(request.url)
-    const matchId = searchParams.get('match_id')
-    const playerId = searchParams.get('player_id')
+    const matchId = toId(searchParams.get('match_id'))
+    const playerId = toId(searchParams.get('player_id'))
+    const voterKey = resolveVoterKey(request, searchParams.get('voter_id'))
 
-    if (!matchId || !playerId) {
-      return NextResponse.json(
-        { error: 'match_id and player_id parameters are required' },
-        { status: 400 }
-      )
+    if (matchId == null) {
+      return NextResponse.json({ error: 'match_id parameter is required' }, { status: 400 })
     }
 
-    const matchIdNum = parseInt(matchId, 10)
-    const playerIdNum = parseInt(playerId, 10)
-    
-    if (isNaN(matchIdNum) || isNaN(playerIdNum)) {
-      return NextResponse.json(
-        { error: 'Invalid match_id or player_id' },
-        { status: 400 }
-      )
+    if (voterKey === 'unknown') {
+      return NextResponse.json({ rating: null, ratings: {} })
     }
 
-    // Dobijanje IP adrese korisnika
-    const forwarded = request.headers.get('x-forwarded-for')
-    const ip = forwarded ? forwarded.split(',')[0] : request.headers.get('x-real-ip') || 'unknown'
-
-    // Pronađi korisnikovu ocjenu
-    const { data: userRating, error: ratingError } = await supabase
+    let query = supabase
       .from('match_player_ratings')
-      .select('rating')
-      .eq('match_id', matchIdNum)
-      .eq('player_id', playerIdNum)
-      .eq('user_ip', ip)
-      .single()
+      .select('player_id, rating')
+      .eq('match_id', matchId)
+      .eq('user_ip', voterKey)
 
-    if (ratingError && ratingError.code !== 'PGRST116') { // PGRST116 = no rows returned
-      console.error('Error fetching user rating:', ratingError)
+    if (playerId != null) {
+      query = query.eq('player_id', playerId)
+    }
+
+    const { data, error } = await query
+    if (error) {
+      console.error('Error fetching user rating:', error)
       return NextResponse.json(
-        { error: 'Failed to fetch user rating', details: ratingError.message },
-        { status: 500 }
+        { error: 'Failed to fetch user rating', details: error.message },
+        { status: 500 },
       )
     }
 
-    // Ako nema ocjene, vrati null
-    if (!userRating) {
-      return NextResponse.json({ rating: null })
+    const ratings: Record<number, number> = {}
+    ;(data || []).forEach((row: any) => {
+      const pid = toId(row.player_id)
+      if (pid == null) return
+      ratings[pid] = Number(row.rating) || 0
+    })
+
+    if (playerId != null) {
+      return NextResponse.json({
+        rating: ratings[playerId] ?? null,
+        ratings,
+      })
     }
 
-    return NextResponse.json({ rating: userRating.rating })
+    return NextResponse.json({ ratings })
   } catch (error: any) {
     console.error('Error:', error)
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }

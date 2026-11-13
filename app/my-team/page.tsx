@@ -85,6 +85,9 @@ type MyTeamData = {
   available_players: PlayerOpt[]
   team_limit_ok?: boolean
   team_limit_warning?: string | null
+  points_gameweek?: number | null
+  player_gw_points?: Record<number, number>
+  squad_gw_points?: number | null
 }
 
 function formatDeadline(iso: string, timeZone = 'Europe/Belgrade') {
@@ -110,6 +113,8 @@ function PitchCard({
   disabled,
   isCaptain,
   teamLogo,
+  pointsLabel,
+  showPoints,
 }: {
   player?: PlayerOpt | null
   onClick?: () => void
@@ -117,6 +122,8 @@ function PitchCard({
   disabled?: boolean
   isCaptain?: boolean
   teamLogo?: string | null
+  pointsLabel?: string | null
+  showPoints?: boolean
 }) {
   if (!player) {
     return (
@@ -140,6 +147,12 @@ function PitchCard({
       </button>
     )
   }
+
+  const bottomLabel = showPoints
+    ? pointsLabel ?? '0'
+    : isCaptain
+      ? 'Captain · x2'
+      : formatPrice(player.price)
 
   return (
     <button
@@ -193,7 +206,7 @@ function PitchCard({
               : 'bg-[#e8e8e8] text-[var(--fpl-purple)]'
           }`}
         >
-          {isCaptain ? 'Captain · x2' : formatPrice(player.price)}
+          {bottomLabel}
         </p>
       </div>
     </button>
@@ -367,6 +380,26 @@ export default function MyTeamPage() {
   }, [selectedPlayers])
 
   const budgetRemaining = Math.round((maxBudget - budgetSpent) * 10) / 10
+
+  const showPlayerPoints =
+    !!data?.locked || (data?.points_gameweek != null && data.points_gameweek > 0)
+
+  const playerContribution = (playerId: number, isCaptain: boolean) => {
+    const raw = Number(data?.player_gw_points?.[playerId] ?? 0)
+    return isCaptain ? raw * 2 : raw
+  }
+
+  const pointsLabelFor = (playerId: number, isCaptain: boolean) => {
+    const pts = playerContribution(playerId, isCaptain)
+    return isCaptain ? `${pts} pts · x2` : `${pts} pts`
+  }
+
+  const displayedSquadPoints = useMemo(() => {
+    if (!showPlayerPoints) return null
+    return selected.reduce((sum, id) => {
+      return sum + playerContribution(id, id === captainId)
+    }, 0)
+  }, [showPlayerPoints, selected, captainId, data?.player_gw_points])
 
   const selectablePlayers = useMemo(() => {
     const exclude = new Set(selected)
@@ -752,9 +785,26 @@ export default function MyTeamPage() {
                 <div className="px-3 py-2 border-b border-white/10 flex items-center justify-between">
                   <h2 className="text-white font-bold text-sm">Your team</h2>
                   <span className="text-white/45 text-[11px]">
-                    {data?.locked ? 'Locked' : 'Tap player for options'}
+                    {data?.locked
+                      ? data.points_gameweek
+                        ? `GW${data.points_gameweek} points`
+                        : 'Locked · view only'
+                      : 'Tap player for options'}
                   </span>
                 </div>
+
+                {data?.locked &&
+                  data.points_gameweek != null &&
+                  displayedSquadPoints != null && (
+                  <div className="px-3 py-2 border-b border-white/10 flex items-center justify-between bg-[var(--fpl-green)]/10">
+                    <span className="text-white/70 text-xs font-semibold">
+                      GW{data.points_gameweek} from this squad
+                    </span>
+                    <span className="text-[var(--fpl-green)] text-sm font-bold tabular-nums">
+                      {displayedSquadPoints} pts
+                    </span>
+                  </div>
+                )}
 
                 <div className="relative w-full aspect-[344/389] min-h-[360px] sm:min-h-[420px]">
                   <Image
@@ -773,7 +823,13 @@ export default function MyTeamPage() {
                         emptyLabel="Slot 1"
                         isCaptain={!!top && top.id === captainId}
                         teamLogo={logoFor(top?.team)}
-                        disabled={!!data?.locked && !!top}
+                        showPoints={showPlayerPoints && !!top}
+                        pointsLabel={
+                          top
+                            ? pointsLabelFor(top.id, top.id === captainId)
+                            : null
+                        }
+                        disabled={!!data?.locked && !top}
                         onClick={() => (top ? openPlayerSheet(top) : openAddSheet())}
                       />
                     </div>
@@ -786,7 +842,11 @@ export default function MyTeamPage() {
                           emptyLabel={`Slot ${i + 2}`}
                           isCaptain={!!p && p.id === captainId}
                           teamLogo={logoFor(p?.team)}
-                          disabled={!!data?.locked && !!p}
+                          showPoints={showPlayerPoints && !!p}
+                          pointsLabel={
+                            p ? pointsLabelFor(p.id, p.id === captainId) : null
+                          }
+                          disabled={!!data?.locked && !p}
                           onClick={() => (p ? openPlayerSheet(p) : openAddSheet())}
                         />
                       ))}
@@ -800,7 +860,11 @@ export default function MyTeamPage() {
                           emptyLabel={`Slot ${i + 4}`}
                           isCaptain={!!p && p.id === captainId}
                           teamLogo={logoFor(p?.team)}
-                          disabled={!!data?.locked && !!p}
+                          showPoints={showPlayerPoints && !!p}
+                          pointsLabel={
+                            p ? pointsLabelFor(p.id, p.id === captainId) : null
+                          }
+                          disabled={!!data?.locked && !p}
                           onClick={() => (p ? openPlayerSheet(p) : openAddSheet())}
                         />
                       ))}
@@ -810,18 +874,24 @@ export default function MyTeamPage() {
 
                 <div className="bg-black/35 border-t border-white/10 px-3 py-3">
                   <p className="text-center text-white/70 text-xs mb-2">
-                    {data?.free_initial_pick
-                      ? 'First pick — choose any 5 players + captain (x2)'
-                      : `Transfers left: ${transfersLeft} · captain change free until deadline`}
+                    {data?.locked
+                      ? data.points_gameweek
+                        ? `Captain scores double · GW${data.points_gameweek} contribution shown`
+                        : 'Transfers locked — you can still view your squad'
+                      : data?.free_initial_pick
+                        ? 'First pick — choose any 5 players + captain (x2)'
+                        : `Transfers left: ${transfersLeft} · captain change free until deadline`}
                   </p>
-                  <button
-                    type="button"
-                    onClick={openAddSheet}
-                    disabled={!!data?.locked || selected.length >= (data?.squad_size || 5)}
-                    className="w-full rounded-xl border border-white/15 text-white text-sm font-semibold py-2.5 hover:bg-white/5 disabled:opacity-50"
-                  >
-                    Add players
-                  </button>
+                  {!data?.locked && (
+                    <button
+                      type="button"
+                      onClick={openAddSheet}
+                      disabled={selected.length >= (data?.squad_size || 5)}
+                      className="w-full rounded-xl border border-white/15 text-white text-sm font-semibold py-2.5 hover:bg-white/5 disabled:opacity-50"
+                    >
+                      Add players
+                    </button>
+                  )}
                 </div>
               </div>
             ) : (
@@ -839,46 +909,65 @@ export default function MyTeamPage() {
                   </p>
                 ) : (
                   <div>
-                    {selectedPlayers.map((p, index) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => openPlayerSheet(p)}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 border-b border-white/10 last:border-0 text-left hover:bg-white/5 transition"
-                      >
-                        <span className="w-5 text-white/40 text-xs font-bold tabular-nums">
-                          {index + 1}
-                        </span>
-                        <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-gradient-to-b from-[var(--fpl-cyan)] to-[var(--fpl-lilac)] shrink-0">
-                          <Image
-                            src={getPlayerImageUrl(p.image_url, true)}
-                            alt={p.last_name}
-                            fill
-                            className="object-contain object-bottom"
-                            unoptimized
-                          />
-                          {p.id === captainId && (
-                            <span className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-[var(--fpl-green)] text-[var(--fpl-purple)] text-[9px] font-black flex items-center justify-center">
-                              C
-                            </span>
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-white text-sm font-semibold truncate">
-                            {p.first_name} {p.last_name}
-                            {p.id === captainId ? ' · C' : ''}
-                          </p>
-                          <p className="text-white/45 text-xs truncate">
-                            {p.id === captainId
-                              ? 'Captain · points x2'
-                              : p.team || 'Free agent'}
-                          </p>
-                        </div>
-                        <span className="text-white font-bold text-sm tabular-nums shrink-0">
-                          {formatPrice(p.price)}
-                        </span>
-                      </button>
-                    ))}
+                    {selectedPlayers.map((p, index) => {
+                      const isCap = p.id === captainId
+                      const contribution = playerContribution(p.id, isCap)
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => openPlayerSheet(p)}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 border-b border-white/10 last:border-0 text-left hover:bg-white/5 transition"
+                        >
+                          <span className="w-5 text-white/40 text-xs font-bold tabular-nums">
+                            {index + 1}
+                          </span>
+                          <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-gradient-to-b from-[var(--fpl-cyan)] to-[var(--fpl-lilac)] shrink-0">
+                            <Image
+                              src={getPlayerImageUrl(p.image_url, true)}
+                              alt={p.last_name}
+                              fill
+                              className="object-contain object-bottom"
+                              unoptimized
+                            />
+                            {isCap && (
+                              <span className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-[var(--fpl-green)] text-[var(--fpl-purple)] text-[9px] font-black flex items-center justify-center">
+                                C
+                              </span>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-white text-sm font-semibold truncate">
+                              {p.first_name} {p.last_name}
+                              {isCap ? ' · C' : ''}
+                            </p>
+                            <p className="text-white/45 text-xs truncate">
+                              {isCap
+                                ? 'Captain · points x2'
+                                : p.team || 'Free agent'}
+                            </p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            {showPlayerPoints ? (
+                              <>
+                                <p className="text-[var(--fpl-green)] font-bold text-sm tabular-nums">
+                                  {contribution}
+                                </p>
+                                <p className="text-white/40 text-[10px]">
+                                  {data?.points_gameweek
+                                    ? `GW${data.points_gameweek}`
+                                    : 'pts'}
+                                </p>
+                              </>
+                            ) : (
+                              <span className="text-white font-bold text-sm tabular-nums">
+                                {formatPrice(p.price)}
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      )
+                    })}
                   </div>
                 )}
 
@@ -990,6 +1079,17 @@ export default function MyTeamPage() {
                     Price: {formatPrice(activePlayer.price)}
                     {activePlayer.id === captainId ? ' · x2 pts' : ''}
                   </p>
+                  {showPlayerPoints && data?.points_gameweek != null && (
+                    <p className="text-[var(--fpl-purple)] text-base font-black mt-1">
+                      GW{data.points_gameweek}:{' '}
+                      {playerContribution(
+                        activePlayer.id,
+                        activePlayer.id === captainId,
+                      )}{' '}
+                      pts
+                      {activePlayer.id === captainId ? ' (x2)' : ''}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -999,6 +1099,12 @@ export default function MyTeamPage() {
                 </SheetTitle>
                 <SheetDescription>Player actions</SheetDescription>
               </SheetHeader>
+
+              {data?.locked && (
+                <p className="text-white/55 text-xs text-center mb-3">
+                  Transfers locked — viewing squad only
+                </p>
+              )}
 
               {!data?.locked && (
                 <div className="grid grid-cols-2 gap-2 mb-2">

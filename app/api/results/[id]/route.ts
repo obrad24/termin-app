@@ -88,12 +88,37 @@ export async function GET(
       players: playersById.get(mp.player_id) || playersById.get(String(mp.player_id)) || null,
     }))
 
+    const fantasyPointsByPlayer: Record<number, number> = {}
+    {
+      const { data: fantasyRows, error: fantasyError } = await supabase
+        .from('fantasy_match_points')
+        .select('player_id, total_points')
+        .eq('result_id', id)
+
+      if (fantasyError) {
+        if (!fantasyError.message?.includes('fantasy_match_points')) {
+          console.warn('Failed to load fantasy points for match:', fantasyError.message)
+        }
+      } else {
+        ;(fantasyRows || []).forEach((row: any) => {
+          const pid =
+            typeof row.player_id === 'string'
+              ? parseInt(row.player_id, 10)
+              : Number(row.player_id)
+          if (!Number.isFinite(pid)) return
+          fantasyPointsByPlayer[pid] =
+            (fantasyPointsByPlayer[pid] || 0) + (Number(row.total_points) || 0)
+        })
+      }
+    }
+
     const { jsonCached } = await import('@/lib/http-cache')
     return jsonCached(
       {
         ...result,
         goals: goalsWithPlayers,
         players: matchPlayersWithPlayers,
+        fantasy_points: fantasyPointsByPlayer,
       },
       { seconds: 15 },
     )

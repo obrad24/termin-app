@@ -139,6 +139,78 @@ export async function GET(request: Request) {
     const spent = squadCost(currentPlayers as any[])
     const teamViolation = findTeamLimitViolation(currentPlayers, MAX_PLAYERS_PER_TEAM)
 
+    const captainPlayerId = (() => {
+      const raw = currentRow?.captain_player_id
+      const n = typeof raw === 'string' ? parseInt(raw, 10) : Number(raw)
+      return Number.isFinite(n) && currentIds.includes(n) ? n : null
+    })()
+
+    // Latest completed GW with fantasy points — used to show contribution while locked
+    let pointsGameweek: number | null = null
+    const playerGwPoints: Record<number, number> = {}
+    let squadGwPoints: number | null = null
+    {
+      let lastGwQuery = supabase
+        .from('fantasy_match_points')
+        .select('gameweek')
+        .eq('season_id', seasonId)
+        .order('gameweek', { ascending: false })
+        .limit(1)
+      const { data: lastGwRows } = await lastGwQuery
+      const lastGwRaw = lastGwRows?.[0]?.gameweek
+      const lastGw =
+        typeof lastGwRaw === 'string' ? parseInt(lastGwRaw, 10) : Number(lastGwRaw)
+      if (Number.isFinite(lastGw) && lastGw > 0) {
+        pointsGameweek = lastGw
+
+        // Prefer the squad that actually played that GW; fall back to current squad
+        let scoringIds = currentIds
+        let scoringCaptain = captainPlayerId
+        if (lastGw !== gameweek) {
+          const { data: scoredSquad } = await supabase
+            .from('fantasy_user_squads')
+            .select('player_ids, captain_player_id')
+            .eq('account_id', auth.session!.accountId)
+            .eq('season_id', seasonId)
+            .eq('gameweek', lastGw)
+            .maybeSingle()
+          const scoredIds = parsePlayerIds(scoredSquad?.player_ids)
+          if (scoredIds.length > 0) {
+            scoringIds = scoredIds
+            const capRaw = scoredSquad?.captain_player_id
+            const capN =
+              typeof capRaw === 'string' ? parseInt(capRaw, 10) : Number(capRaw)
+            scoringCaptain =
+              Number.isFinite(capN) && scoredIds.includes(capN) ? capN : null
+          }
+        }
+
+        if (scoringIds.length > 0) {
+          const { data: pointRows } = await supabase
+            .from('fantasy_match_points')
+            .select('player_id, total_points')
+            .eq('season_id', seasonId)
+            .eq('gameweek', lastGw)
+            .in('player_id', scoringIds)
+
+          ;(pointRows || []).forEach((row: any) => {
+            const pid =
+              typeof row.player_id === 'string'
+                ? parseInt(row.player_id, 10)
+                : Number(row.player_id)
+            if (!Number.isFinite(pid)) return
+            playerGwPoints[pid] =
+              (playerGwPoints[pid] || 0) + (Number(row.total_points) || 0)
+          })
+
+          squadGwPoints = scoringIds.reduce((sum, pid) => {
+            const pts = playerGwPoints[pid] || 0
+            return sum + (scoringCaptain != null && pid === scoringCaptain ? pts * 2 : pts)
+          }, 0)
+        }
+      }
+    }
+
     return NextResponse.json({
       season_id: seasonId,
       gameweek,
@@ -159,14 +231,13 @@ export async function GET(request: Request) {
         : null,
       free_initial_pick: !hasPrevious,
       player_ids: currentIds,
-      captain_player_id: (() => {
-        const raw = currentRow?.captain_player_id
-        const n = typeof raw === 'string' ? parseInt(raw, 10) : Number(raw)
-        return Number.isFinite(n) && currentIds.includes(n) ? n : null
-      })(),
+      captain_player_id: captainPlayerId,
       players: currentPlayers,
       previous_player_ids: previousIds,
       available_players: (allPlayers || []).map(normalizePlayerRow).map(withSeasonTeam),
+      points_gameweek: pointsGameweek,
+      player_gw_points: playerGwPoints,
+      squad_gw_points: squadGwPoints,
       updated_at: currentRow?.updated_at || null,
       transfersRemaining,
       team_limit_ok: !teamViolation,

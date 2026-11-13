@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { SHOW_PLAYER_RATINGS } from '@/lib/features'
+import { getOrCreateVoterId } from '@/lib/voter-id'
 
 interface GoalWithPlayer extends MatchGoal {
   players: Player
@@ -26,6 +27,7 @@ interface MatchPlayerWithPlayer extends MatchPlayer {
 interface ResultWithDetails extends Result {
   goals: GoalWithPlayer[]
   players: MatchPlayerWithPlayer[]
+  fantasy_points?: Record<number, number>
 }
 
 type MainTab = 'details' | 'stats'
@@ -120,6 +122,7 @@ export default function MatchDetailPage() {
   const [teams, setTeams] = useState<Team[]>([])
   const [loading, setLoading] = useState(true)
   const [averageRatings, setAverageRatings] = useState<Record<number, { average: number; count: number }>>({})
+  const [myRatings, setMyRatings] = useState<Record<number, number>>({})
   const [votingLocked, setVotingLocked] = useState(false)
   const [ratingLocksAt, setRatingLocksAt] = useState<string | null>(null)
   const [ratingDialogOpen, setRatingDialogOpen] = useState(false)
@@ -181,6 +184,7 @@ export default function MatchDetailPage() {
   useEffect(() => {
     if (SHOW_PLAYER_RATINGS && match?.id) {
       fetchAverageRatings()
+      fetchMyRatings()
     }
   }, [match?.id])
 
@@ -198,9 +202,31 @@ export default function MatchDetailPage() {
     setRatingDialogOpen(true)
   }
 
-  const handleRatingSubmitted = () => {
+  const handleRatingSubmitted = (playerId: number, rating: number) => {
+    setMyRatings((prev) => ({ ...prev, [playerId]: rating }))
     if (match?.id) {
       fetchAverageRatings()
+    }
+  }
+
+  const fetchMyRatings = async () => {
+    if (!match?.id) return
+    try {
+      const voterId = getOrCreateVoterId()
+      const response = await fetch(
+        `/api/match-ratings/user-rating?match_id=${match.id}&voter_id=${encodeURIComponent(voterId)}`,
+      )
+      if (!response.ok) return
+      const data = await response.json()
+      const next: Record<number, number> = {}
+      Object.entries(data.ratings || {}).forEach(([key, value]) => {
+        const id = parseInt(key, 10)
+        if (!Number.isFinite(id)) return
+        next[id] = Number(value) || 0
+      })
+      setMyRatings(next)
+    } catch (error) {
+      console.error('Error fetching my ratings:', error)
     }
   }
 
@@ -384,6 +410,18 @@ export default function MatchDetailPage() {
     return map
   }, [match?.goals])
 
+  const fantasyPointsByPlayer = useMemo(() => {
+    const map = new Map<number, number>()
+    const raw = match?.fantasy_points
+    if (!raw || typeof raw !== 'object') return map
+    Object.entries(raw).forEach(([key, value]) => {
+      const id = typeof key === 'string' ? parseInt(key, 10) : Number(key)
+      if (!Number.isFinite(id)) return
+      map.set(id, Number(value) || 0)
+    })
+    return map
+  }, [match?.fantasy_points])
+
   const statsRows = useMemo(() => {
     if (!match) return []
     const pool =
@@ -394,13 +432,12 @@ export default function MatchDetailPage() {
       const rawId = player?.id ?? mp.player_id
       const id =
         typeof rawId === 'string' ? parseInt(rawId, 10) : Number(rawId)
-      const rating = getAverageRating(id)
-      const pts = rating?.average || 0
+      const pts = fantasyPointsByPlayer.get(id) || 0
       const gs = goalsByPlayerId.get(id) || 0
       const name = player ? `${player.last_name}` : `Player #${id}`
       const fullName = player ? `${player.first_name} ${player.last_name}` : name
       const teamName = mp.team_type === 'home' ? match.home_team : match.away_team
-      return { mp, player, id, pts, gs, name, fullName, teamName, ratingCount: rating?.count || 0 }
+      return { mp, player, id, pts, gs, name, fullName, teamName }
     })
 
     rows.sort((a, b) => {
@@ -412,7 +449,16 @@ export default function MatchDetailPage() {
     })
 
     return rows
-  }, [match, teamFilter, homePlayers, awayPlayers, averageRatings, goalsByPlayerId, statsSort, statsSortDir])
+  }, [
+    match,
+    teamFilter,
+    homePlayers,
+    awayPlayers,
+    fantasyPointsByPlayer,
+    goalsByPlayerId,
+    statsSort,
+    statsSortDir,
+  ])
 
   if (loading) {
     return (
@@ -688,59 +734,68 @@ export default function MatchDetailPage() {
                           : 'Open profile, or tap stars to rate this termin'}
                     </p>
                     <div className="space-y-1.5">
-                      {allPlayerRatingRows.map((row) => (
-                        <div
-                          key={row.mp.id}
-                          className="w-full flex items-center gap-3 px-2 py-2.5 rounded-xl border border-white/10 bg-white/[0.03]"
-                        >
-                          <button
-                            type="button"
-                            onClick={(e) => handlePlayerClick(e, row.player || null)}
-                            className="flex items-center gap-3 min-w-0 flex-1 text-left hover:opacity-90 transition"
+                      {allPlayerRatingRows.map((row) => {
+                        const myRating = myRatings[row.id] || 0
+                        return (
+                          <div
+                            key={row.mp.id}
+                            className="w-full flex items-center gap-3 px-2 py-2.5 rounded-xl border border-white/10 bg-white/[0.03]"
                           >
-                            <div className="relative w-9 h-9 rounded-full overflow-hidden bg-white/10 shrink-0">
-                              <Image
-                                src={getPlayerImageUrl(row.player?.image_url)}
-                                alt={row.name}
-                                fill
-                                className="object-cover"
-                                unoptimized
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement
-                                  target.src = '/no-image-player.png'
-                                }}
-                              />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-white text-sm font-semibold truncate">{row.name}</p>
-                              <p className="text-white/45 text-[11px] truncate">{row.teamName}</p>
-                            </div>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => handleRatePlayer(e, row.player || null)}
-                            disabled={votingLocked}
-                            className="shrink-0 text-right hover:opacity-90 transition disabled:opacity-70 disabled:cursor-not-allowed"
-                            aria-label={votingLocked ? `${row.name} rating locked` : `Rate ${row.name}`}
-                          >
-                            <div className="flex items-center gap-0.5 justify-end">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <Star
-                                  key={star}
-                                  className={`w-3 h-3 ${
-                                    row.average > 0 && star <= Math.round(row.average)
-                                      ? 'fill-[var(--fpl-green)] text-[var(--fpl-green)]'
-                                      : 'fill-transparent text-white/25'
-                                  }`}
+                            <button
+                              type="button"
+                              onClick={(e) => handlePlayerClick(e, row.player || null)}
+                              className="flex items-center gap-3 min-w-0 flex-1 text-left hover:opacity-90 transition"
+                            >
+                              <div className="relative w-9 h-9 rounded-full overflow-hidden bg-white/10 shrink-0">
+                                <Image
+                                  src={getPlayerImageUrl(row.player?.image_url)}
+                                  alt={row.name}
+                                  fill
+                                  className="object-cover"
+                                  unoptimized
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement
+                                    target.src = '/no-image-player.png'
+                                  }}
                                 />
-                              ))}
-                            </div>
-                            <p className="text-white/70 text-[11px] mt-0.5 tabular-nums">
-                              {row.average > 0 ? `${row.average.toFixed(1)} · ${row.count}` : 'Rate'}
-                            </p>
-                          </button>
-                        </div>
-                      ))}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-white text-sm font-semibold truncate">{row.name}</p>
+                                <p className="text-white/45 text-[11px] truncate">{row.teamName}</p>
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => handleRatePlayer(e, row.player || null)}
+                              disabled={votingLocked}
+                              className="shrink-0 text-right hover:opacity-90 transition disabled:opacity-70 disabled:cursor-not-allowed"
+                              aria-label={
+                                votingLocked ? `${row.name} rating locked` : `Rate ${row.name}`
+                              }
+                            >
+                              <div className="flex items-center gap-0.5 justify-end">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star
+                                    key={star}
+                                    className={`w-3 h-3 ${
+                                      myRating > 0 && star <= myRating
+                                        ? 'fill-[var(--fpl-green)] text-[var(--fpl-green)]'
+                                        : 'fill-transparent text-white/25'
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                              <p className="text-white/70 text-[11px] mt-0.5 tabular-nums">
+                                {myRating > 0
+                                  ? `You ${myRating}`
+                                  : row.average > 0
+                                    ? `Avg ${row.average.toFixed(1)} · ${row.count}`
+                                    : 'Rate'}
+                              </p>
+                            </button>
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
                 )}
@@ -879,21 +934,15 @@ export default function MatchDetailPage() {
                   ))}
                 </div>
 
-                {/* Stats table */}
+                {/* Stats table — fantasy points + goals */}
                 <div className="overflow-x-auto">
-                  <div
-                    className={`grid gap-2 px-1 pb-2 text-[11px] sm:text-xs text-white/50 font-semibold uppercase tracking-wide border-b border-white/10 ${
-                      SHOW_PLAYER_RATINGS ? 'grid-cols-[1fr_48px_48px]' : 'grid-cols-[1fr_48px]'
-                    }`}
-                  >
+                  <div className="grid grid-cols-[1fr_48px_48px] gap-2 px-1 pb-2 text-[11px] sm:text-xs text-white/50 font-semibold uppercase tracking-wide border-b border-white/10">
                     <button type="button" className="text-left hover:text-white" onClick={() => toggleSort('player')}>
                       Player {statsSort === 'player' ? (statsSortDir === 'asc' ? '↑' : '↓') : '↕'}
                     </button>
-                    {SHOW_PLAYER_RATINGS && (
-                      <button type="button" className="text-center hover:text-white" onClick={() => toggleSort('pts')}>
-                        Pts {statsSort === 'pts' ? (statsSortDir === 'asc' ? '↑' : '↓') : '↕'}
-                      </button>
-                    )}
+                    <button type="button" className="text-center hover:text-white" onClick={() => toggleSort('pts')}>
+                      FPL {statsSort === 'pts' ? (statsSortDir === 'asc' ? '↑' : '↓') : '↕'}
+                    </button>
                     <button type="button" className="text-center hover:text-white" onClick={() => toggleSort('gs')}>
                       GS {statsSort === 'gs' ? (statsSortDir === 'asc' ? '↑' : '↓') : '↕'}
                     </button>
@@ -908,9 +957,7 @@ export default function MatchDetailPage() {
                           key={row.mp.id}
                           type="button"
                           onClick={(e) => handlePlayerClick(e, row.player)}
-                          className={`w-full grid gap-2 items-center px-1 py-3 border-b border-white/10 hover:bg-white/5 transition text-left ${
-                            SHOW_PLAYER_RATINGS ? 'grid-cols-[1fr_48px_48px]' : 'grid-cols-[1fr_48px]'
-                          }`}
+                          className="w-full grid grid-cols-[1fr_48px_48px] gap-2 items-center px-1 py-3 border-b border-white/10 hover:bg-white/5 transition text-left"
                         >
                           <div className="flex items-center gap-2 min-w-0">
                             <Info className="w-3.5 h-3.5 text-white/35 shrink-0" />
@@ -932,11 +979,17 @@ export default function MatchDetailPage() {
                               <div className="text-white/45 text-[11px] truncate">{row.teamName}</div>
                             </div>
                           </div>
-                          {SHOW_PLAYER_RATINGS && (
-                            <div className="text-center text-sm text-white font-medium">
-                              {row.pts > 0 ? row.pts.toFixed(1) : '—'}
-                            </div>
-                          )}
+                          <div
+                            className={`text-center text-sm font-semibold tabular-nums ${
+                              row.pts > 0
+                                ? 'text-[var(--fpl-green)]'
+                                : row.pts < 0
+                                  ? 'text-[var(--fpl-pink)]'
+                                  : 'text-white/50'
+                            }`}
+                          >
+                            {row.pts > 0 ? `+${row.pts}` : row.pts}
+                          </div>
                           <div className="text-center text-sm text-white font-medium">{row.gs}</div>
                         </button>
                       ))}

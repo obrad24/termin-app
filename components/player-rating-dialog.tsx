@@ -5,6 +5,7 @@ import { Star } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Player } from '@/lib/supabase'
 import { getPlayerImageUrl } from '@/lib/image-utils'
+import { getOrCreateVoterId } from '@/lib/voter-id'
 import Image from 'next/image'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -17,7 +18,7 @@ interface PlayerRatingDialogProps {
   currentAverageRating?: number
   ratingCount?: number
   votingLocked?: boolean
-  onRatingSubmitted?: () => void
+  onRatingSubmitted?: (playerId: number, rating: number) => void
 }
 
 export default function PlayerRatingDialog({
@@ -28,7 +29,7 @@ export default function PlayerRatingDialog({
   currentAverageRating = 0,
   ratingCount = 0,
   votingLocked = false,
-  onRatingSubmitted
+  onRatingSubmitted,
 }: PlayerRatingDialogProps) {
   const [hoveredRating, setHoveredRating] = useState<number | null>(null)
   const [selectedRating, setSelectedRating] = useState<number | null>(null)
@@ -36,31 +37,39 @@ export default function PlayerRatingDialog({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoadingRating, setIsLoadingRating] = useState(false)
 
-  // Dohvati korisnikovu ocjenu kada se dialog otvori
   useEffect(() => {
-    if (open && player) {
-      fetchUserRating()
-    } else {
-      // Resetuj kada se zatvori
+    if (!open || !player) {
       setUserRating(null)
       setSelectedRating(null)
       setHoveredRating(null)
+      return
     }
-  }, [open, player, matchId])
+
+    // Always start empty until THIS voter's rating is loaded
+    setUserRating(null)
+    setSelectedRating(null)
+    setHoveredRating(null)
+    fetchUserRating()
+  }, [open, player?.id, matchId])
 
   const fetchUserRating = async () => {
     if (!player) return
-    
+
     setIsLoadingRating(true)
     try {
+      const voterId = getOrCreateVoterId()
       const response = await fetch(
-        `/api/match-ratings/user-rating?match_id=${matchId}&player_id=${player.id}`
+        `/api/match-ratings/user-rating?match_id=${matchId}&player_id=${player.id}&voter_id=${encodeURIComponent(voterId)}`,
       )
       if (response.ok) {
         const data = await response.json()
-        if (data.rating !== null) {
-          setUserRating(data.rating)
-          setSelectedRating(data.rating)
+        if (data.rating != null && Number(data.rating) > 0) {
+          const rating = Number(data.rating)
+          setUserRating(rating)
+          setSelectedRating(rating)
+        } else {
+          setUserRating(null)
+          setSelectedRating(null)
         }
       }
     } catch (error) {
@@ -73,10 +82,11 @@ export default function PlayerRatingDialog({
   if (!player) return null
 
   const handleStarClick = async (rating: number) => {
-    if (isSubmitting || votingLocked) return
+    if (isSubmitting || votingLocked || isLoadingRating) return
 
     setIsSubmitting(true)
     try {
+      const voterId = getOrCreateVoterId()
       const response = await fetch('/api/match-ratings', {
         method: 'POST',
         headers: {
@@ -85,19 +95,18 @@ export default function PlayerRatingDialog({
         body: JSON.stringify({
           match_id: matchId,
           player_id: player.id,
-          rating: rating,
+          rating,
+          voter_id: voterId,
         }),
       })
 
       if (response.ok) {
         setSelectedRating(rating)
         setUserRating(rating)
-        if (onRatingSubmitted) {
-          onRatingSubmitted()
-        }
+        onRatingSubmitted?.(player.id, rating)
         setTimeout(() => {
           onOpenChange(false)
-        }, 1000)
+        }, 800)
       } else {
         const error = await response.json()
         console.error('Error submitting rating:', error)
@@ -110,19 +119,18 @@ export default function PlayerRatingDialog({
     }
   }
 
-  const displayRating = hoveredRating !== null ? hoveredRating : (selectedRating || userRating || 0)
+  // Never fall back to community average — only this voter's stars
+  const displayRating =
+    hoveredRating !== null ? hoveredRating : selectedRating || userRating || 0
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-slate-800 border-white/30 text-white max-w-md w-[90%]">
         <DialogHeader>
-          <DialogTitle className="text-white text-center text-xl">
-            Rate player
-          </DialogTitle>
+          <DialogTitle className="text-white text-center text-xl">Rate player</DialogTitle>
         </DialogHeader>
-        
+
         <div className="flex flex-col items-center gap-6 py-4">
-          {/* Player Image and Name */}
           <div className="flex flex-col items-center gap-4">
             <Link
               href={`/players/${player.id}`}
@@ -153,13 +161,13 @@ export default function PlayerRatingDialog({
               </Link>
               {currentAverageRating > 0 && (
                 <p className="text-sm text-white/70 mt-1">
-                  Average rating: {currentAverageRating.toFixed(1)} ({ratingCount} {ratingCount === 1 ? 'rating' : 'ratings'})
+                  Average rating: {currentAverageRating.toFixed(1)} ({ratingCount}{' '}
+                  {ratingCount === 1 ? 'rating' : 'ratings'})
                 </p>
               )}
             </div>
           </div>
 
-          {/* Star Rating */}
           <div className="flex flex-col items-center gap-4">
             {votingLocked ? (
               <p className="text-amber-300 text-sm text-center px-2">
@@ -167,10 +175,14 @@ export default function PlayerRatingDialog({
               </p>
             ) : (
               <>
-                {userRating && (
+                {isLoadingRating ? (
+                  <p className="text-white/60 text-sm">Loading your rating...</p>
+                ) : userRating ? (
                   <p className="text-white/80 text-sm">
                     Your rating: {userRating} {userRating === 1 ? 'star' : 'stars'}
                   </p>
+                ) : (
+                  <p className="text-white/55 text-sm">Tap a star to rate</p>
                 )}
                 <div
                   className="flex items-center gap-2"
@@ -183,12 +195,17 @@ export default function PlayerRatingDialog({
                         key={star}
                         type="button"
                         onClick={() => handleStarClick(star)}
-                        onMouseEnter={() => !isSubmitting && setHoveredRating(star)}
-                        disabled={isSubmitting}
+                        onMouseEnter={() =>
+                          !isSubmitting && !isLoadingRating && setHoveredRating(star)
+                        }
+                        disabled={isSubmitting || isLoadingRating}
                         className={cn(
                           'transition-all duration-150',
-                          !isSubmitting && 'cursor-pointer hover:scale-125',
-                          isSubmitting && 'cursor-not-allowed opacity-60',
+                          !isSubmitting &&
+                            !isLoadingRating &&
+                            'cursor-pointer hover:scale-125',
+                          (isSubmitting || isLoadingRating) &&
+                            'cursor-not-allowed opacity-60',
                         )}
                       >
                         <Star
@@ -203,14 +220,12 @@ export default function PlayerRatingDialog({
                     )
                   })}
                 </div>
-                {selectedRating && (
+                {selectedRating && !isSubmitting && (
                   <p className="text-green-400 text-sm font-semibold animate-in fade-in">
                     Thanks for rating!
                   </p>
                 )}
-                {isSubmitting && (
-                  <p className="text-white/60 text-sm">Submitting...</p>
-                )}
+                {isSubmitting && <p className="text-white/60 text-sm">Submitting...</p>}
               </>
             )}
           </div>
