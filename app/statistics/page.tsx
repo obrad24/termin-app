@@ -124,6 +124,7 @@ export default function StatisticsPage() {
 
   const topScorers = players.filter((player) => player.goals > 0)
   const leader = topScorers[0]
+  const restScorers = topScorers.slice(1)
 
   return (
     <main className="min-h-screen bg-[var(--fpl-p120)] pb-20 md:pb-0">
@@ -188,65 +189,70 @@ export default function StatisticsPage() {
               </Link>
             )}
 
-            <div className="rounded-2xl bg-[var(--fpl-purple)] border border-white/10 overflow-hidden">
-              <div className="px-3 sm:px-4 py-3 border-b border-white/10 flex items-center justify-between">
-                <h2 className="text-white font-bold text-sm">Goal scorers</h2>
-                <span className="text-white/40 text-[11px]">{topScorers.length} players</span>
+            {restScorers.length > 0 && (
+              <div className="rounded-2xl bg-[var(--fpl-purple)] border border-white/10 overflow-hidden">
+                <div className="px-3 sm:px-4 py-3 border-b border-white/10 flex items-center justify-between">
+                  <h2 className="text-white font-bold text-sm">Goal scorers</h2>
+                  <span className="text-white/40 text-[11px]">
+                    {restScorers.length} players
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-[36px_1fr_48px_48px] gap-2 px-3 sm:px-4 py-2 text-[11px] text-white/45 font-semibold uppercase tracking-wide border-b border-white/10">
+                  <span>#</span>
+                  <span>Player</span>
+                  <span className="text-center">Apps</span>
+                  <span className="text-center">G</span>
+                </div>
+
+                <div>
+                  {restScorers.map((player, index) => {
+                    const rank = index + 2
+                    return (
+                      <Link
+                        key={player.id}
+                        href={`/players/${player.id}`}
+                        className="grid grid-cols-[36px_1fr_48px_48px] gap-2 items-center px-3 sm:px-4 py-3 border-b border-white/10 last:border-b-0 hover:bg-white/5 transition"
+                      >
+                        <span
+                          className={`text-sm font-bold tabular-nums ${
+                            rank <= 3 ? 'text-white' : 'text-white/45'
+                          }`}
+                        >
+                          {rank}
+                        </span>
+
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <PlayerAvatar
+                            imageUrl={player.image_url}
+                            name={`${player.first_name} ${player.last_name}`}
+                            className="relative w-10 h-10 rounded-full overflow-hidden bg-white/10 shrink-0"
+                            imageClassName="object-contain object-bottom"
+                          />
+                          <div className="min-w-0">
+                            <p className="text-white text-sm font-semibold truncate">
+                              {player.first_name} {player.last_name}
+                            </p>
+                            {player.team && (
+                              <p className="text-white/45 text-[11px] truncate">
+                                {player.team}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <span className="text-center text-sm text-white/70 tabular-nums">
+                          {player.matches_played}
+                        </span>
+                        <span className="text-center text-sm text-white font-bold tabular-nums">
+                          {player.goals}
+                        </span>
+                      </Link>
+                    )
+                  })}
+                </div>
               </div>
-
-              <div className="grid grid-cols-[36px_1fr_48px_48px] gap-2 px-3 sm:px-4 py-2 text-[11px] text-white/45 font-semibold uppercase tracking-wide border-b border-white/10">
-                <span>#</span>
-                <span>Player</span>
-                <span className="text-center">Apps</span>
-                <span className="text-center">G</span>
-              </div>
-
-              <div>
-                {topScorers.map((player, index) => (
-                  <Link
-                    key={player.id}
-                    href={`/players/${player.id}`}
-                    className="grid grid-cols-[36px_1fr_48px_48px] gap-2 items-center px-3 sm:px-4 py-3 border-b border-white/10 last:border-b-0 hover:bg-white/5 transition"
-                  >
-                    <span
-                      className={`text-sm font-bold tabular-nums ${
-                        index === 0
-                          ? 'text-[var(--fpl-green)]'
-                          : index < 3
-                            ? 'text-white'
-                            : 'text-white/45'
-                      }`}
-                    >
-                      {index + 1}
-                    </span>
-
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <PlayerAvatar
-                        imageUrl={player.image_url}
-                        name={`${player.first_name} ${player.last_name}`}
-                        className="relative w-9 h-9 rounded-full overflow-hidden bg-white/10 shrink-0"
-                        imageClassName="object-cover object-top"
-                      />
-                      <div className="min-w-0">
-                        <p className="text-white text-sm font-semibold truncate">
-                          {player.first_name} {player.last_name}
-                        </p>
-                        {player.team && (
-                          <p className="text-white/45 text-[11px] truncate">{player.team}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    <span className="text-center text-sm text-white/70 tabular-nums">
-                      {player.matches_played}
-                    </span>
-                    <span className="text-center text-sm text-white font-bold tabular-nums">
-                      {player.goals}
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            </div>
+            )}
           </div>
         )}
       </section>
