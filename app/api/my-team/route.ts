@@ -83,33 +83,86 @@ export async function GET(request: Request) {
 
     const gameweek = await getNextGameweek(seasonId)
     const lock = await resolveSquadLock(seasonId, gameweek)
+    const accountId = auth.session!.accountId
 
-    const { data: currentRow } = await supabase
+    const parseCaptain = (row: any, ids: number[]) => {
+      const raw = row?.captain_player_id
+      const n = typeof raw === 'string' ? parseInt(raw, 10) : Number(raw)
+      return Number.isFinite(n) && ids.includes(n) ? n : null
+    }
+
+    // All saved squads for this account/season (newest first)
+    const { data: squadRows } = await supabase
       .from('fantasy_user_squads')
       .select('*')
-      .eq('account_id', auth.session!.accountId)
+      .eq('account_id', accountId)
       .eq('season_id', seasonId)
-      .eq('gameweek', gameweek)
-      .maybeSingle()
+      .order('gameweek', { ascending: false })
+      .limit(30)
+
+    const filledSquads = (squadRows || []).filter(
+      (row: any) => parsePlayerIds(row.player_ids).length > 0,
+    )
+    const currentRow =
+      filledSquads.find((row: any) => Number(row.gameweek) === gameweek) || null
+    const priorFilled = filledSquads.filter(
+      (row: any) => Number(row.gameweek) < gameweek,
+    )
+    const prevRow = priorFilled[0] || null
+    const latestFilled = filledSquads[0] || null
 
     const currentIds = parsePlayerIds(currentRow?.player_ids)
-
-    const { data: prevRow } = await supabase
-      .from('fantasy_user_squads')
-      .select('*')
-      .eq('account_id', auth.session!.accountId)
-      .eq('season_id', seasonId)
-      .eq('gameweek', gameweek - 1)
-      .maybeSingle()
-
     const previousIds = parsePlayerIds(prevRow?.player_ids)
-    const transfersUsed = currentIds.length
-      ? countTransfers(previousIds.length ? previousIds : currentIds, currentIds)
-      : 0
-    // If previous exists, free transfers remaining vs previous; else free initial pick
     const hasPrevious = previousIds.length === SQUAD_SIZE
+
+    // After a result, next GW often has no row yet — inherit latest prior squad
+    const inheritedFromPrevious = currentIds.length === 0 && previousIds.length > 0
+    let responseIds = inheritedFromPrevious ? previousIds : currentIds
+    let responseCaptain = parseCaptain(
+      inheritedFromPrevious ? prevRow : currentRow,
+      responseIds,
+    )
+    let responseSquadGw = inheritedFromPrevious
+      ? Number(prevRow?.gameweek) || gameweek - 1
+      : gameweek
+
+    // Latest completed GW with fantasy points
+    const { data: lastGwRows } = await supabase
+      .from('fantasy_match_points')
+      .select('gameweek')
+      .eq('season_id', seasonId)
+      .order('gameweek', { ascending: false })
+      .limit(1)
+    const lastGwRaw = lastGwRows?.[0]?.gameweek
+    const lastPointsGw =
+      typeof lastGwRaw === 'string' ? parseInt(lastGwRaw, 10) : Number(lastGwRaw)
+    const hasPointsGw = Number.isFinite(lastPointsGw) && lastPointsGw > 0
+
+    // While locked (or after points exist), show the squad that scored that GW
+    if (lock.locked || hasPointsGw) {
+      const scoredRow = hasPointsGw
+        ? filledSquads.find((row: any) => Number(row.gameweek) === lastPointsGw) ||
+          // No exact GW row: use latest squad at or before the points GW
+          filledSquads.find((row: any) => Number(row.gameweek) <= lastPointsGw) ||
+          null
+        : null
+      const viewRow = scoredRow || (lock.locked ? latestFilled : null)
+      if (viewRow) {
+        const ids = parsePlayerIds(viewRow.player_ids)
+        if (ids.length > 0) {
+          responseIds = ids
+          responseCaptain = parseCaptain(viewRow, ids)
+          responseSquadGw = Number(viewRow.gameweek) || responseSquadGw
+        }
+      }
+    }
+
     const transfersRemaining = hasPrevious
-      ? Math.max(0, MAX_TRANSFERS_PER_GW - (currentIds.length ? countTransfers(previousIds, currentIds) : 0))
+      ? Math.max(
+          0,
+          MAX_TRANSFERS_PER_GW -
+            (currentIds.length ? countTransfers(previousIds, currentIds) : 0),
+        )
       : SQUAD_SIZE
 
     const { data: allPlayers } = await supabase
@@ -135,81 +188,59 @@ export async function GET(request: Request) {
         ? { ...p, team: seasonalTeamByPlayer.get(p.id) ?? null }
         : p
 
-    const currentPlayers = (await loadPlayersByIds(currentIds)).map(withSeasonTeam)
-    const spent = squadCost(currentPlayers as any[])
-    const teamViolation = findTeamLimitViolation(currentPlayers, MAX_PLAYERS_PER_TEAM)
+    const responsePlayers = (await loadPlayersByIds(responseIds)).map(withSeasonTeam)
 
-    const captainPlayerId = (() => {
-      const raw = currentRow?.captain_player_id
-      const n = typeof raw === 'string' ? parseInt(raw, 10) : Number(raw)
-      return Number.isFinite(n) && currentIds.includes(n) ? n : null
-    })()
-
-    // Latest completed GW with fantasy points — used to show contribution while locked
+    // Points for the GW we are displaying (prefer exact squad GW, else latest points GW)
     let pointsGameweek: number | null = null
     const playerGwPoints: Record<number, number> = {}
     let squadGwPoints: number | null = null
-    {
-      let lastGwQuery = supabase
-        .from('fantasy_match_points')
-        .select('gameweek')
-        .eq('season_id', seasonId)
-        .order('gameweek', { ascending: false })
-        .limit(1)
-      const { data: lastGwRows } = await lastGwQuery
-      const lastGwRaw = lastGwRows?.[0]?.gameweek
-      const lastGw =
-        typeof lastGwRaw === 'string' ? parseInt(lastGwRaw, 10) : Number(lastGwRaw)
-      if (Number.isFinite(lastGw) && lastGw > 0) {
-        pointsGameweek = lastGw
 
-        // Prefer the squad that actually played that GW; fall back to current squad
-        let scoringIds = currentIds
-        let scoringCaptain = captainPlayerId
-        if (lastGw !== gameweek) {
-          const { data: scoredSquad } = await supabase
-            .from('fantasy_user_squads')
-            .select('player_ids, captain_player_id')
-            .eq('account_id', auth.session!.accountId)
-            .eq('season_id', seasonId)
-            .eq('gameweek', lastGw)
-            .maybeSingle()
-          const scoredIds = parsePlayerIds(scoredSquad?.player_ids)
-          if (scoredIds.length > 0) {
-            scoringIds = scoredIds
-            const capRaw = scoredSquad?.captain_player_id
-            const capN =
-              typeof capRaw === 'string' ? parseInt(capRaw, 10) : Number(capRaw)
-            scoringCaptain =
-              Number.isFinite(capN) && scoredIds.includes(capN) ? capN : null
-          }
-        }
+    if (responseIds.length > 0 && hasPointsGw) {
+      const candidateGws = [
+        ...new Set(
+          [responseSquadGw, lastPointsGw].filter(
+            (g) => Number.isFinite(g) && g > 0,
+          ) as number[],
+        ),
+      ]
 
-        if (scoringIds.length > 0) {
-          const { data: pointRows } = await supabase
-            .from('fantasy_match_points')
-            .select('player_id, total_points')
-            .eq('season_id', seasonId)
-            .eq('gameweek', lastGw)
-            .in('player_id', scoringIds)
-
-          ;(pointRows || []).forEach((row: any) => {
-            const pid =
-              typeof row.player_id === 'string'
-                ? parseInt(row.player_id, 10)
-                : Number(row.player_id)
-            if (!Number.isFinite(pid)) return
-            playerGwPoints[pid] =
-              (playerGwPoints[pid] || 0) + (Number(row.total_points) || 0)
-          })
-
-          squadGwPoints = scoringIds.reduce((sum, pid) => {
-            const pts = playerGwPoints[pid] || 0
-            return sum + (scoringCaptain != null && pid === scoringCaptain ? pts * 2 : pts)
-          }, 0)
+      let usedGw: number | null = null
+      let pointRows: any[] = []
+      for (const gw of candidateGws) {
+        const { data } = await supabase
+          .from('fantasy_match_points')
+          .select('player_id, total_points')
+          .eq('season_id', seasonId)
+          .eq('gameweek', gw)
+          .in('player_id', responseIds)
+        if (data && data.length > 0) {
+          usedGw = gw
+          pointRows = data
+          break
         }
       }
+
+      // Still show the points GW label even if none of this squad scored
+      pointsGameweek = usedGw ?? lastPointsGw
+
+      pointRows.forEach((row: any) => {
+        const pid =
+          typeof row.player_id === 'string'
+            ? parseInt(row.player_id, 10)
+            : Number(row.player_id)
+        if (!Number.isFinite(pid)) return
+        playerGwPoints[pid] =
+          (playerGwPoints[pid] || 0) + (Number(row.total_points) || 0)
+      })
+
+      squadGwPoints = responseIds.reduce((sum, pid) => {
+        const pts = playerGwPoints[pid] || 0
+        return sum + (responseCaptain != null && pid === responseCaptain ? pts * 2 : pts)
+      }, 0)
     }
+
+    const responseSpent = squadCost(responsePlayers as any[])
+    const responseViolation = findTeamLimitViolation(responsePlayers, MAX_PLAYERS_PER_TEAM)
 
     return NextResponse.json({
       season_id: seasonId,
@@ -222,27 +253,34 @@ export async function GET(request: Request) {
       max_transfers: MAX_TRANSFERS_PER_GW,
       max_per_team: MAX_PLAYERS_PER_TEAM,
       max_budget: MAX_BUDGET,
-      budget_spent: Math.round(spent * 10) / 10,
-      budget_remaining: Math.round((MAX_BUDGET - spent) * 10) / 10,
+      budget_spent: Math.round(responseSpent * 10) / 10,
+      budget_remaining: Math.round((MAX_BUDGET - responseSpent) * 10) / 10,
       has_previous_squad: hasPrevious,
-      transfers_used: hasPrevious && currentIds.length ? countTransfers(previousIds, currentIds) : 0,
+      inherited_from_previous: inheritedFromPrevious,
+      transfers_used:
+        hasPrevious && currentIds.length ? countTransfers(previousIds, currentIds) : 0,
       transfers_remaining: hasPrevious
-        ? Math.max(0, MAX_TRANSFERS_PER_GW - (currentIds.length ? countTransfers(previousIds, currentIds) : 0))
+        ? Math.max(
+            0,
+            MAX_TRANSFERS_PER_GW -
+              (currentIds.length ? countTransfers(previousIds, currentIds) : 0),
+          )
         : null,
-      free_initial_pick: !hasPrevious,
-      player_ids: currentIds,
-      captain_player_id: captainPlayerId,
-      players: currentPlayers,
+      free_initial_pick: !hasPrevious && !inheritedFromPrevious,
+      player_ids: responseIds,
+      captain_player_id: responseCaptain,
+      players: responsePlayers,
       previous_player_ids: previousIds,
       available_players: (allPlayers || []).map(normalizePlayerRow).map(withSeasonTeam),
       points_gameweek: pointsGameweek,
       player_gw_points: playerGwPoints,
       squad_gw_points: squadGwPoints,
-      updated_at: currentRow?.updated_at || null,
+      updated_at:
+        currentRow?.updated_at || prevRow?.updated_at || latestFilled?.updated_at || null,
       transfersRemaining,
-      team_limit_ok: !teamViolation,
-      team_limit_warning: teamViolation
-        ? `Your squad has ${teamViolation.count} players from ${teamViolation.team}. Max is ${MAX_PLAYERS_PER_TEAM} — fix with transfers before the next change.`
+      team_limit_ok: !responseViolation,
+      team_limit_warning: responseViolation
+        ? `Your squad has ${responseViolation.count} players from ${responseViolation.team}. Max is ${MAX_PLAYERS_PER_TEAM} — fix with transfers before the next change.`
         : null,
     })
   } catch (error: any) {

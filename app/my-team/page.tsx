@@ -82,6 +82,7 @@ type MyTeamData = {
   player_ids: number[]
   captain_player_id?: number | null
   previous_player_ids?: number[]
+  players?: PlayerOpt[]
   available_players: PlayerOpt[]
   team_limit_ok?: boolean
   team_limit_warning?: string | null
@@ -300,6 +301,7 @@ export default function MyTeamPage() {
       const json = await response.json()
       if (!response.ok) throw new Error(json.error || 'Failed to load')
       const available_players = (json.available_players || []).map(normalizePlayer)
+      const squadPlayers = (json.players || []).map(normalizePlayer)
       const player_ids = (json.player_ids || []).map(toId).filter((n: number) => !Number.isNaN(n))
       const previous_player_ids = (json.previous_player_ids || [])
         .map(toId)
@@ -311,12 +313,28 @@ export default function MyTeamPage() {
         captain != null && !Number.isNaN(captain) && player_ids.includes(captain)
           ? captain
           : null
+      // JSON object keys arrive as strings — normalize to numeric ids
+      const rawGwPoints = json.player_gw_points || {}
+      const player_gw_points: Record<number, number> = {}
+      Object.entries(rawGwPoints).forEach(([key, value]) => {
+        const id = toId(key)
+        if (Number.isNaN(id)) return
+        player_gw_points[id] = Number(value) || 0
+      })
       setData({
         ...json,
         available_players,
+        players: squadPlayers,
         player_ids,
         previous_player_ids,
         captain_player_id: validCaptain,
+        player_gw_points,
+        points_gameweek:
+          json.points_gameweek == null ? null : toId(json.points_gameweek),
+        squad_gw_points:
+          json.squad_gw_points == null || json.squad_gw_points === ''
+            ? null
+            : Number(json.squad_gw_points),
       })
       setSelected(player_ids)
       setCaptainId(validCaptain)
@@ -350,15 +368,17 @@ export default function MyTeamPage() {
   const playersById = useMemo(() => {
     const map = new Map<number, PlayerOpt>()
     ;(data?.available_players || []).forEach((p) => map.set(p.id, p))
+    // Prefer squad payload so pitch never goes empty if catalog lookup fails
+    ;(data?.players || []).forEach((p) => map.set(p.id, p))
     return map
   }, [data])
 
   const slots = useMemo(() => {
     const size = data?.squad_size || 5
-    const filled = selected
-      .map((id) => playersById.get(id))
-      .filter(Boolean) as PlayerOpt[]
-    const out: (PlayerOpt | null)[] = [...filled]
+    // Keep selected order; pad empty slots only at the end
+    const out: (PlayerOpt | null)[] = selected.map(
+      (id) => playersById.get(id) || null,
+    )
     while (out.length < size) out.push(null)
     return out.slice(0, size)
   }, [selected, playersById, data])
@@ -396,10 +416,13 @@ export default function MyTeamPage() {
 
   const displayedSquadPoints = useMemo(() => {
     if (!showPlayerPoints) return null
+    if (data?.squad_gw_points != null && !Number.isNaN(Number(data.squad_gw_points))) {
+      return Number(data.squad_gw_points)
+    }
     return selected.reduce((sum, id) => {
       return sum + playerContribution(id, id === captainId)
     }, 0)
-  }, [showPlayerPoints, selected, captainId, data?.player_gw_points])
+  }, [showPlayerPoints, selected, captainId, data?.player_gw_points, data?.squad_gw_points])
 
   const selectablePlayers = useMemo(() => {
     const exclude = new Set(selected)
